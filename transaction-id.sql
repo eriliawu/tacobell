@@ -207,38 +207,39 @@ from TLD_FACT_2015_Q01 t
     left join PRODUCT_DIM p using (DW_PRODUCT)
 	left join OCCASION_DIM o using (DW_OCCASION)
 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492
-order by DW_GC_HEADER;
+order by DW_GC_HEADER, DW_PRODUCT;
 /*
+
 +--------------+--------+-----------+-------------+--------------+------------+--------------------------+------------------+---------------+-------------+-------------------------+----------------+----------------------+------------+--------------+---------------+--------+
 | DW_GC_HEADER | DW_DAY | DW_RESTID | DW_OCCASION | OCCASIONDESC | DW_PRODUCT | PRODUCTDESC              | DW_PRODUCTDETAIL | DW_PRODUCTMOD | DW_LINEITEM | LINEITEMDESC            | DW_LINEITEMSEQ | DW_LINEITEMSEQPARENT | ACTQTYSOLD | ACTPRODPRICE | ACTGROSSSALES | ACTTAX |
 +--------------+--------+-----------+-------------+--------------+------------+--------------------------+------------------+---------------+-------------+-------------------------+----------------+----------------------+------------+--------------+---------------+--------+
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            38194 |            -1 |           4 | COMBO-DETAIL-REPLS-PLUS |             10 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |             4001 |            -1 |           6 | COMBO-DETAIL-REPLS-EQL  |             12 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             4001 |          2948 |           8 | COMBO-MOD-INGRD-MINUS   |              5 |                    4 |       0.00 |         0.00 |          0.00 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            27270 |            -1 |           3 | COMBO-DETAIL            |             15 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            34596 |            -1 |           3 | COMBO-DETAIL            |             13 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             4001 |            -1 |           6 | COMBO-DETAIL-REPLS-EQL  |              4 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37202 | CRWRP SLDR CHD           |            37202 |            -1 |           2 | NON-COMBO-ITEM          |             16 |                   16 |       3.00 |         1.69 |          5.07 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             1692 |            -1 |           1 | COMBO-ITEM              |              1 |                    1 |       1.00 |         5.69 |          5.69 |   0.00 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            37591 |            -1 |           1 | COMBO-ITEM              |              8 |                    8 |       1.00 |         7.18 |          7.18 |   0.00 |
 |   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |         -1 | N/A                      |               -1 |            -1 |          14 | TAX-LINE                |            999 |                  999 |       0.00 |         0.00 |          0.00 |   1.61 |
-|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37667 | CW SLDR SPICY SC         |            37667 |            -1 |           2 | NON-COMBO-ITEM          |             17 |                   17 |       3.00 |         1.69 |          5.07 |   0.00 |
 |   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |            27249 |            -1 |           3 | COMBO-DETAIL            |              7 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
 |   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             3844 |            -1 |           3 | COMBO-DETAIL            |              2 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35519 |            -1 |           3 | COMBO-DETAIL            |              4 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |             2171 |            -1 |           3 | COMBO-DETAIL            |              8 |                    5 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35930 |            -1 |           3 | COMBO-DETAIL            |              2 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35930 |            -1 |           3 | COMBO-DETAIL            |              6 |                    5 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35518 |            -1 |           3 | COMBO-DETAIL            |              3 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            36021 |            -1 |           1 | COMBO-ITEM              |              1 |                    1 |       1.00 |         4.29 |          4.29 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36989 | SHREDDED CHICKEN BURRITO |            36989 |            -1 |           2 | NON-COMBO-ITEM          |              9 |                    9 |       1.00 |         1.79 |          1.79 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36935 | QUESARITO STEAK          |            36935 |            -1 |           2 | NON-COMBO-ITEM          |             10 |                   10 |       1.00 |         3.39 |          3.39 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |             2144 |            -1 |           3 | COMBO-DETAIL            |              7 |                    5 |       1.00 |         0.00 |          0.00 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            36021 |            -1 |           1 | COMBO-ITEM              |              5 |                    5 |       1.00 |         4.29 |          4.29 |   0.00 |
-|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |        802 | BEAN BURRITO             |              802 |            -1 |           2 | NON-COMBO-ITEM          |             11 |                   11 |       1.00 |         1.19 |          1.19 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             4001 |            -1 |           6 | COMBO-DETAIL-REPLS-EQL  |              4 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             4001 |          2948 |           8 | COMBO-MOD-INGRD-MINUS   |              5 |                    4 |       0.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |       1692 | COMBO 7                  |             1692 |            -1 |           1 | COMBO-ITEM              |              1 |                    1 |       1.00 |         5.69 |          5.69 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37202 | CRWRP SLDR CHD           |            37202 |            -1 |           2 | NON-COMBO-ITEM          |             16 |                   16 |       3.00 |         1.69 |          5.07 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            38194 |            -1 |           4 | COMBO-DETAIL-REPLS-PLUS |             10 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            37591 |            -1 |           1 | COMBO-ITEM              |              8 |                    8 |       1.00 |         7.18 |          7.18 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            27270 |            -1 |           3 | COMBO-DETAIL            |             15 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |            34596 |            -1 |           3 | COMBO-DETAIL            |             13 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37591 | QUESARITO BOX            |             4001 |            -1 |           6 | COMBO-DETAIL-REPLS-EQL  |             12 |                    8 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 |   9196 |    150215 |           2 | DRIVE-THRU   |      37667 | CW SLDR SPICY SC         |            37667 |            -1 |           2 | NON-COMBO-ITEM          |             17 |                   17 |       3.00 |         1.69 |          5.07 |   0.00 |
 |   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |         -1 | N/A                      |               -1 |            -1 |          14 | TAX-LINE                |            999 |                  999 |       0.00 |         0.00 |          0.00 |   1.05 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |        802 | BEAN BURRITO             |              802 |            -1 |           2 | NON-COMBO-ITEM          |             11 |                   11 |       1.00 |         1.19 |          1.19 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35930 |            -1 |           3 | COMBO-DETAIL            |              6 |                    5 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35930 |            -1 |           3 | COMBO-DETAIL            |              2 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |             2171 |            -1 |           3 | COMBO-DETAIL            |              8 |                    5 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35519 |            -1 |           3 | COMBO-DETAIL            |              4 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            36021 |            -1 |           1 | COMBO-ITEM              |              5 |                    5 |       1.00 |         4.29 |          4.29 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |             2144 |            -1 |           3 | COMBO-DETAIL            |              7 |                    5 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            36021 |            -1 |           1 | COMBO-ITEM              |              1 |                    1 |       1.00 |         4.29 |          4.29 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36021 | ROLLED CK 4-PK           |            35518 |            -1 |           3 | COMBO-DETAIL            |              3 |                    1 |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36935 | QUESARITO STEAK          |            36935 |            -1 |           2 | NON-COMBO-ITEM          |             10 |                   10 |       1.00 |         3.39 |          3.39 |   0.00 |
+|   7008434492 |   9196 |    150216 |           2 | DRIVE-THRU   |      36989 | SHREDDED CHICKEN BURRITO |            36989 |            -1 |           2 | NON-COMBO-ITEM          |              9 |                    9 |       1.00 |         1.79 |          1.79 |   0.00 |
 +--------------+--------+-----------+-------------+--------------+------------+--------------------------+------------------+---------------+-------------+-------------------------+----------------+----------------------+------------+--------------+---------------+--------+
-25 rows in set (4 min 47.97 sec)
+
 */
 
 select t.DW_GC_HEADER, t.DW_DAY, t.DW_RESTID, o.DW_OCCASION, o.OCCASIONDESC, t.DW_PRODUCT, p.PRODUCTDESC, t.DW_PRODUCTDETAIL, t.DW_PRODUCTMOD, t.DW_LINEITEM, l.LINEITEMDESC, t.DW_LINEITEMSEQ, t.DW_LINEITEMSEQPARENT, t.ACTQTYSOLD, t.ACTPRODPRICE, t.ACTGROSSSALES, t.ACTTAX
@@ -248,6 +249,7 @@ from TLD_FACT t
 	left join OCCASION_DIM o using (DW_OCCASION)
 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492
 order by DW_GC_HEADER, DW_PRODUCT;
+-- table empty
 
 -- tab number of transactions in master and quarterly tables
 select
@@ -294,4 +296,42 @@ select
 | 4965182657 | 727957470 | 410591488 | 408919477 | 525394470 | 393761041 | 436986687 | 465021041 | 608088041 | 414278381 | 456293970 | 461288824 | 794410882 | 652860758 | 702903894 | 722179580 | 875304412 | 584204423 | 613618156 | 604264985 | 810326023 | 605991280 | 818032696 | 940370314 | 1239434138 | 1001924881 | 1152821407 | 1240517750 | 1556274400 | 806956251 | 1227420117 | 1240061145 | 1651024877 | 1207030560 | 1325307922 | 1353794936 |
 +------------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+------------+------------+------------+------------+------------+-----------+------------+------------+------------+------------+------------+------------+
 */	
+
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as total,
+	(select count(*) from TLD_FACT_2007_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 07q1,
+	(select count(*) from TLD_FACT_2007_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 07q2,
+	(select count(*) from TLD_FACT_2007_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 07q3,
+	(select count(*) from TLD_FACT_2007_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 07q4,
+	(select count(*) from TLD_FACT_2008_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 08q1,
+	(select count(*) from TLD_FACT_2008_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 08q2,
+	(select count(*) from TLD_FACT_2008_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 08q3,
+	(select count(*) from TLD_FACT_2008_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 08q4,
+	(select count(*) from TLD_FACT_2009_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 09q1,
+	(select count(*) from TLD_FACT_2009_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 09q2,
+	(select count(*) from TLD_FACT_2009_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 09q3,
+	(select count(*) from TLD_FACT_2009_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 09q4,
+	(select count(*) from TLD_FACT_2010_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 10q1,
+	(select count(*) from TLD_FACT_2010_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 10q2,
+	(select count(*) from TLD_FACT_2010_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 10q3,
+	(select count(*) from TLD_FACT_2010_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 10q4,
+	(select count(*) from TLD_FACT_2011_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 11q1,
+	(select count(*) from TLD_FACT_2011_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 11q2,
+	(select count(*) from TLD_FACT_2011_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 11q3,
+	(select count(*) from TLD_FACT_2011_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 11q4,
+	(select count(*) from TLD_FACT_2012_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 12q1,
+	(select count(*) from TLD_FACT_2012_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 12q2,
+	(select count(*) from TLD_FACT_2012_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 12q3,
+	(select count(*) from TLD_FACT_2012_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 12q4,
+	(select count(*) from TLD_FACT_2013_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 13q1,
+	(select count(*) from TLD_FACT_2013_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 13q2,
+	(select count(*) from TLD_FACT_2013_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 13q3,
+	(select count(*) from TLD_FACT_2013_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 13q4,
+	(select count(*) from TLD_FACT_2014_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 14q1,
+	(select count(*) from TLD_FACT_2014_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 14q2,
+	(select count(*) from TLD_FACT_2014_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 14q3,
+	(select count(*) from TLD_FACT_2014_Q04 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 14q4,
+	(select count(*) from TLD_FACT_2015_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 15q1,
+	(select count(*) from TLD_FACT_2015_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 15q2,
+	(select count(*) from TLD_FACT_2015_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 15q3;
 
