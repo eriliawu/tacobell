@@ -248,8 +248,7 @@ from TLD_FACT t
     left join PRODUCT_DIM p using (DW_PRODUCT)
 	left join OCCASION_DIM o using (DW_OCCASION)
 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492
-order by DW_GC_HEADER, DW_PRODUCT;
--- table empty
+order by DW_GC_HEADER, DW_PRODUCT; -- table empty
 
 -- tab number of transactions in master and quarterly tables
 select
@@ -334,4 +333,110 @@ select
 	(select count(*) from TLD_FACT_2015_Q01 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 15q1,
 	(select count(*) from TLD_FACT_2015_Q02 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 15q2,
 	(select count(*) from TLD_FACT_2015_Q03 where DW_GC_HEADER=7008434308 or DW_GC_HEADER=7008434492) as 15q3;
+/* only available in 15Q1
++-------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+
+| total | 07q1 | 07q2 | 07q3 | 07q4 | 08q1 | 08q2 | 08q3 | 08q4 | 09q1 | 09q2 | 09q3 | 09q4 | 10q1 | 10q2 | 10q3 | 10q4 | 11q1 | 11q2 | 11q3 | 11q4 | 12q1 | 12q2 | 12q3 | 12q4 | 13q1 | 13q2 | 13q3 | 13q4 | 14q1 | 14q2 | 14q3 | 14q4 | 15q1 | 15q2 | 15q3 |
++-------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+
+|     0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |    0 |   25 |    0 |    0 |
++-------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+
+1 row in set (1 hour 54 min 23.65 sec)
+*/
+
+select count(distinct DW_GC_HEADER) from TLD_FACT;
+
+-- check what transactions from quarterly tables are also available in master
+select count(*) from GC_HEADER_DIM_2010_Q01;
+
+select
+	/*(select DW_GC_HEADER from TLD_FACT) as total,*/
+	(select DW_GC_HEADER from TLD_FACT_2007_Q01 limit 1) as 07q1,
+	(select DW_GC_HEADER from TLD_FACT_2007_Q02 limit 1) as 07q2,
+	(select DW_GC_HEADER from TLD_FACT_2007_Q03 limit 1) as 07q3,
+	(select DW_GC_HEADER from TLD_FACT_2007_Q04 limit 1) as 07q4,
+	(select DW_GC_HEADER from TLD_FACT_2008_Q01 limit 1) as 08q1,
+	(select DW_GC_HEADER from TLD_FACT_2008_Q02 limit 1) as 08q2,
+	(select DW_GC_HEADER from TLD_FACT_2008_Q03 limit 1) as 08q3,
+	(select DW_GC_HEADER from TLD_FACT_2008_Q04 limit 1) as 08q4,
+	(select DW_GC_HEADER from TLD_FACT_2009_Q01 limit 1) as 09q1,
+	(select DW_GC_HEADER from TLD_FACT_2009_Q02 limit 1) as 09q2,
+	(select DW_GC_HEADER from TLD_FACT_2009_Q03 limit 1) as 09q3,
+	(select DW_GC_HEADER from TLD_FACT_2009_Q04 limit 1) as 09q4,
+	(select DW_GC_HEADER from TLD_FACT_2010_Q01 limit 1) as 10q1,
+	(select DW_GC_HEADER from TLD_FACT_2010_Q02 limit 1) as 10q2,
+	(select DW_GC_HEADER from TLD_FACT_2010_Q03 limit 1) as 10q3,
+	(select DW_GC_HEADER from TLD_FACT_2010_Q04 limit 1) as 10q4,
+	(select DW_GC_HEADER from TLD_FACT_2011_Q01 limit 1) as 11q1,
+	(select DW_GC_HEADER from TLD_FACT_2011_Q02 limit 1) as 11q2,
+	(select DW_GC_HEADER from TLD_FACT_2011_Q03 limit 1) as 11q3,
+	(select DW_GC_HEADER from TLD_FACT_2011_Q04 limit 1) as 11q4,
+	(select DW_GC_HEADER from TLD_FACT_2012_Q01 limit 1) as 12q1,
+	(select DW_GC_HEADER from TLD_FACT_2012_Q02 limit 1) as 12q2,
+	(select DW_GC_HEADER from TLD_FACT_2012_Q03 limit 1) as 12q3,
+	(select DW_GC_HEADER from TLD_FACT_2012_Q04 limit 1) as 12q4,
+	(select DW_GC_HEADER from TLD_FACT_2013_Q01 limit 1) as 13q1,
+	(select DW_GC_HEADER from TLD_FACT_2013_Q02 limit 1) as 13q2,
+	(select DW_GC_HEADER from TLD_FACT_2013_Q03 limit 1) as 13q3,
+	(select DW_GC_HEADER from TLD_FACT_2013_Q04 limit 1) as 13q4,
+	(select DW_GC_HEADER from TLD_FACT_2014_Q01 limit 1) as 14q1,
+	(select DW_GC_HEADER from TLD_FACT_2014_Q02 limit 1) as 14q2,
+	(select DW_GC_HEADER from TLD_FACT_2014_Q03 limit 1) as 14q3,
+	(select DW_GC_HEADER from TLD_FACT_2014_Q04 limit 1) as 14q4,
+	(select DW_GC_HEADER from TLD_FACT_2015_Q01 limit 1) as 15q1,
+	(select DW_GC_HEADER from TLD_FACT_2015_Q02 limit 1) as 15q2,
+	(select DW_GC_HEADER from TLD_FACT_2015_Q03 limit 1) as 15q3;
+/*
++------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+
+| 07q1       | 07q2       | 07q3       | 07q4       | 08q1       | 08q2       | 08q3       | 08q4       | 09q1       | 09q2       | 09q3       | 09q4       | 10q1       | 10q2       | 10q3       | 10q4       | 11q1       | 11q2       | 11q3       | 11q4       | 12q1       | 12q2       | 12q3       | 12q4       | 13q1       | 13q2       | 13q3       | 13q4       | 14q1       | 14q2       | 14q3       | 14q4       | 15q1       | 15q2       | 15q3       |
++------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+
+| 2193837694 | 2268477652 | 2370598056 | 2440911143 | 2531798051 | 2600038097 | 2675062530 | 2757114830 | 2864539602 | 2938503743 | 3020978631 | 3104426534 | 3252234169 | 3370415535 | 3499666135 | 3625863678 | 3782963763 | 3886539517 | 3995506502 | 4106212179 | 4253655046 | 4367247208 | 4519622138 | 4693969274 | 5034512599 | 5171371477 | 5430925256 | 5748548201 | 5833189728 | 6045008582 | 6438545377 | 6552786309 | 7008429708 | 7290376505 | 7452761975 |
++------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+------------+
+1 row in set (0.56 sec)
+*/
+
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2193837694) as 07q1, --10
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2268477652) as 07q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2370598056) as 07q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2440911143) as 07q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2531798051) as 08q1, --2
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2600038097) as 08q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2675062530) as 08q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2757114830) as 08q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2864539602) as 09q1, --10
+	(select count(*) from TLD_FACT where DW_GC_HEADER=2938503743) as 09q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3020978631) as 09q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3104426534) as 09q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3252234169) as 10q1, --7
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3370415535) as 10q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3499666135) as 10q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3625863678) as 10q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3782963763) as 11q1, --16
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3886539517) as 11q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=3995506502) as 11q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=4106212179) as 11q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=4253655046) as 12q1, --4
+	(select count(*) from TLD_FACT where DW_GC_HEADER=4367247208) as 12q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=4519622138) as 12q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=4693969274) as 12q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=5034512599) as 13q1, --3
+	(select count(*) from TLD_FACT where DW_GC_HEADER=5171371477) as 13q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=5430925256) as 13q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=5748548201) as 13q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=5833189728) as 14q1, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=6045008582) as 14q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=6438545377) as 14q3, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=6552786309) as 14q4; --0
+select
+	(select count(*) from TLD_FACT where DW_GC_HEADER=7008429708) as 15q1, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=7290376505) as 15q2, --0
+	(select count(*) from TLD_FACT where DW_GC_HEADER=7452761975) as 15q3; --0
+
+
 
