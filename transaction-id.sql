@@ -438,5 +438,32 @@ select
 	(select count(*) from TLD_FACT where DW_GC_HEADER=7290376505) as 15q2, --0
 	(select count(*) from TLD_FACT where DW_GC_HEADER=7452761975) as 15q3; --0
 
+-- descriptives
+select AGREEMENT_CD, count(*)
+from ALIGN_DIM
+where CLOSEDDT>="2007-01-01" or CLOSEDDT="0000-00-00"
+group by AGREEMENT_CD;
 
-
+/*
+* NEW PRODCT ADDED BY TLD *
+FRANCHISE LOCAL MENU
+PIZZA HUT
+KFC
+LJS/LIS?
+PHI
+AWR
+*/
+select t.DW_PRODUCT, p.PRODUCTDESC, count(*)
+from TLD_FACT_2007_Q01 t
+	left join PRODUCT_DIM p using(DW_PRODUCT)
+where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")
+	or PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")
+	or PRODUCTDESC like ("KFC%")
+	or PRODUCTDESC like ("PIZZA HUT%")
+	or PRODUCTDESC like ("PHI%")
+	or PRODUCTDESC like ("LJS%")
+	or PRODUCTDESC like ("AWR%")
+	or PRODUCTDESC like ("LJS%")
+	or PRODUCTDESC like ("%COMBO%")
+group by PRODUCTDESC
+limit 10;
