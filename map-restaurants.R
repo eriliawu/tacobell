@@ -21,6 +21,10 @@ sapply(restaurants, class)
 # keep only the ones that operated at least for a day in 2007
 restaurants <- restaurants[(restaurants$close>="2007-01-01"|is.na(restaurants$close)), ]
 
+# number of geocoded restaurants
+length(restaurants$restid[!is.na(restaurants$lon) & restaurants$status!="planned"]) #10889, 98%
+
+
 ### temp closing ----
 table(restaurants$status)
 
@@ -95,15 +99,42 @@ qplot(tb_state$income, tb_state$tb,
      xlab="Household mean income", ylab="Number of TB restaurants")
 
 income <- factor(tb_state$income_cat)
-qplot(tb_state$tb, tb_state$obesity_rate,
+qplot(tb_state$obesity_rate, tb_state$tb, 
       color=income,
-      ylim=c(min(tb_state$obesity_rate, na.rm=TRUE), max(tb_state$obesity_rate, na.rm=TRUE)),
+      xlim=c(min(tb_state$obesity_rate, na.rm=TRUE), max(tb_state$obesity_rate, na.rm=TRUE)),
       #main="Number of TB restaurants and obesity rate",
-      xlab="Number of TB restaurants", ylab="Obesity rate")
+      ylab="Number of TB restaurants", xlab="Obesity rate")
 
 qplot(tb_state$pop, tb_state$tb, 
       color=income,
       xlim=c(min(tb_state$pop, na.rm=TRUE), max(tb_state$pop, na.rm=TRUE)),
       #main="Number of TB restaurants and obesity rate",
       xlab="State population (million)", ylab="Number of TB restaurants")
+
+obesity_plot <- ggplot(data=tb_state, aes(x=obesity_rate, y=tb, color=factor(tb_state$income_cat))) + 
+                  geom_point() + 
+                  labs(title="Obesity rate and number of TB restaurants",
+                       x="Obesity rate", y="Number of TB restaurants",
+                       caption="Data source: CDC and Census Bureau, 2015") +
+                  theme(plot.title=element_text(hjust=0.5, size=18),
+                        plot.caption=element_text(hjust=0, face="italic")) +
+                  scale_color_discrete(name="Income quartile",
+                                       breaks=c("1", "2", "3", "4"),
+                                       labels=c("Bottom", "Mid-lower", "Mid-top", "Top")) +
+                  scale_x_continuous(limits=c(min(tb_state$obesity_rate, na.rm=TRUE),
+                                              max(tb_state$obesity_rate, na.rm=TRUE)))
+
+pop_plot <- ggplot(data=tb_state, aes(x=pop, y=tb, color=factor(tb_state$income_cat))) + 
+      geom_point() + 
+      labs(title="State population and number of TB restaurants",
+           x="State population (million)", y="Number of TB restaurants",
+           caption="Data source: Census Bureau, 2015") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic")) +
+      scale_color_discrete(name="Income quartile",
+                           breaks=c("1", "2", "3", "4"),
+                           labels=c("Bottom", "Mid-lower", "Mid-top", "Top")) +
+      scale_x_continuous(limits=c(min(tb_state$pop, na.rm=TRUE),
+                                  max(tb_state$pop, na.rm=TRUE)))
+
 
