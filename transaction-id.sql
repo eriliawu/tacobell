@@ -467,29 +467,29 @@ where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")
 group by PRODUCTDESC;
 
 --- group by productdesc
-select
-	(select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct,
-	(select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise,
-	(select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand,
-	(select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
+select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
 
-select
-	(select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct,
-	(select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise,
-	(select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand,
-	(select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
+select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
 
-select
-	(select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct,
-	(select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise,
-	(select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand,
-	(select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
+select (select count(*) from TLD_FACT_2010_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
 
-select
-	(select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct,
-	(select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise,
-	(select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand,
-	(select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
+select (select count(*) from TLD_FACT_2010_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+
+
+
+
 
 -- 
 select p.PRODUCTDESC, g.PRODUCTGROUPDESC
@@ -502,3 +502,202 @@ where PRODUCTGROUPDESC!="KFC"
 order by DW_PRODUCT
 limit 50;
 
+/*
+2019-08-13 10:48:48	Looking up host "bigpurple.nyumc.org"
+2019-08-13 10:48:48	Connecting to 10.189.18.113 port 22
+2019-08-13 10:48:48	We claim version: SSH-2.0-PuTTY_Release_0.67
+2019-08-13 10:48:48	Server version: SSH-2.0-OpenSSH_7.4
+2019-08-13 10:48:48	Using SSH protocol version 2
+2019-08-13 10:48:48	Doing Diffie-Hellman group exchange
+2019-08-13 10:48:48	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 10:48:48	Host key fingerprint is:
+2019-08-13 10:48:48	ssh-rsa 2048 80:97:52:1e:d5:84:7a:31:35:e5:b5:ab:f0:e7:26:6a
+2019-08-13 10:48:48	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 10:48:48	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 10:48:48	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 10:48:48	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 10:48:48	Using SSPI from SECUR32.DLL
+2019-08-13 10:48:48	Attempting GSSAPI authentication
+2019-08-13 10:48:48	GSSAPI authentication initialisation failed
+2019-08-13 10:48:48	The target was not recognized.
+2019-08-13 10:48:52	Sent password
+2019-08-13 10:48:52	Access granted
+2019-08-13 10:48:52	Opening session as main channel
+2019-08-13 10:48:53	Opened main channel
+2019-08-13 10:48:53	Requesting X11 forwarding
+2019-08-13 10:48:53	X11 forwarding enabled
+2019-08-13 10:48:53	Allocated pty (ospeed 38400bps, ispeed 38400bps)
+2019-08-13 10:48:53	Started a shell/command
+2019-08-13 11:48:48	Initiating key re-exchange (timeout)
+2019-08-13 11:48:48	Doing Diffie-Hellman group exchange
+2019-08-13 11:48:48	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 11:48:48	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 11:48:48	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 11:48:48	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 11:48:48	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 12:48:48	Initiating key re-exchange (timeout)
+2019-08-13 12:48:48	Doing Diffie-Hellman group exchange
+2019-08-13 12:48:48	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 12:48:49	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 12:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 12:48:49	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 12:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 13:48:49	Initiating key re-exchange (timeout)
+2019-08-13 13:48:49	Doing Diffie-Hellman group exchange
+2019-08-13 13:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 13:48:49	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 13:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 13:48:49	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 13:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 14:48:49	Initiating key re-exchange (timeout)
+2019-08-13 14:48:49	Doing Diffie-Hellman group exchange
+2019-08-13 14:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 14:48:49	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 14:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 14:48:49	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 14:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 15:48:49	Initiating key re-exchange (timeout)
+2019-08-13 15:48:49	Doing Diffie-Hellman group exchange
+2019-08-13 15:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 15:48:49	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 15:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 15:48:49	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 15:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 16:48:49	Initiating key re-exchange (timeout)
+2019-08-13 16:48:49	Doing Diffie-Hellman group exchange
+2019-08-13 16:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 16:48:50	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 16:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 16:48:50	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 16:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 17:48:50	Initiating key re-exchange (timeout)
+2019-08-13 17:48:50	Doing Diffie-Hellman group exchange
+2019-08-13 17:48:50	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 17:48:50	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 17:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 17:48:50	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 17:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 18:48:50	Initiating key re-exchange (timeout)
+2019-08-13 18:48:50	Doing Diffie-Hellman group exchange
+2019-08-13 18:48:50	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 18:48:50	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 18:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 18:48:50	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 18:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 19:48:50	Initiating key re-exchange (timeout)
+2019-08-13 19:48:50	Doing Diffie-Hellman group exchange
+2019-08-13 19:48:50	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-13 19:48:50	Initialised AES-256 SDCTR client->server encryption
+2019-08-13 19:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-13 19:48:50	Initialised AES-256 SDCTR server->client encryption
+2019-08-13 19:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-13 20:00:40	Network error: Software caused connection abort
+2019-08-14 09:40:10	----- Session restarted -----
+2019-08-14 09:40:10	Looking up host "bigpurple.nyumc.org"
+2019-08-14 09:40:10	Connecting to 10.189.18.111 port 22
+2019-08-14 09:40:10	We claim version: SSH-2.0-PuTTY_Release_0.67
+2019-08-14 09:40:10	Server version: SSH-2.0-OpenSSH_7.4
+2019-08-14 09:40:10	Using SSH protocol version 2
+2019-08-14 09:40:10	Doing Diffie-Hellman group exchange
+2019-08-14 09:40:10	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 09:40:10	Host key fingerprint is:
+2019-08-14 09:40:10	ssh-rsa 2048 80:97:52:1e:d5:84:7a:31:35:e5:b5:ab:f0:e7:26:6a
+2019-08-14 09:40:10	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 09:40:10	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 09:40:10	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 09:40:10	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 09:40:10	Using SSPI from SECUR32.DLL
+2019-08-14 09:40:10	Attempting GSSAPI authentication
+2019-08-14 09:40:10	GSSAPI authentication initialisation failed
+2019-08-14 09:40:10	The target was not recognized.
+2019-08-14 09:40:17	Sent password
+2019-08-14 09:40:17	Access granted
+2019-08-14 09:40:17	Opening session as main channel
+2019-08-14 09:40:17	Opened main channel
+2019-08-14 09:40:17	Requesting X11 forwarding
+2019-08-14 09:40:17	X11 forwarding enabled
+2019-08-14 09:40:17	Allocated pty (ospeed 38400bps, ispeed 38400bps)
+2019-08-14 09:40:17	Started a shell/command
+2019-08-14 10:40:10	Initiating key re-exchange (timeout)
+2019-08-14 10:40:10	Doing Diffie-Hellman group exchange
+2019-08-14 10:40:10	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 10:40:11	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 10:40:11	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 10:40:11	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 10:40:11	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 11:40:11	Initiating key re-exchange (timeout)
+2019-08-14 11:40:11	Doing Diffie-Hellman group exchange
+2019-08-14 11:40:11	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 11:40:11	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 11:40:11	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 11:40:11	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 11:40:11	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 12:40:11	Initiating key re-exchange (timeout)
+2019-08-14 12:40:11	Doing Diffie-Hellman group exchange
+2019-08-14 12:40:11	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 12:40:11	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 12:40:11	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 12:40:11	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 12:40:11	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 13:40:11	Initiating key re-exchange (timeout)
+2019-08-14 13:40:11	Doing Diffie-Hellman group exchange
+2019-08-14 13:40:11	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 13:40:12	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 13:40:12	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 13:40:12	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 13:40:12	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 14:40:12	Initiating key re-exchange (timeout)
+2019-08-14 14:40:12	Doing Diffie-Hellman group exchange
+2019-08-14 14:40:12	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 14:40:12	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 14:40:12	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 14:40:12	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 14:40:12	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 15:40:12	Initiating key re-exchange (timeout)
+2019-08-14 15:40:12	Doing Diffie-Hellman group exchange
+2019-08-14 15:40:12	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 15:40:12	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 15:40:12	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 15:40:12	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 15:40:12	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 16:40:12	Initiating key re-exchange (timeout)
+2019-08-14 16:40:12	Doing Diffie-Hellman group exchange
+2019-08-14 16:40:12	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 16:40:13	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 16:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 16:40:13	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 16:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 17:40:13	Initiating key re-exchange (timeout)
+2019-08-14 17:40:13	Doing Diffie-Hellman group exchange
+2019-08-14 17:40:13	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 17:40:13	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 17:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 17:40:13	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 17:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 18:40:13	Initiating key re-exchange (timeout)
+2019-08-14 18:40:13	Doing Diffie-Hellman group exchange
+2019-08-14 18:40:13	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 18:40:13	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 18:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 18:40:13	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 18:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 19:40:13	Initiating key re-exchange (timeout)
+2019-08-14 19:40:13	Doing Diffie-Hellman group exchange
+2019-08-14 19:40:13	Doing Diffie-Hellman key exchange with hash SHA-256
+2019-08-14 19:40:13	Initialised AES-256 SDCTR client->server encryption
+2019-08-14 19:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
+2019-08-14 19:40:13	Initialised AES-256 SDCTR server->client encryption
+2019-08-14 19:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
+2019-08-14 20:00:35	Network error: Software caused connection abort
+*/
+
+-- characterize purchase type, dine-in/takeout/drive-thru, by quarter/year
+select DW_OCCASION, count(*) from TLD_FACT_2014_Q03 group by DW_OCCASION;
+select DW_OCCASION, count(*) from TLD_FACT_2014_Q04 group by DW_OCCASION;
+
+select DW_OCCASION, count(*) from TLD_FACT_2015_Q01 group by DW_OCCASION;
+select DW_OCCASION, count(*) from TLD_FACT_2015_Q02 group by DW_OCCASION;
+select DW_OCCASION, count(*) from TLD_FACT_2015_Q03 group by DW_OCCASION;
+
+-- characterize purchase time, late night/breakfast/lunch/afternoon/dinner/evening
+select t.DW_DAYPART, count(*) from TLD_FACT_2007_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;

@@ -120,7 +120,7 @@ obesity_plot <- ggplot(data=tb_state, aes(x=obesity_rate, y=tb, color=factor(tb_
                         plot.caption=element_text(hjust=0, face="italic")) +
                   scale_color_discrete(name="Income quartile",
                                        breaks=c("1", "2", "3", "4"),
-                                       labels=c("Bottom", "Mid-lower", "Mid-top", "Top")) +
+                                       labels=c("Q1", "Q2", "Q3", "Q4")) +
                   scale_x_continuous(limits=c(min(tb_state$obesity_rate, na.rm=TRUE),
                                               max(tb_state$obesity_rate, na.rm=TRUE)))
 
@@ -133,7 +133,7 @@ pop_plot <- ggplot(data=tb_state, aes(x=pop, y=tb, color=factor(tb_state$income_
             plot.caption=element_text(hjust=0, face="italic")) +
       scale_color_discrete(name="Income quartile",
                            breaks=c("1", "2", "3", "4"),
-                           labels=c("Bottom", "Mid-lower", "Mid-top", "Top")) +
+                           labels=c("Q1", "Q2", "Q3", "Q4")) +
       scale_x_continuous(limits=c(min(tb_state$pop, na.rm=TRUE),
                                   max(tb_state$pop, na.rm=TRUE)))
 
