@@ -471,8 +471,8 @@ select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PR
 select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
 select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
 select (select count(*) from TLD_FACT_2010_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
-select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
 
+select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
 select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
 select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
 select (select count(*) from TLD_FACT_2010_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
@@ -693,11 +693,9 @@ limit 50;
 
 -- characterize purchase type, dine-in/takeout/drive-thru, by quarter/year
 select DW_OCCASION, count(*) from TLD_FACT_2014_Q03 group by DW_OCCASION;
-select DW_OCCASION, count(*) from TLD_FACT_2014_Q04 group by DW_OCCASION;
-
-select DW_OCCASION, count(*) from TLD_FACT_2015_Q01 group by DW_OCCASION;
-select DW_OCCASION, count(*) from TLD_FACT_2015_Q02 group by DW_OCCASION;
-select DW_OCCASION, count(*) from TLD_FACT_2015_Q03 group by DW_OCCASION;
 
 -- characterize purchase time, late night/breakfast/lunch/afternoon/dinner/evening
-select t.DW_DAYPART, count(*) from TLD_FACT_2007_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2008_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2008_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2008_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2008_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
