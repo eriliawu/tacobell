@@ -71,6 +71,14 @@ obesity <- read.csv("data/obesity.csv", stringsAsFactors = FALSE)
 tb_state <- merge(tb_state, obesity, by="state_name", x.all=TRUE)
 rm(obesity)
 
+# clean up urban/rural data
+urban <- read.csv("data/2010census_PctUrbanRural_State.csv", stringsAsFactors = FALSE)
+names(urban)
+urban <- urban[, c(1, 6)]
+colnames(urban)[1:2] <- c("state_num", "urban_pct")
+tb_state <- merge(tb_state, urban, by="state_num", x.all=TRUE)
+rm(urban)
+
 # clean up total population
 pop <- read.csv("data/ACS_15_5YR_B01003_population/ACS_15_5YR_B01003_with_ann.csv", stringsAsFactors = FALSE)
 head(pop)
@@ -137,4 +145,16 @@ pop_plot <- ggplot(data=tb_state, aes(x=pop, y=tb, color=factor(tb_state$income_
       scale_x_continuous(limits=c(min(tb_state$pop, na.rm=TRUE),
                                   max(tb_state$pop, na.rm=TRUE)))
 
+urban_plot <- ggplot(data=tb_state, aes(x=urban_pct, y=tb, color=factor(tb_state$income_cat))) + 
+      geom_point() + 
+      labs(title="Urbanicity and number of TB restaurants",
+           x="% population as urban", y="Number of TB restaurants",
+           caption="Data source: Census Bureau ACS 2015 and 2010 Census") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic")) +
+      scale_color_discrete(name="Income quartile",
+                           breaks=c("1", "2", "3", "4"),
+                           labels=c("Q1", "Q2", "Q3", "Q4")) +
+      scale_x_continuous(limits=c(min(tb_state$urban_pct, na.rm=TRUE),
+                                  max(tb_state$urban_pct, na.rm=TRUE)))
 
