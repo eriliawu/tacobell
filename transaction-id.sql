@@ -467,25 +467,23 @@ where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")
 group by PRODUCTDESC;
 
 --- group by productdesc
-select (select count(*) from TLD_FACT_2012_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
-select (select count(*) from TLD_FACT_2012_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
-select (select count(*) from TLD_FACT_2012_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
-select (select count(*) from TLD_FACT_2011_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2014_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2014_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2014_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
 
-select (select count(*) from TLD_FACT_2012_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
-select (select count(*) from TLD_FACT_2012_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
-select (select count(*) from TLD_FACT_2012_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
-select (select count(*) from TLD_FACT_2012_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2014_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2014_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2014_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
 
-select (select count(*) from TLD_FACT_2012_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
-select (select count(*) from TLD_FACT_2012_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
-select (select count(*) from TLD_FACT_2012_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
-select (select count(*) from TLD_FACT_2012_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2014_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2014_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2014_Q03 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
 
-select (select count(*) from TLD_FACT_2012_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
-select (select count(*) from TLD_FACT_2012_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
-select (select count(*) from TLD_FACT_2012_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
-select (select count(*) from TLD_FACT_2012_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
+select (select count(*) from TLD_FACT_2014_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%")) as newproduct;
+select (select count(*) from TLD_FACT_2014_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%FRANCHISE LOCAL MENU%")) as franchise;
+select (select count(*) from TLD_FACT_2014_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%KFC%") or PRODUCTDESC like ("%PIZZA HUT%") or PRODUCTDESC like ("%PHI%") or PRODUCTDESC like ("%LJS%") or PRODUCTDESC like ("%AWR%")) as otherbrand;
+
+--select (select count(*) from TLD_FACT_2013_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
 
 
 
@@ -695,15 +693,120 @@ limit 50;
 select DW_OCCASION, count(*) from TLD_FACT_2014_Q03 group by DW_OCCASION;
 
 -- characterize purchase time, late night/breakfast/lunch/afternoon/dinner/evening
-select t.DW_DAYPART, count(*) from TLD_FACT_2009_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
 
-select t.DW_DAYPART, count(*) from TLD_FACT_2010_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2010_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2010_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2010_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
 
-select t.DW_DAYPART, count(*) from TLD_FACT_2011_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2011_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2011_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2011_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+
+
+
+
+select t.DW_PRODUCT, g.PRODUCTGROUPDESC, p.PRODUCTDESC, t.DW_GC_HEADER
+FROM TLD_FACT_2007_Q02 t
+left join PRODUCT_DIM p using(DW_PRODUCT)
+left join PRODUCT_GROUP_DET g using(DW_PRODUCTGROUP)
+where DW_PRODUCT=1769
+limit 20;
+/*
++------------+------------------+-------------+--------------+
+| DW_PRODUCT | PRODUCTGROUPDESC | PRODUCTDESC | DW_GC_HEADER |
++------------+------------------+-------------+--------------+
+|       1769 | COMBOS           | COMBO 8     |   2268477514 |
+|       1769 | COMBOS           | COMBO 8     |   2268477514 |
+|       1769 | COMBOS           | COMBO 8     |   2268477514 |
+|       1769 | COMBOS           | COMBO 8     |   2268484138 |
+|       1769 | COMBOS           | COMBO 8     |   2268484138 |
+|       1769 | COMBOS           | COMBO 8     |   2268484138 |
+|       1769 | COMBOS           | COMBO 8     |   2268486944 |
+|       1769 | COMBOS           | COMBO 8     |   2268486944 |
+|       1769 | COMBOS           | COMBO 8     |   2268486944 |
+|       1769 | COMBOS           | COMBO 8     |   2268486944 |
+|       1769 | COMBOS           | COMBO 8     |   2268893456 |
+|       1769 | COMBOS           | COMBO 8     |   2268894238 |
+|       1769 | COMBOS           | COMBO 8     |   2268893456 |
+|       1769 | COMBOS           | COMBO 8     |   2268894238 |
+|       1769 | COMBOS           | COMBO 8     |   2268893456 |
+|       1769 | COMBOS           | COMBO 8     |   2268894238 |
+|       1769 | COMBOS           | COMBO 8     |   2268893456 |
+|       1769 | COMBOS           | COMBO 8     |   2268894238 |
+|       1769 | COMBOS           | COMBO 8     |   2268396382 |
+|       1769 | COMBOS           | COMBO 8     |   2268396382 |
++------------+------------------+-------------+--------------+
+*/
+
+/*
++--------------+--------+-----------+-----------+-------------+---------------+----------------+----------------------+------------+------------------+---------------+-------------+-------------+--------------+---------+------------+-------------+-----------+------------+--------------+---------------+-------------+---------------+--------------+--------+------------+---------------------------------+
+| DW_GC_HEADER | DW_DAY | DW_MINUTE | DW_RESTID | DW_OCCASION | DW_TENDERTYPE | DW_LINEITEMSEQ | DW_LINEITEMSEQPARENT | DW_PRODUCT | DW_PRODUCTDETAIL | DW_PRODUCTMOD | DW_DISCOUNT | DW_LINEITEM | SEASONFACTOR | COUNTER | ACTQTYSOLD | ACTPROMOQTY | ACTMODQTY | ACTDISCQTY | ACTPRODPRICE | ACTGROSSSALES | ACTNETSALES | ACTPROMOSALES | ACTDISCSALES | ACTTAX | DW_CHANNEL | DW_CHECK_IN_LOCATION_IDENTIFIER |
++--------------+--------+-----------+-----------+-------------+---------------+----------------+----------------------+------------+------------------+---------------+-------------+-------------+--------------+---------+------------+-------------+-----------+------------+--------------+---------------+-------------+---------------+--------------+--------+------------+---------------------------------+
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              8 |                    8 |         -1 |               -1 |            -1 |          -1 |          14 |       1.0000 |       1 |       0.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.46 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              6 |                    4 |        802 |              802 |          2549 |          -1 |          10 |       1.0000 |       1 |       0.00 |           0 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              5 |                    4 |        802 |              802 |          3903 |          -1 |          11 |       1.0000 |       1 |       0.00 |           0 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              4 |                    4 |        802 |              802 |            -1 |          -1 |           2 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.89 |          0.89 |        0.89 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              2 |                    1 |       1769 |             3649 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              3 |                    1 |       1769 |             4450 |            -1 |          -1 |           3 |       1.0000 |       1 |       3.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              1 |                    1 |       1769 |             1769 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         3.49 |          3.49 |        3.49 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
+|   2268477514 |   6294 |       723 |     31704 |           2 |             1 |              7 |                    7 |       3213 |             3213 |            -1 |          -1 |           2 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.19 |          1.19 |        1.19 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |
++--------------+--------+-----------+-----------+-------------+---------------+----------------+----------------------+------------+------------------+---------------+-------------+-------------+--------------+---------+------------+-------------+-----------+------------+--------------+---------------+-------------+---------------+--------------+--------+------------+---------------------------------+
+*/
+
+/*
++------------+--------------+--------+-----------+-----------+-------------+---------------+----------------+----------------------+------------------+---------------+-------------+-------------+--------------+---------+------------+-------------+-----------+------------+--------------+---------------+-------------+---------------+--------------+--------+------------+---------------------------------+-----------------+-----------+----------------------+-----------------+---------------------+---------------------+----------------+
+| DW_PRODUCT | DW_GC_HEADER | DW_DAY | DW_MINUTE | DW_RESTID | DW_OCCASION | DW_TENDERTYPE | DW_LINEITEMSEQ | DW_LINEITEMSEQPARENT | DW_PRODUCTDETAIL | DW_PRODUCTMOD | DW_DISCOUNT | DW_LINEITEM | SEASONFACTOR | COUNTER | ACTQTYSOLD | ACTPROMOQTY | ACTMODQTY | ACTDISCQTY | ACTPRODPRICE | ACTGROSSSALES | ACTNETSALES | ACTPROMOSALES | ACTDISCSALES | ACTTAX | DW_CHANNEL | DW_CHECK_IN_LOCATION_IDENTIFIER | DW_PRODUCTGROUP | PRODUCTCD | PRODUCTDESC          | PRODUCTSTATUSCD | PRODUCTSTATUSDT     | LASTUPDTDT          | LASTUPDTUSERID |
++------------+--------------+--------+-----------+-----------+-------------+---------------+----------------+----------------------+------------------+---------------+-------------+-------------+--------------+---------+------------+-------------+-----------+------------+--------------+---------------+-------------+---------------+--------------+--------+------------+---------------------------------+-----------------+-----------+----------------------+-----------------+---------------------+---------------------+----------------+
+|      36010 |   4930703266 |   8403 |       857 |     41472 |           2 |             1 |              2 |                    2 |            36010 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.99 |          1.99 |        1.99 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | LRG DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36010 |   4930703266 |   8403 |       857 |     41472 |           2 |             1 |              1 |                    1 |             3649 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | LRG DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4930705428 |   8403 |      1133 |     41472 |           3 |             1 |              1 |                    1 |             3648 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4930705428 |   8403 |      1133 |     41472 |           3 |             1 |              2 |                    1 |            36011 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.79 |          1.79 |        1.79 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      30164 |   4926074236 |   8401 |      1131 |     32205 |           2 |             3 |              6 |                    6 |            30164 |            -1 |          -1 |           2 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.00 |          1.00 |        1.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | 3TWST     | FRANCHISE LOCAL MENU | D               | 2009-11-11 21:00:18 | 2009-11-11 08:50:38 | DWT014         |
+|      30164 |   4926076904 |   8401 |      1107 |     32319 |           2 |             3 |              2 |                    2 |            30164 |            -1 |          -1 |           2 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.00 |          1.00 |        1.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | 3TWST     | FRANCHISE LOCAL MENU | D               | 2009-11-11 21:00:18 | 2009-11-11 08:50:38 | DWT014         |
+|      30164 |   4926076720 |   8401 |      1079 |     32319 |           3 |             1 |              1 |                    1 |            30164 |            -1 |          -1 |           2 |       1.0000 |       1 |       2.00 |           0 |       0.0 |          0 |         1.00 |          2.00 |        2.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | 3TWST     | FRANCHISE LOCAL MENU | D               | 2009-11-11 21:00:18 | 2009-11-11 08:50:38 | DWT014         |
+|       6177 |   4926070449 |   8401 |       803 |     31901 |           3 |             1 |              1 |                    1 |             2098 |            -1 |          -1 |           6 |       1.0000 |       1 |       2.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | GRANDE    | FRANCHISE LOCAL MENU | D               | 2003-09-17 12:30:14 | 2003-09-16 18:47:22 | DWT014         |
+|       6177 |   4926070449 |   8401 |       803 |     31901 |           3 |             1 |              2 |                    1 |             2100 |            -1 |          -1 |           3 |       1.0000 |       1 |       6.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | GRANDE    | FRANCHISE LOCAL MENU | D               | 2003-09-17 12:30:14 | 2003-09-16 18:47:22 | DWT014         |
+|       6177 |   4926070449 |   8401 |       803 |     31901 |           3 |             1 |              1 |                    1 |             2094 |            -1 |          -1 |           6 |       1.0000 |       1 |       2.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | GRANDE    | FRANCHISE LOCAL MENU | D               | 2003-09-17 12:30:14 | 2003-09-16 18:47:22 | DWT014         |
+|       6177 |   4926070449 |   8401 |       803 |     31901 |           3 |             1 |              3 |                    1 |             6177 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |        10.49 |         10.49 |       10.49 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | GRANDE    | FRANCHISE LOCAL MENU | D               | 2003-09-17 12:30:14 | 2003-09-16 18:47:22 | DWT014         |
+|      30164 |   4975518813 |   8424 |       917 |     33627 |           2 |             3 |              4 |                    4 |            30164 |            -1 |          -1 |           2 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.00 |          1.00 |        1.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | 3TWST     | FRANCHISE LOCAL MENU | D               | 2009-11-11 21:00:18 | 2009-11-11 08:50:38 | DWT014         |
+|      30164 |   4975518399 |   8424 |      1114 |     33627 |           1 |             1 |              1 |                    1 |            30164 |            -1 |          -1 |           2 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.00 |          1.00 |        1.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | 3TWST     | FRANCHISE LOCAL MENU | D               | 2009-11-11 21:00:18 | 2009-11-11 08:50:38 | DWT014         |
+|      36011 |   4926077494 |   8401 |       867 |     32715 |           3 |             1 |              4 |                    3 |            36011 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.79 |          1.79 |        1.79 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4926076344 |   8401 |      1035 |     32715 |           2 |             3 |              6 |                    5 |            36011 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.79 |          1.79 |        1.79 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4926077494 |   8401 |       867 |     32715 |           3 |             1 |              3 |                    3 |             3648 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4926076344 |   8401 |      1035 |     32715 |           2 |             3 |              5 |                    5 |             3648 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4926079886 |   8401 |       804 |     32715 |           3 |             1 |              2 |                    2 |             3648 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36011 |   4926079886 |   8401 |       804 |     32715 |           3 |             1 |              3 |                    2 |            36011 |            -1 |          -1 |           1 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         1.79 |          1.79 |        1.79 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | MED DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
+|      36012 |   4926078736 |   8401 |       924 |     32715 |           1 |             1 |              2 |                    2 |             3647 |            -1 |          -1 |           3 |       1.0000 |       1 |       1.00 |           0 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |          0.00 |         0.00 |   0.00 |          1 |                              -1 |              35 | SML DNK   | FRANCHISE LOCAL MENU | D               | 2012-09-07 21:00:12 | 2012-09-07 08:33:20 | DWT014         |
++------------+--------------+--------+-----------+-----------+-------------+---------------+----------------+----------------------+------------------+---------------+-------------+-------------+--------------+---------+------------+-------------+-----------+------------+--------------+---------------+-------------+---------------+--------------+--------+------------+---------------------------------+-----------------+-----------+----------------------+-----------------+---------------------+---------------------+----------------+
+*/
+
+SELECT t.DW_GC_HEADER, t.DW_PRODUCT, t.DW_PRODUCTDETAIL, p.PRODUCTDESC, t.DW_PRODUCTMOD, t. ACTQTYSOLD, t.ACTMODQTY, t.ACTDISCQTY, t.ACTPRODPRICE, t.ACTGROSSSALES, t.ACTNETSALES, t.ACTTAX
+from TLD_FACT_2013_Q01 t
+	left join PRODUCT_DIM p using(DW_PRODUCT) 
+where DW_GC_HEADER=5047855937
+order by DW_GC_HEADER, DW_PRODUCT;
+/*
++--------------+------------+------------------+----------------------+---------------+------------+-----------+------------+--------------+---------------+-------------+--------+
+| DW_GC_HEADER | DW_PRODUCT | DW_PRODUCTDETAIL | PRODUCTDESC          | DW_PRODUCTMOD | ACTQTYSOLD | ACTMODQTY | ACTDISCQTY | ACTPRODPRICE | ACTGROSSSALES | ACTNETSALES | ACTTAX |
++--------------+------------+------------------+----------------------+---------------+------------+-----------+------------+--------------+---------------+-------------+--------+
+|   5047855937 |         -1 |               -1 | N/A                  |            -1 |       0.00 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |   0.52 |
+|   5047855937 |       1690 |             3365 | COMBO 5              |            -1 |       1.00 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
+|   5047855937 |       1690 |             4005 | COMBO 5              |          4271 |       0.00 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
+|   5047855937 |       1690 |             3649 | COMBO 5              |            -1 |       1.00 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
+|   5047855937 |       1690 |             4005 | COMBO 5              |          2948 |       0.00 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
+|   5047855937 |       1690 |             4005 | COMBO 5              |            -1 |       1.00 |       0.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
+|   5047855937 |       1690 |             4005 | COMBO 5              |          4582 |       0.00 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
+|   5047855937 |       1690 |             1690 | COMBO 5              |            -1 |       1.00 |       0.0 |          0 |         5.49 |          5.49 |        5.49 |   0.00 |
+|   5047855937 |       5528 |             5528 | FRANCHISE LOCAL MENU |            -1 |       1.00 |       0.0 |          0 |         1.59 |          1.59 |        1.59 |   0.00 |
+|   5047855937 |       5528 |             5528 | FRANCHISE LOCAL MENU |          2948 |       0.00 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
++--------------+------------+------------------+----------------------+---------------+------------+-----------+------------+--------------+---------------+-------------+--------+
+*/
+
+
+
+
+
+
 
