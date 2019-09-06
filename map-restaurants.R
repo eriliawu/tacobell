@@ -12,7 +12,7 @@ library(ggplot2)
 
 ### read data ----
 #read clean restaurant data
-restaurants <- read.csv("raw-output/restaurants-clean.csv",
+restaurants <- read.csv("data/restaurants-clean.csv",
                         stringsAsFactors = FALSE)
 names(restaurants)
 restaurants <- restaurants[, -c(18:24)]
@@ -158,3 +158,18 @@ urban_plot <- ggplot(data=tb_state, aes(x=urban_pct, y=tb, color=factor(tb_state
       scale_x_continuous(limits=c(min(tb_state$urban_pct, na.rm=TRUE),
                                   max(tb_state$urban_pct, na.rm=TRUE)))
 
+
+
+### restaurants, analytics ----
+names(restaurants)
+length(restaurants$restid[restaurants$status=="open" & restaurants$open<="2007-01-01"]) #3496
+length(restaurants$restid[restaurants$status=="open" & restaurants$open>"2007-01-01"]) #3458
+length(restaurants$restid[restaurants$status=="closed" & restaurants$open<="2007-01-01" & !is.na(restaurants$open)]) #2953
+length(restaurants$restid[restaurants$status=="closed" & restaurants$open>"2007-01-01" & !is.na(restaurants$open)]) #704
+length(restaurants$restid[!is.na(restaurants$close)&is.na(restaurants$open)])#490
+
+hist(restaurants$tempclose_time[restaurants$status=="open" & restaurants$open<="2007-01-01"],
+     main="Temp closing of continuously operated restaurants", xlab="Days", ylab="",
+     breaks=300, xlim=c(0, 600), ylim=c(0, 200))
+abline(v = mean(restaurants$tempclose_time[restaurants$status=="open" & restaurants$open<="2007-01-01"],
+                na.rm=TRUE), col = "blue", lwd = 2)
