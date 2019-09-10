@@ -69,17 +69,55 @@ cat <- factor(trend$category, levels=c("Sandwiches", "Entrees", "Pizza", "Burger
                                        "Baked Goods", "Beverages", "Desserts"))
 ggplot(data=trend, aes(x=as.character(year), y=n, group=cat, fill=cat)) +
       geom_area(size=0.5, color="white") +
-      labs(title="Changes in TB menu items over time",
+      labs(title="Change in number of menu items over time",
            x="Year", y="Number of menu items", fill="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_fill_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"))
-ggsave("tables/tb-menu/menu-items.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/tb-menu/num-of-menu-items.jpeg", width=20, height=10, unit="cm")
 
 # menu item calorie changes, do items overall become more caloric
-ggplot(data=menu, aes(x=calories, color=category)) +
-      geom_histogram(fill=category)
+Year <- factor(menu$year[menu$year<=2015],
+               levels=c("2008", "2010", "2012", "2013", "2014", "2015"))
+ggplot(data=menu[menu$year<=2015, ], aes(x=calories, group=Year, fill=Year)) +
+      geom_histogram(bins=200) +
+      labs(title="Change in menu item calories over time",
+           x="Calories", y="Number of menu items", fill="Year",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_fill_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/menu-calorie-change.jpeg", width=20, height=10, unit="cm")
+
+# change in menu item serving size, over time, do items overall get bigger?
+# take mean size by category
+serving_size <- aggregate(data=menu[menu$year<=2015, ],
+                          serving_size~year+category, FUN=mean, na.rm=TRUE)
+serving_size_unit <- aggregate(data=menu[menu$year<=2015, ],
+                          serving_size_unit~year+category, FUN=median, na.rm=TRUE)
+
+calories <- aggregate(data=menu[menu$year<=2015, ],
+                      calories~year+category, FUN=mean, na.rm=TRUE)
+
+trend <- merge(trend, serving_size, by=c("year", "category"))
+trend <- merge(trend, calories, by=c("year", "category"))
+rm(serving_size, calories)
+
+ggplot(data=trend, aes(x=as.character(year), y=serving_size, group=cat, col=cat)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in serving sizes over time",
+           x="Year", y="Serving size", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+
+ggsave("tables/tb-menu/num-of-menu-items.jpeg", width=20, height=10, unit="cm")
+
+
+
 
 ### link menu stat to transaction data ----
 sample <- menu[menu$item_name=="Bean Burrito", ]
