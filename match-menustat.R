@@ -56,13 +56,43 @@ menu_all <- menu_all[, c(1:2, 21, 3:20)]
 write.csv(menu_all, "data/menustat/nutrition_info_all.csv", row.names = FALSE)
 rm(menu, new_menu, i, menu_all)
 
-### analyze data from menu stat ----
+### read in new menu data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 table(menu$category)
 table(menu$year)
 
-# menu items available, by year, by category
+### collect trend data, in serving size, unit, calories ----
 trend <- count(menu[menu$year<=2015, ], year, category)
+serving_size <- aggregate(data=menu[menu$year<=2015, ],
+                          serving_size~year+category, FUN=mean, na.rm=TRUE)
+
+serving_size_unit <- menu[menu$year<=2015, c(1, 3, 6)]
+serving_size_unit$serving_size_unit <- sub(patter="\\*",
+                                           x=serving_size_unit$serving_size_unit,
+                                           replacement = "")
+serving_size_unit <- serving_size_unit %>% distinct()
+serving_size_unit[57, 3] <- "g"
+
+calories <- aggregate(data=menu[menu$year<=2015, ],
+                      calories~year+category, FUN=mean, na.rm=TRUE)
+
+menu$sfat_pct <- menu$saturated_fat*10/menu$calories*100
+sfat_pct <- aggregate(data=menu[menu$year<=2015, ],
+                          sfat_pct~year+category, FUN=mean, na.rm=TRUE)
+menu$fat_pct <- menu$total_fat*10/menu$calories*100
+fat_pct <- aggregate(data=menu[menu$year<=2015, ],
+                      fat_pct~year+category, FUN=mean, na.rm=TRUE)
+
+trend <- merge(trend, serving_size, by=c("year", "category"))
+trend <- merge(trend, calories, by=c("year", "category"))
+trend <- merge(trend, serving_size_unit, by=c("year", "category"))
+trend <- merge(trend, fat_pct, by=c("year", "category"))
+trend <- merge(trend, sfat_pct, by=c("year", "category"))
+
+rm(serving_size, calories, serving_size_unit, fat_pct, sfat_pct)
+
+### use trend data to plot figures ----
+# menu items available, by year, by category
 cat <- factor(trend$category, levels=c("Sandwiches", "Entrees", "Pizza", "Burgers",
                                        "Appetizers & Sides", "Fried Potatoes",
                                        "Salads", "Toppings & Ingredients",
@@ -91,20 +121,9 @@ ggplot(data=menu[menu$year<=2015, ], aes(x=calories, group=Year, fill=Year)) +
 ggsave("tables/tb-menu/menu-calorie-change.jpeg", width=20, height=10, unit="cm")
 
 # change in menu item serving size, over time, do items overall get bigger?
-# take mean size by category
-serving_size <- aggregate(data=menu[menu$year<=2015, ],
-                          serving_size~year+category, FUN=mean, na.rm=TRUE)
-serving_size_unit <- aggregate(data=menu[menu$year<=2015, ],
-                          serving_size_unit~year+category, FUN=median, na.rm=TRUE)
-
-calories <- aggregate(data=menu[menu$year<=2015, ],
-                      calories~year+category, FUN=mean, na.rm=TRUE)
-
-trend <- merge(trend, serving_size, by=c("year", "category"))
-trend <- merge(trend, calories, by=c("year", "category"))
-rm(serving_size, calories)
-
-ggplot(data=trend, aes(x=as.character(year), y=serving_size, group=cat, col=cat)) +
+# take mean serving size by category
+ggplot(data=trend, aes(x=as.character(year), y=serving_size,
+                       group=cat, col=cat)) +
       geom_point() +
       geom_line(size=1) +
       labs(title="Change in serving sizes over time",
@@ -113,8 +132,33 @@ ggplot(data=trend, aes(x=as.character(year), y=serving_size, group=cat, col=cat)
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/mean-serving-size.jpeg", width=20, height=10, unit="cm")
 
-ggsave("tables/tb-menu/num-of-menu-items.jpeg", width=20, height=10, unit="cm")
+# take mean calories by category, do items get more caloric over time?
+ggplot(data=trend, aes(x=as.character(year), y=calories,
+                       group=cat, col=cat)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in calories over time",
+           x="Year", y="Calories", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/mean-calories.jpeg", width=20, height=10, unit="cm")
+
+# take mean total fat as %, by year
+ggplot(data=trend, aes(x=as.character(year), y=sfat_pct,
+                       group=cat, col=cat)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in fat as % in total calories",
+           x="Year", y="Percentage", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/saturated-fat-in-calories.jpeg", width=20, height=10, unit="cm")
 
 
 
