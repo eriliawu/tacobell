@@ -24,7 +24,6 @@ restaurants <- restaurants[(restaurants$close>="2007-01-01"|is.na(restaurants$cl
 # number of geocoded restaurants
 length(restaurants$restid[!is.na(restaurants$lon) & restaurants$status!="planned"]) #10889, 98%
 
-
 ### temp closing ----
 table(restaurants$status)
 
@@ -157,6 +156,38 @@ urban_plot <- ggplot(data=tb_state, aes(x=urban_pct, y=tb, color=factor(tb_state
                            labels=c("Q1", "Q2", "Q3", "Q4")) +
       scale_x_continuous(limits=c(min(tb_state$urban_pct, na.rm=TRUE),
                                   max(tb_state$urban_pct, na.rm=TRUE)))
+
+### number of TB restaurants, by county ----
+# model figures based on cdc nation wide survey
+obesity <- read.csv("data/obesity_survey_cdc.csv", stringsAsFactors = FALSE)
+names(obesity)
+unique(length(obesity$id)) == length(obesity$id) #all unique
+table(obesity$year)
+summary(obesity$age)
+summary(obesity$bmi)
+obesity <- obesity[, c("county_fips", "state", "id", "year", "bmi", "diabetes", "obese")]
+obesity$diabetes[obesity$diabetes=="yes"] <- "1"
+obesity$diabetes[obesity$diabetes=="no"] <- "0"
+obesity$diabetes <- as.integer(obesity$diabetes)
+obesity$count <- 1
+colnames(obesity)[1] <- "county"
+
+obesity_rate <- aggregate(data=obesity, obese~year+county, FUN=sum, na.rm=TRUE)
+pop <- aggregate(data=obesity, count~year+county, FUN=sum, na.rm=TRUE)
+names(obesity_rate)
+obesity_rate <- merge(obesity_rate, pop, by=c("county", "year"))
+obesity_rate$obesity_rate <- obesity_rate$obese/obesity_rate$count*100
+obesity_rate <- obesity_rate[, c("county", "year", "obesity_rate")]
+
+diabetes <- aggregate(data=obesity, diabetes~year+county, FUN=sum, na.rm=TRUE)
+pop <- aggregate(data=obesity, count~year+county, FUN=sum, na.rm=TRUE)
+diabetes <- merge(diabetes, pop, by=c("county", "year"))
+diabetes$diabetes_rate <- diabetes$diabetes/diabetes$count*100
+diabetes <- diabetes[, c("county", "year", "diabetes_rate")]
+
+obesity_rate <- merge(obesity_rate, diabetes, by=c("year", "county"))
+rm(pop, diabetes)
+summary(obesity_rate$obesity_rate)
 
 
 
