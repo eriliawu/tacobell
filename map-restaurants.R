@@ -189,6 +189,49 @@ obesity_rate <- merge(obesity_rate, diabetes, by=c("year", "county"))
 rm(pop, diabetes)
 summary(obesity_rate$obesity_rate)
 
+# merge obesity rate and county number
+colnames(restaurants)[21] <- "county_name"
+restaurants$county <- paste(as.character(restaurants$state_num),
+                            sprintf("%03d", restaurants$county_num), sep="")
+restaurants$county[restaurants$county=="NA NA"] <- ""
+restaurants$county <- as.integer(restaurants$county)
+restaurants <- merge(restaurants, obesity_rate[obesity_rate$year==2012, ], by="county")
+restaurants$year <- NULL
+write.csv(restaurants, "data/restaurants-clean-with-obesity-rate.csv")
+
+# aggregate number of tb restaurants per county
+# merge back to obesity rate data
+temp <- as.data.frame(restaurants[, "county"])
+temp$count <- 1
+colnames(temp)[1] <- "county"
+temp <- aggregate(data=temp, count~county, FUN=sum, na.rm=TRUE)
+obesity_rate <- merge(obesity_rate, temp, by="county")
+colnames(obesity_rate)[5] <- "n"
+rm(temp)
+summary(obesity_rate$n)
+
+# add county level population, year 2012
+pop <- read.csv("C:/Users/wue04/Box Sync/tacobell/data/census-data/ACS_12_5YR_S0101_2012-population-county-level/ACS_12_5YR_S0101_with_ann.csv",
+                stringsAsFactors = FALSE)
+pop <- pop[-1, c(2,4)]
+colnames(pop) <- c("county", "pop12")
+pop$county <- as.integer(pop$county)
+
+obesity_rate <- merge(obesity_rate, pop, by="county")
+obesity_rate$pop12 <- as.integer(obesity_rate$pop12)
+rm(pop)
+
+obesity_rate <- as.data.frame(obesity_rate)
+
+# plot tb and pop
+ggplot(data=subset(obesity_rate, year==2012),
+       aes(x=pop12/1000, y=n)) +
+      geom_point() + 
+      labs(title="County population and number of TB restaurants",
+           x="Population (thousand)", y="Number of TB restaurants",
+           caption="Data source: Census Bureau, 2012") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
 
 
 ### restaurants, analytics ----
