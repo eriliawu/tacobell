@@ -157,82 +157,63 @@ urban_plot <- ggplot(data=tb_state, aes(x=urban_pct, y=tb, color=factor(tb_state
       scale_x_continuous(limits=c(min(tb_state$urban_pct, na.rm=TRUE),
                                   max(tb_state$urban_pct, na.rm=TRUE)))
 
-### number of TB restaurants, by county ----
+### number of TB restaurants, by census tract ----
 # model figures based on cdc nation wide survey
-obesity <- read.csv("data/obesity_survey_cdc.csv", stringsAsFactors = FALSE)
-names(obesity)
-unique(length(obesity$id)) == length(obesity$id) #all unique
-table(obesity$year)
-summary(obesity$age)
-summary(obesity$bmi)
-obesity <- obesity[, c("county_fips", "state", "id", "year", "bmi", "diabetes", "obese")]
-obesity$diabetes[obesity$diabetes=="yes"] <- "1"
-obesity$diabetes[obesity$diabetes=="no"] <- "0"
-obesity$diabetes <- as.integer(obesity$diabetes)
-obesity$count <- 1
-colnames(obesity)[1] <- "county"
+# clean tract level obesity data from 50 city health dash board
+tract <- read.csv("C:/Users/wue04/Box Sync/tacobell/data/city-health-dash-board/500 Cities v7.0 - released September 5, 2019/CHDB_data_tract_all v7_0.csv", stringsAsFactors = FALSE)
+unique(tract$metric_name)
+tract <- subset(tract, tract$metric_name=="Diabetes"|tract$metric_name=="High blood pressure"|tract$metric_name=="Limited access to healthy foods"|tract$metric_name=="Obesity"|tract$metric_name=="Children in Poverty"|tract$metric_name=="Physical inactivity")
+table(tract$data_yr_type)
+table(tract$state_abbr)
+tract <- tract[, -c(18:20)]
+names(tract)
+tract <- tract[, c(1:8, 14:16)]
+colnames(tract)[c(1:3, 5)] <- c("state", "state_num", "county_num", "tract")
+sapply(tract, class)
 
-obesity_rate <- aggregate(data=obesity, obese~year+county, FUN=sum, na.rm=TRUE)
-pop <- aggregate(data=obesity, count~year+county, FUN=sum, na.rm=TRUE)
-names(obesity_rate)
-obesity_rate <- merge(obesity_rate, pop, by=c("county", "year"))
-obesity_rate$obesity_rate <- obesity_rate$obese/obesity_rate$count*100
-obesity_rate <- obesity_rate[, c("county", "year", "obesity_rate")]
+# re-load restaurants data
+count <- restaurants[, c("restid", "state", "state_num", "county_num", "tract")]
+count$n <- 1
+count <- subset(count, !is.na(count$tract))
+count <- aggregate(data=count, n~state_num+county_num+tract, FUN=sum)
 
-diabetes <- aggregate(data=obesity, diabetes~year+county, FUN=sum, na.rm=TRUE)
-pop <- aggregate(data=obesity, count~year+county, FUN=sum, na.rm=TRUE)
-diabetes <- merge(diabetes, pop, by=c("county", "year"))
-diabetes$diabetes_rate <- diabetes$diabetes/diabetes$count*100
-diabetes <- diabetes[, c("county", "year", "diabetes_rate")]
+tract <- merge(tract, count, by=c("state_num", "county_num", "tract"))
+names(tract)
+summary(tract$n)
+rm(count)
+tract <- tract[, -c(7, 10:11)]
+names(tract)
+colnames(tract)[6] <- "tract_fips"
+tract <- reshape(tract, timevar = "metric_name",
+                idvar = c("state_num", "county_num", "tract", "state", "county_name", "tract_fips", "n"),
+                direction="wide")
+names(tract)
+colnames(tract)[8:13] <- c("hypertension", "obesity", "child_poverty",
+                           "diabetes", "inactivity", "limited_healthy_food")
 
-obesity_rate <- merge(obesity_rate, diabetes, by=c("year", "county"))
-rm(pop, diabetes)
-summary(obesity_rate$obesity_rate)
-
-# merge obesity rate and county number
-colnames(restaurants)[21] <- "county_name"
-restaurants$county <- paste(as.character(restaurants$state_num),
-                            sprintf("%03d", restaurants$county_num), sep="")
-restaurants$county[restaurants$county=="NA NA"] <- ""
-restaurants$county <- as.integer(restaurants$county)
-restaurants <- merge(restaurants, obesity_rate[obesity_rate$year==2012, ], by="county")
-restaurants$year <- NULL
-write.csv(restaurants, "data/restaurants-clean-with-obesity-rate.csv")
-
-# aggregate number of tb restaurants per county
-# merge back to obesity rate data
-temp <- as.data.frame(restaurants[, "county"])
-temp$count <- 1
-colnames(temp)[1] <- "county"
-temp <- aggregate(data=temp, count~county, FUN=sum, na.rm=TRUE)
-obesity_rate <- merge(obesity_rate, temp, by="county")
-colnames(obesity_rate)[5] <- "n"
-rm(temp)
-summary(obesity_rate$n)
-
-# add county level population, year 2012
-pop <- read.csv("C:/Users/wue04/Box Sync/tacobell/data/census-data/ACS_12_5YR_S0101_2012-population-county-level/ACS_12_5YR_S0101_with_ann.csv",
-                stringsAsFactors = FALSE)
-pop <- pop[-1, c(2,4)]
-colnames(pop) <- c("county", "pop12")
-pop$county <- as.integer(pop$county)
-
-obesity_rate <- merge(obesity_rate, pop, by="county")
-obesity_rate$pop12 <- as.integer(obesity_rate$pop12)
-rm(pop)
-
-obesity_rate <- as.data.frame(obesity_rate)
-
-# plot tb and pop
-ggplot(data=subset(obesity_rate, year==2012),
-       aes(x=pop12/1000, y=n)) +
-      geom_point() + 
-      labs(title="County population and number of TB restaurants",
-           x="Population (thousand)", y="Number of TB restaurants",
-           caption="Data source: Census Bureau, 2012") +
-      theme(plot.title=element_text(hjust=0.5, size=18),
+# obesity and children in poverty
+ggplot(data=tract, aes(x=obesity, y=child_poverty,
+                       group=as.factor(n), col=as.factor(n))) +
+      geom_point(size=0.5) +
+      labs(title="Census tract level rates of obesity and children in poverty",
+           x="Obesity rate", y="Rate of children in poverty", col="Number of TB restaurants",
+           caption="Data source: City Health Dashboard") +
+      scale_color_brewer(palette="Set2") +
+      theme(plot.title=element_text(hjust=0.5, size=16),
             plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/number-of-tb-restaurants-correlations/tract-obesity-poverty.jpeg", width=20, height=10, unit="cm")
 
+# obesity and physical inactivity
+ggplot(data=tract, aes(x=obesity, y=inactivity,
+                       group=as.factor(n), col=as.factor(n))) +
+      geom_point(size=0.5) +
+      labs(title="Census tract level rates of obesity and physical inactivity",
+           x="Obesity rate", y="Rate of physical inactivity", col="Number of TB restaurants",
+           caption="Data source: City Health Dashboard") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=16),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/number-of-tb-restaurants-correlations/tract-obesity-inactivity.jpeg", width=20, height=10, unit="cm")
 
 ### restaurants, analytics ----
 names(restaurants)
