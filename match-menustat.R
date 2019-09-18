@@ -10,8 +10,6 @@ options(warn = -1)
 library(ggplot2)
 #install.packages("dplyr")
 library(dplyr)
-#install.packages("wesanderson")
-library(wesanderson)
 
 ### read and clean data ----
 #read clean restaurant data
