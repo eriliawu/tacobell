@@ -693,14 +693,10 @@ limit 50;
 select DW_OCCASION, count(*) from TLD_FACT_2014_Q03 group by DW_OCCASION;
 
 -- characterize purchase time, late night/breakfast/lunch/afternoon/dinner/evening
-select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2012_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2013_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
 
 
 
@@ -805,6 +801,44 @@ order by DW_GC_HEADER, DW_PRODUCT;
 */
 
 
+select DW_DAY, DW_YEAR, DW_MONTH, FISCALYEARNO, FISCALYEARBGNDT, FISCALYEARENDDT, YEARBGNDT, YEARENDDT, MONTHNAME, BUSIDAYDT from TIME_DAY_DIM limit 5;
+
+select BUSIDAYDT, QTRNAME, QTRBGNDT, QTRENDDT, MONTHNAME, MONTHBGNDT, MONTHENDDT, FISCALQTRNAME, FISCALQTRBGNDT, FISCALQTRENDDT, FISCALPRDNAME from TIME_DAY_DIM limit 5;
++----------------------+-------------+------+-----+---------+-------+
+| Field                | Type        | Null | Key | Default | Extra |
++----------------------+-------------+------+-----+---------+-------+
+| DW_FISCALWEEKPART    | smallint(6) | NO   |     | NULL    |       |
+
+| MONTHENDDAY          | varchar(9)  | NO   |     | NULL    |       |
+| MONTHDAYCNT          | smallint(6) | NO   |     | NULL    |       |
+| FISCALPRDNO          | varchar(13) | NO   |     | NULL    |       |
+|         | varchar(9)  | NO   |     | NULL    |       |
+| FISCALPRDBGNDT       | date        | NO   |     | NULL    |       |
+| FISCALPRDBGNDAY      | varchar(9)  | NO   |     | NULL    |       |
+| FISCALPRDENDDT       | date        | NO   |     | NULL    |       |
+| FISCALPRDENDDAY      | varchar(9)  | NO   |     | NULL    |       |
+| FISCALPRDDAYCNT      | smallint(6) | NO   |     | NULL    |       |
+| FISCALWEEKNO         | varchar(17) | NO   |     | NULL    |       |
+| FISCALPRDWEEKNAME    | varchar(6)  | NO   |     | NULL    |       |
+| FISCALYRWEEKNAME     | varchar(7)  | NO   |     | NULL    |       |
+| FISCALWKBGNDT        | date        | NO   |     | NULL    |       |
+| FISCALWKBGNDAY       | varchar(9)  | NO   |     | NULL    |       |
+| FISCALWKENDDT        | date        | NO   |     | NULL    |       |
+| FISCALWKENDDAY       | varchar(9)  | NO   |     | NULL    |       |
+| FISCALWKDAYCNT       | smallint(6) | NO   |     | NULL    |       |
+| MKTWINDOWNAME        | varchar(30) | YES  |     | NULL    |       |
+| MKTWINDOW            | varchar(8)  | YES  |     | NULL    |       |
+| MKTWINDOWDESC        | varchar(30) | YES  |     | NULL    |       |
+| FISCALWEEKPARTNAME   | varchar(15) | NO   |     | NULL    |       |
+| FISCALWEEKPARTBGNDAY | varchar(9)  | NO   |     | NULL    |       |
+| FISCALWEEKPARTENDDAY | varchar(9)  | NO   |     | NULL    |       |
+| BUSIDAYNO            | varchar(21) | NO   |     | NULL    |       |
+| BUSIDAYNAME          | varchar(9)  | NO   |     | NULL    |       |
+|             | date        | NO   |     | NULL    |       |
+| BUSIDAYCNT           | smallint(6) | NO   |     | NULL    |       |
+| DAYOFPERIOD          | smallint(6) | NO   |     | NULL    |       |
+| DAYOFWEEK            | smallint(6) | NO   |     | NULL    |       |
++----------------------+-------------+------+-----+---------+-------+
 
 
 
