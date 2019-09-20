@@ -15,8 +15,8 @@ library(dplyr)
 #read clean restaurant data
 menu <- read.csv("data/menustat_tacobell_nutrition_data.csv", stringsAsFactors = FALSE)
 names(menu)
-menu <- menu[, -c(1:2)]
-colnames(menu)[1] <- "category"
+menu$Restaurant <- NULL
+colnames(menu)[2] <- "category"
 sapply(menu, class)
 
 # separate years into different files
@@ -24,13 +24,14 @@ sapply(menu, class)
 menu_all <- NULL
 for (i in c(2008, 2010, 2012:2018)) {
       # keep only respective years
-      new_menu <- menu[, grepl(as.character(i), names(menu))|grepl("category", names(menu))]
+      new_menu <- menu[, grepl(as.character(i), names(menu))|grepl("category", names(menu))|grepl("ID", names(menu))]
       
       #clean columns names
       new_menu <- new_menu[, !grepl("text", names(new_menu))]
       colnames(new_menu)[1:dim(new_menu)[2]] <- sub(pattern=paste("\\_", i, ".", sep=""), replacement="", x=names(new_menu))
       colnames(new_menu)[1:dim(new_menu)[2]] <- sub(pattern=paste("\\_", i, sep=""), replacement="", x=names(new_menu))
       colnames(new_menu)[1:dim(new_menu)[2]] <- sub(pattern="X.", replacement="", x=names(new_menu))
+      colnames(new_menu)[1] <- "id"
       
       #change column names to lower case
       colnames(new_menu)[1:dim(new_menu)[2]] <- tolower(colnames(new_menu)[1:dim(new_menu)[2]])
@@ -40,8 +41,8 @@ for (i in c(2008, 2010, 2012:2018)) {
       new_menu$serving_size_household <- NULL
       
       # export to single year files
-      write.csv(new_menu, paste("data/menustat/nutrition_info_", i, ".csv", sep=""),
-                row.names = FALSE)
+      #write.csv(new_menu, paste("data/menustat/nutrition_info_", i, ".csv", sep=""),
+       #         row.names = FALSE)
       
       print(dim(new_menu))
       
@@ -50,7 +51,8 @@ for (i in c(2008, 2010, 2012:2018)) {
       menu_all <- rbind(menu_all, new_menu)
 }
 dim(menu_all)
-menu_all <- menu_all[, c(1:2, 21, 3:20)]
+names(menu_all)
+menu_all <- menu_all[, c(1:2, 22, 3:21)]
 write.csv(menu_all, "data/menustat/nutrition_info_all.csv", row.names = FALSE)
 rm(menu, new_menu, i, menu_all)
 
@@ -58,6 +60,14 @@ rm(menu, new_menu, i, menu_all)
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 table(menu$category)
 table(menu$year)
+
+# re-categorize
+# baked goods --> desserts
+# burgers --> sandwiches
+# fried potatoes --> appetizers
+menu$category[menu$category=="Baked Goods"] <- "Desserts"
+menu$category[menu$category=="Burgers"] <- "Sandwiches"
+menu$category[menu$category=="Fried Potatoes"] <- "Appetizers & Sides"
 
 ### collect trend data, in serving size, unit, calories ----
 trend <- count(menu[menu$year<=2015, ], year, category)
