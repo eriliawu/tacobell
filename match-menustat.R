@@ -68,18 +68,20 @@ table(menu$year)
 menu$category[menu$category=="Baked Goods"] <- "Desserts"
 menu$category[menu$category=="Burgers"] <- "Sandwiches"
 menu$category[menu$category=="Fried Potatoes"] <- "Appetizers & Sides"
+menu$category[menu$category=="Pizza"] <- "Entrees"
+table(menu$category)
 
 ### collect trend data, in serving size, unit, calories ----
 trend <- count(menu[menu$year<=2015, ], year, category)
 serving_size <- aggregate(data=menu[menu$year<=2015, ],
                           serving_size~year+category, FUN=mean, na.rm=TRUE)
 
-serving_size_unit <- menu[menu$year<=2015, c(1, 3, 6)]
+serving_size_unit <- menu[menu$year<=2015, c(2, 3, 7)]
 serving_size_unit$serving_size_unit <- sub(patter="\\*",
                                            x=serving_size_unit$serving_size_unit,
                                            replacement = "")
 serving_size_unit <- serving_size_unit %>% distinct()
-serving_size_unit[57, 3] <- "g"
+serving_size_unit <- serving_size_unit[-42, ]
 
 calories <- aggregate(data=menu[menu$year<=2015, ],
                       calories~year+category, FUN=mean, na.rm=TRUE)
@@ -101,10 +103,10 @@ rm(serving_size, calories, serving_size_unit, fat_pct, sfat_pct)
 
 ### use trend data to plot figures ----
 # menu items available, by year, by category
-cat <- factor(trend$category, levels=c("Sandwiches", "Entrees", "Pizza", "Burgers",
-                                       "Appetizers & Sides", "Fried Potatoes",
+cat <- factor(trend$category, levels=c("Sandwiches", "Entrees", 
+                                       "Appetizers & Sides", 
                                        "Salads", "Toppings & Ingredients",
-                                       "Baked Goods", "Beverages", "Desserts"))
+                                       "Beverages", "Desserts"))
 ggplot(data=trend, aes(x=as.character(year), y=n, group=cat, fill=cat)) +
       geom_area(size=0.5, color="white") +
       labs(title="Change in number of menu items over time",
@@ -130,8 +132,12 @@ ggsave("tables/tb-menu/menu-calorie-change.jpeg", width=20, height=10, unit="cm"
 
 # change in menu item serving size, over time, do items overall get bigger?
 # take mean serving size by category
+unit <- factor(paste(trend$category, " (", trend$serving_size_unit, ")",sep=""),
+               levels=c("Sandwiches (g)", "Entrees (g)", "Appetizers & Sides (g)",
+                        "Salads (g)", "Toppings & Ingredients (g)",
+                        "Beverages (fl oz)", "Desserts (g)"))
 ggplot(data=trend, aes(x=as.character(year), y=serving_size,
-                       group=cat, col=cat)) +
+                       group=unit, col=unit)) +
       geom_point() +
       geom_line(size=1) +
       labs(title="Change in serving sizes over time",
@@ -160,7 +166,7 @@ ggplot(data=trend, aes(x=as.character(year), y=sfat_pct,
                        group=cat, col=cat)) +
       geom_point() +
       geom_line(size=1) +
-      labs(title="Change in fat as % in total calories",
+      labs(title="Change in saturated fat as % in total calories",
            x="Year", y="Percentage", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
