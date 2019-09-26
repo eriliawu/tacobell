@@ -33,77 +33,87 @@ where DW_GC_HEADER=2193837648
     or DW_GC_HEADER=2193838982
 order by DW_GC_HEADER; --16 min 4.40 sec
 /*
-+--------------+--------+-----------+------------+-------------------------+-------------+-------------------------+------------+--------------+---------------+--------+------------+------------+
-| DW_GC_HEADER | DW_DAY | DW_RESTID | DW_PRODUCT | PRODUCTDESC             | DW_LINEITEM | LINEITEMDESC            | ACTQTYSOLD | ACTPRODPRICE | ACTGROSSSALES | ACTTAX | OPENEDDT   | CLOSEDDT   |
-+--------------+--------+-----------+------------+-------------------------+-------------+-------------------------+------------+--------------+---------------+--------+------------+------------+
-|   2193837510 |   6210 |     31704 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.43 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |       4001 | SOFT TACO BEEF          |           2 | NON-COMBO-ITEM          |       2.00 |         0.79 |          1.58 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           1 | COMBO-ITEM              |       1.00 |         3.69 |          3.69 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.43 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           1 | COMBO-ITEM              |       1.00 |         3.69 |          3.69 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |      19494 | TB CRUNCHWRAP SUP CMB   |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |       4001 | SOFT TACO BEEF          |          11 | NON-COMBO-M-INGRD-MINUS |       0.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |       4001 | SOFT TACO BEEF          |           2 | NON-COMBO-ITEM          |       2.00 |         0.79 |          1.58 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837510 |   6210 |     31704 |       4001 | SOFT TACO BEEF          |          11 | NON-COMBO-M-INGRD-MINUS |       0.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.79 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           3 | COMBO-DETAIL            |       2.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           1 | COMBO-ITEM              |       1.00 |         4.99 |          4.99 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           1 | COMBO-ITEM              |       1.00 |         4.59 |          4.59 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1690 | COMBO 5                 |           1 | COMBO-ITEM              |       1.00 |         4.59 |          4.59 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           1 | COMBO-ITEM              |       1.00 |         4.99 |          4.99 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           3 | COMBO-DETAIL            |       2.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |       1689 | COMBO 4                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837602 |   6210 |     31704 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.79 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       4035 | GRILLED STEAK TACO      |           2 | NON-COMBO-ITEM          |       1.00 |         1.69 |          1.69 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           4 | COMBO-DETAIL-REPLS-PLUS |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.86 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |        884 | GRILL STUFT BURRITO STK |           2 | NON-COMBO-ITEM          |       1.00 |         2.99 |          2.99 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           4 | COMBO-DETAIL-REPLS-PLUS |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           4 | COMBO-DETAIL-REPLS-PLUS |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.86 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           1 | COMBO-ITEM              |       1.00 |         5.69 |          5.69 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |        884 | GRILL STUFT BURRITO STK |           2 | NON-COMBO-ITEM          |       1.00 |         2.99 |          2.99 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       4035 | GRILLED STEAK TACO      |           2 | NON-COMBO-ITEM          |       1.00 |         1.69 |          1.69 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           1 | COMBO-ITEM              |       1.00 |         5.69 |          5.69 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           4 | COMBO-DETAIL-REPLS-PLUS |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193837648 |   6210 |     31704 |       1691 | COMBO 6                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 2001-06-13 | 2007-12-23 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           1 | COMBO-ITEM              |       1.00 |         4.19 |          4.19 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.35 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |         -1 | N/A                     |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.35 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       3233 | MILD SAUCE              |           2 | NON-COMBO-ITEM          |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           1 | COMBO-ITEM              |       1.00 |         4.19 |          4.19 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       1680 | COMBO 1                 |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-|   2193838982 |   6210 |     31751 |       3233 | MILD SAUCE              |           2 | NON-COMBO-ITEM          |       1.00 |         0.00 |          0.00 |   0.00 | 1995-04-21 | 2012-10-02 |
-+--------------+--------+-----------+------------+-------------------------+-------------+-------------------------+------------+--------------+---------------+--------+------------+------------+
-*/
+
+select t.DW_GC_HEADER, d.BUSIDAYDT, t.DW_PRODUCT, p.PRODUCTDESC, t.DW_PRODUCTDETAIL, detail.PRODUCTDESC, t.DW_PRODUCTMOD, m.PRODUCTDESC, t.DW_LINEITEM, l.LINEITEMDESC, t.ACTQTYSOLD, t.ACTPRODPRICE, t.ACTGROSSSALES, t.ACTTAX
+from TLD_FACT_2007_Q01 t
+	left join LINEITEM_DIM l using (DW_LINEITEM)
+	left join PRODUCT_DIM p using (DW_PRODUCT)
+	left join TIME_DAY_DIM d using (DW_DAY)
+	left join PRODUCT_MODIFICATION_DIM_V1 m using (DW_PRODUCTMOD)
+	left join PRODUCT_DETAIL_DIM_V1 detail using (DW_PRODUCTDETAIL)
+where DW_GC_HEADER=2193837510
+order by DW_LINEITEM; --34.27 sec
++--------------+------------+------------+-----------------------+------------------+-----------------------+---------------+-------------+-------------+-------------------------+------------+--------------+---------------+--------+
+| DW_GC_HEADER | BUSIDAYDT  | DW_PRODUCT | PRODUCTDESC           | DW_PRODUCTDETAIL | PRODUCTDESC           | DW_PRODUCTMOD | PRODUCTDESC | DW_LINEITEM | LINEITEMDESC            | ACTQTYSOLD | ACTPRODPRICE | ACTGROSSSALES | ACTTAX |
++--------------+------------+------------+-----------------------+------------------+-----------------------+---------------+-------------+-------------+-------------------------+------------+--------------+---------------+--------+
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |            19494 | TB CRUNCHWRAP SUP CMB |            -1 | N/A         |           1 | COMBO-ITEM              |       1.00 |         3.69 |          3.69 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |            19494 | TB CRUNCHWRAP SUP CMB |            -1 | N/A         |           1 | COMBO-ITEM              |       1.00 |         3.69 |          3.69 |   0.00 |
+|   2193837510 | 2006-12-27 |       4001 | SOFT TACO BEEF        |             4001 | SOFT TACO BEEF        |            -1 | N/A         |           2 | NON-COMBO-ITEM          |       2.00 |         0.79 |          1.58 |   0.00 |
+|   2193837510 | 2006-12-27 |       4001 | SOFT TACO BEEF        |             4001 | SOFT TACO BEEF        |            -1 | N/A         |           2 | NON-COMBO-ITEM          |       2.00 |         0.79 |          1.58 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |             4450 | CRUNCHY TACO BEEF     |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |            19495 | TB CRUNCHWRAP SUPREME |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |             3649 | LARGE PEPSI           |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |            19495 | TB CRUNCHWRAP SUPREME |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |             4450 | CRUNCHY TACO BEEF     |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |             3649 | LARGE PEPSI           |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |            19495 | TB CRUNCHWRAP SUPREME |          2948 | LETTUCE     |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |             4450 | CRUNCHY TACO BEEF     |          2948 | LETTUCE     |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |             4450 | CRUNCHY TACO BEEF     |          2948 | LETTUCE     |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |      19494 | TB CRUNCHWRAP SUP CMB |            19495 | TB CRUNCHWRAP SUPREME |          2948 | LETTUCE     |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |       4001 | SOFT TACO BEEF        |             4001 | SOFT TACO BEEF        |          2948 | LETTUCE     |          11 | NON-COMBO-M-INGRD-MINUS |       0.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |       4001 | SOFT TACO BEEF        |             4001 | SOFT TACO BEEF        |          2948 | LETTUCE     |          11 | NON-COMBO-M-INGRD-MINUS |       0.00 |         0.00 |          0.00 |   0.00 |
+|   2193837510 | 2006-12-27 |         -1 | N/A                   |               -1 | N/A                   |            -1 | N/A         |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.43 |
+|   2193837510 | 2006-12-27 |         -1 | N/A                   |               -1 | N/A                   |            -1 | N/A         |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   0.43 |
++--------------+------------+------------+-----------------------+------------------+-----------------------+---------------+-------------+-------------+-------------------------+------------+--------------+---------------+--------+
+
+select t.DW_GC_HEADER, d.BUSIDAYDT, t.DW_PRODUCT, p.PRODUCTDESC, t.DW_PRODUCTDETAIL, detail.PRODUCTDESC, t.DW_PRODUCTMOD, m.PRODUCTDESC, t.DW_LINEITEM, l.LINEITEMDESC, t.ACTQTYSOLD, t.ACTPRODPRICE, t.ACTGROSSSALES, t.ACTTAX
+from TLD_FACT_2015_Q01 t
+	left join LINEITEM_DIM l using (DW_LINEITEM)
+	left join PRODUCT_DIM p using (DW_PRODUCT)
+	left join TIME_DAY_DIM d using (DW_DAY)
+	left join PRODUCT_MODIFICATION_DIM_V1 m using (DW_PRODUCTMOD)
+	left join PRODUCT_DETAIL_DIM_V1 detail using (DW_PRODUCTDETAIL)
+where DW_GC_HEADER=7008434308
+order by DW_LINEITEM; --56.76 sec
++--------------+------------+------------+------------------+------------------+--------------------+---------------+-------------+-------------+-------------------------+------------+--------------+---------------+--------+
+| DW_GC_HEADER | BUSIDAYDT  | DW_PRODUCT | PRODUCTDESC      | DW_PRODUCTDETAIL | PRODUCTDESC        | DW_PRODUCTMOD | PRODUCTDESC | DW_LINEITEM | LINEITEMDESC            | ACTQTYSOLD | ACTPRODPRICE | ACTGROSSSALES | ACTTAX |
++--------------+------------+------------+------------------+------------------+--------------------+---------------+-------------+-------------+-------------------------+------------+--------------+---------------+--------+
+|   7008434308 | 2015-03-01 |      37591 | QUESARITO BOX    |            37591 | QUESARITO BOX      |            -1 | N/A         |           1 | COMBO-ITEM              |       1.00 |         7.18 |          7.18 |   0.00 |
+|   7008434308 | 2015-03-01 |       1692 | COMBO 7          |             1692 | COMBO 7            |            -1 | N/A         |           1 | COMBO-ITEM              |       1.00 |         5.69 |          5.69 |   0.00 |
+|   7008434308 | 2015-03-01 |      37202 | CRWRP SLDR CHD   |            37202 | CRWRP SLDR CHD     |            -1 | N/A         |           2 | NON-COMBO-ITEM          |       3.00 |         1.69 |          5.07 |   0.00 |
+|   7008434308 | 2015-03-01 |      37667 | CW SLDR SPICY SC |            37667 | CW SLDR SPICY SC   |            -1 | N/A         |           2 | NON-COMBO-ITEM          |       3.00 |         1.69 |          5.07 |   0.00 |
+|   7008434308 | 2015-03-01 |      37591 | QUESARITO BOX    |            34596 | DORITOS LOCOS TACO |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |       1692 | COMBO 7          |             3844 | QUESADILLA CHICKEN |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |      37591 | QUESARITO BOX    |            27270 | MEDIUM MT DEW      |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |       1692 | COMBO 7          |            27249 | LARGE PEPSI        |            -1 | N/A         |           3 | COMBO-DETAIL            |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |      37591 | QUESARITO BOX    |            38194 | SRI QUESRTO ST     |            -1 | N/A         |           4 | COMBO-DETAIL-REPLS-PLUS |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |       1692 | COMBO 7          |             4001 | SOFT TACO BEEF     |            -1 | N/A         |           6 | COMBO-DETAIL-REPLS-EQL  |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |      37591 | QUESARITO BOX    |             4001 | SOFT TACO BEEF     |            -1 | N/A         |           6 | COMBO-DETAIL-REPLS-EQL  |       1.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |       1692 | COMBO 7          |             4001 | SOFT TACO BEEF     |          2948 | LETTUCE     |           8 | COMBO-MOD-INGRD-MINUS   |       0.00 |         0.00 |          0.00 |   0.00 |
+|   7008434308 | 2015-03-01 |         -1 | N/A              |               -1 | N/A                |            -1 | N/A         |          14 | TAX-LINE                |       0.00 |         0.00 |          0.00 |   1.61 |
++--------------+------------+------------+------------------+------------------+--------------------+---------------+-------------+-------------+-------------------------+------------+--------------+---------------+--------+
+
+select t.DW_GC_HEADER, d.BUSIDAYDT, t.DW_PRODUCT, p.PRODUCTDESC, t.DW_PRODUCTDETAIL, detail.PRODUCTDESC, t.DW_PRODUCTMOD, m.PRODUCTDESC, t.DW_LINEITEM, l.LINEITEMDESC, t.ACTQTYSOLD, t.ACTPRODPRICE, t.ACTGROSSSALES, t.ACTTAX
+from TLD_FACT_2007_Q02 t
+	left join LINEITEM_DIM l using (DW_LINEITEM)
+	left join PRODUCT_DIM p using (DW_PRODUCT)
+	left join TIME_DAY_DIM d using (DW_DAY)
+	left join PRODUCT_MODIFICATION_DIM_V1 m using (DW_PRODUCTMOD)
+	left join PRODUCT_DETAIL_DIM_V1 detail using (DW_PRODUCTDETAIL)
+where DW_GC_HEADER=2268477408
+order by DW_LINEITEM; --19.49 sec
++--------------+------------+------------+----------------------------+------------------+----------------------------+---------------+-------------+-------------+----------------+------------+--------------+---------------+--------+
+| DW_GC_HEADER | BUSIDAYDT  | DW_PRODUCT | PRODUCTDESC                | DW_PRODUCTDETAIL | PRODUCTDESC                | DW_PRODUCTMOD | PRODUCTDESC | DW_LINEITEM | LINEITEMDESC   | ACTQTYSOLD | ACTPRODPRICE | ACTGROSSSALES | ACTTAX |
++--------------+------------+------------+----------------------------+------------------+----------------------------+---------------+-------------+-------------+----------------+------------+--------------+---------------+--------+
+|   2268477408 | 2007-03-21 |        457 | 7 LAYER BURRITO            |              457 | 7 LAYER BURRITO            |            -1 | N/A         |           2 | NON-COMBO-ITEM |       1.00 |         1.69 |          1.69 |   0.00 |
+|   2268477408 | 2007-03-21 |       1163 | CHALUPA SUPREME STEAK      |             1163 | CHALUPA SUPREME STEAK      |            -1 | N/A         |           2 | NON-COMBO-ITEM |       2.00 |         2.09 |          4.18 |   0.00 |
+|   2268477408 | 2007-03-21 |       2031 | DOUBLE DECKER TACO BEEF    |             2031 | DOUBLE DECKER TACO BEEF    |            -1 | N/A         |           2 | NON-COMBO-ITEM |       1.00 |         0.99 |          0.99 |   0.00 |
+|   2268477408 | 2007-03-21 |       4450 | CRUNCHY TACO BEEF          |             4450 | CRUNCHY TACO BEEF          |            -1 | N/A         |           2 | NON-COMBO-ITEM |       2.00 |         0.79 |          1.58 |   0.00 |
+|   2268477408 | 2007-03-21 |       5082 | RANCHERO CHICKEN SOFT TACO |             5082 | RANCHERO CHICKEN SOFT TACO |            -1 | N/A         |           2 | NON-COMBO-ITEM |       3.00 |         1.69 |          5.07 |   0.00 |
+|   2268477408 | 2007-03-21 |         -1 | N/A                        |               -1 | N/A                        |            -1 | N/A         |          14 | TAX-LINE       |       0.00 |         0.00 |          0.00 |   1.11 |
++--------------+------------+------------+----------------------------+------------------+----------------------------+---------------+-------------+-------------+----------------+------------+--------------+---------------+--------+
+
+
 
 -- connect product_dim and product_group_det
 select p.DW_PRODUCT, p.PRODUCTDESC, p.DW_PRODUCTGROUP, d.PRODUCTGROUPDESC
@@ -500,194 +510,7 @@ where PRODUCTGROUPDESC!="KFC"
 order by DW_PRODUCT
 limit 50;
 
-/*
-2019-08-13 10:48:48	Looking up host "bigpurple.nyumc.org"
-2019-08-13 10:48:48	Connecting to 10.189.18.113 port 22
-2019-08-13 10:48:48	We claim version: SSH-2.0-PuTTY_Release_0.67
-2019-08-13 10:48:48	Server version: SSH-2.0-OpenSSH_7.4
-2019-08-13 10:48:48	Using SSH protocol version 2
-2019-08-13 10:48:48	Doing Diffie-Hellman group exchange
-2019-08-13 10:48:48	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 10:48:48	Host key fingerprint is:
-2019-08-13 10:48:48	ssh-rsa 2048 80:97:52:1e:d5:84:7a:31:35:e5:b5:ab:f0:e7:26:6a
-2019-08-13 10:48:48	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 10:48:48	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 10:48:48	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 10:48:48	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 10:48:48	Using SSPI from SECUR32.DLL
-2019-08-13 10:48:48	Attempting GSSAPI authentication
-2019-08-13 10:48:48	GSSAPI authentication initialisation failed
-2019-08-13 10:48:48	The target was not recognized.
-2019-08-13 10:48:52	Sent password
-2019-08-13 10:48:52	Access granted
-2019-08-13 10:48:52	Opening session as main channel
-2019-08-13 10:48:53	Opened main channel
-2019-08-13 10:48:53	Requesting X11 forwarding
-2019-08-13 10:48:53	X11 forwarding enabled
-2019-08-13 10:48:53	Allocated pty (ospeed 38400bps, ispeed 38400bps)
-2019-08-13 10:48:53	Started a shell/command
-2019-08-13 11:48:48	Initiating key re-exchange (timeout)
-2019-08-13 11:48:48	Doing Diffie-Hellman group exchange
-2019-08-13 11:48:48	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 11:48:48	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 11:48:48	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 11:48:48	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 11:48:48	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 12:48:48	Initiating key re-exchange (timeout)
-2019-08-13 12:48:48	Doing Diffie-Hellman group exchange
-2019-08-13 12:48:48	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 12:48:49	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 12:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 12:48:49	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 12:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 13:48:49	Initiating key re-exchange (timeout)
-2019-08-13 13:48:49	Doing Diffie-Hellman group exchange
-2019-08-13 13:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 13:48:49	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 13:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 13:48:49	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 13:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 14:48:49	Initiating key re-exchange (timeout)
-2019-08-13 14:48:49	Doing Diffie-Hellman group exchange
-2019-08-13 14:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 14:48:49	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 14:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 14:48:49	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 14:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 15:48:49	Initiating key re-exchange (timeout)
-2019-08-13 15:48:49	Doing Diffie-Hellman group exchange
-2019-08-13 15:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 15:48:49	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 15:48:49	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 15:48:49	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 15:48:49	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 16:48:49	Initiating key re-exchange (timeout)
-2019-08-13 16:48:49	Doing Diffie-Hellman group exchange
-2019-08-13 16:48:49	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 16:48:50	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 16:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 16:48:50	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 16:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 17:48:50	Initiating key re-exchange (timeout)
-2019-08-13 17:48:50	Doing Diffie-Hellman group exchange
-2019-08-13 17:48:50	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 17:48:50	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 17:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 17:48:50	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 17:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 18:48:50	Initiating key re-exchange (timeout)
-2019-08-13 18:48:50	Doing Diffie-Hellman group exchange
-2019-08-13 18:48:50	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 18:48:50	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 18:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 18:48:50	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 18:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 19:48:50	Initiating key re-exchange (timeout)
-2019-08-13 19:48:50	Doing Diffie-Hellman group exchange
-2019-08-13 19:48:50	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-13 19:48:50	Initialised AES-256 SDCTR client->server encryption
-2019-08-13 19:48:50	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-13 19:48:50	Initialised AES-256 SDCTR server->client encryption
-2019-08-13 19:48:50	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-13 20:00:40	Network error: Software caused connection abort
-2019-08-14 09:40:10	----- Session restarted -----
-2019-08-14 09:40:10	Looking up host "bigpurple.nyumc.org"
-2019-08-14 09:40:10	Connecting to 10.189.18.111 port 22
-2019-08-14 09:40:10	We claim version: SSH-2.0-PuTTY_Release_0.67
-2019-08-14 09:40:10	Server version: SSH-2.0-OpenSSH_7.4
-2019-08-14 09:40:10	Using SSH protocol version 2
-2019-08-14 09:40:10	Doing Diffie-Hellman group exchange
-2019-08-14 09:40:10	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 09:40:10	Host key fingerprint is:
-2019-08-14 09:40:10	ssh-rsa 2048 80:97:52:1e:d5:84:7a:31:35:e5:b5:ab:f0:e7:26:6a
-2019-08-14 09:40:10	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 09:40:10	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 09:40:10	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 09:40:10	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 09:40:10	Using SSPI from SECUR32.DLL
-2019-08-14 09:40:10	Attempting GSSAPI authentication
-2019-08-14 09:40:10	GSSAPI authentication initialisation failed
-2019-08-14 09:40:10	The target was not recognized.
-2019-08-14 09:40:17	Sent password
-2019-08-14 09:40:17	Access granted
-2019-08-14 09:40:17	Opening session as main channel
-2019-08-14 09:40:17	Opened main channel
-2019-08-14 09:40:17	Requesting X11 forwarding
-2019-08-14 09:40:17	X11 forwarding enabled
-2019-08-14 09:40:17	Allocated pty (ospeed 38400bps, ispeed 38400bps)
-2019-08-14 09:40:17	Started a shell/command
-2019-08-14 10:40:10	Initiating key re-exchange (timeout)
-2019-08-14 10:40:10	Doing Diffie-Hellman group exchange
-2019-08-14 10:40:10	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 10:40:11	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 10:40:11	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 10:40:11	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 10:40:11	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 11:40:11	Initiating key re-exchange (timeout)
-2019-08-14 11:40:11	Doing Diffie-Hellman group exchange
-2019-08-14 11:40:11	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 11:40:11	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 11:40:11	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 11:40:11	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 11:40:11	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 12:40:11	Initiating key re-exchange (timeout)
-2019-08-14 12:40:11	Doing Diffie-Hellman group exchange
-2019-08-14 12:40:11	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 12:40:11	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 12:40:11	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 12:40:11	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 12:40:11	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 13:40:11	Initiating key re-exchange (timeout)
-2019-08-14 13:40:11	Doing Diffie-Hellman group exchange
-2019-08-14 13:40:11	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 13:40:12	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 13:40:12	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 13:40:12	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 13:40:12	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 14:40:12	Initiating key re-exchange (timeout)
-2019-08-14 14:40:12	Doing Diffie-Hellman group exchange
-2019-08-14 14:40:12	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 14:40:12	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 14:40:12	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 14:40:12	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 14:40:12	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 15:40:12	Initiating key re-exchange (timeout)
-2019-08-14 15:40:12	Doing Diffie-Hellman group exchange
-2019-08-14 15:40:12	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 15:40:12	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 15:40:12	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 15:40:12	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 15:40:12	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 16:40:12	Initiating key re-exchange (timeout)
-2019-08-14 16:40:12	Doing Diffie-Hellman group exchange
-2019-08-14 16:40:12	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 16:40:13	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 16:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 16:40:13	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 16:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 17:40:13	Initiating key re-exchange (timeout)
-2019-08-14 17:40:13	Doing Diffie-Hellman group exchange
-2019-08-14 17:40:13	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 17:40:13	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 17:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 17:40:13	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 17:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 18:40:13	Initiating key re-exchange (timeout)
-2019-08-14 18:40:13	Doing Diffie-Hellman group exchange
-2019-08-14 18:40:13	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 18:40:13	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 18:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 18:40:13	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 18:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 19:40:13	Initiating key re-exchange (timeout)
-2019-08-14 19:40:13	Doing Diffie-Hellman group exchange
-2019-08-14 19:40:13	Doing Diffie-Hellman key exchange with hash SHA-256
-2019-08-14 19:40:13	Initialised AES-256 SDCTR client->server encryption
-2019-08-14 19:40:13	Initialised HMAC-SHA-256 client->server MAC algorithm
-2019-08-14 19:40:13	Initialised AES-256 SDCTR server->client encryption
-2019-08-14 19:40:13	Initialised HMAC-SHA-256 server->client MAC algorithm
-2019-08-14 20:00:35	Network error: Software caused connection abort
-*/
+
 
 -- characterize purchase type, dine-in/takeout/drive-thru, by quarter/year
 select DW_OCCASION, count(*) from TLD_FACT_2014_Q03 group by DW_OCCASION;
@@ -799,48 +622,4 @@ order by DW_GC_HEADER, DW_PRODUCT;
 |   5047855937 |       5528 |             5528 | FRANCHISE LOCAL MENU |          2948 |       0.00 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
 +--------------+------------+------------------+----------------------+---------------+------------+-----------+------------+--------------+---------------+-------------+--------+
 */
-
-
-select DW_DAY, DW_YEAR, DW_MONTH, FISCALYEARNO, FISCALYEARBGNDT, FISCALYEARENDDT, YEARBGNDT, YEARENDDT, MONTHNAME, BUSIDAYDT from TIME_DAY_DIM limit 5;
-
-select BUSIDAYDT, QTRNAME, QTRBGNDT, QTRENDDT, MONTHNAME, MONTHBGNDT, MONTHENDDT, FISCALQTRNAME, FISCALQTRBGNDT, FISCALQTRENDDT, FISCALPRDNAME from TIME_DAY_DIM limit 5;
-+----------------------+-------------+------+-----+---------+-------+
-| Field                | Type        | Null | Key | Default | Extra |
-+----------------------+-------------+------+-----+---------+-------+
-| DW_FISCALWEEKPART    | smallint(6) | NO   |     | NULL    |       |
-
-| MONTHENDDAY          | varchar(9)  | NO   |     | NULL    |       |
-| MONTHDAYCNT          | smallint(6) | NO   |     | NULL    |       |
-| FISCALPRDNO          | varchar(13) | NO   |     | NULL    |       |
-|         | varchar(9)  | NO   |     | NULL    |       |
-| FISCALPRDBGNDT       | date        | NO   |     | NULL    |       |
-| FISCALPRDBGNDAY      | varchar(9)  | NO   |     | NULL    |       |
-| FISCALPRDENDDT       | date        | NO   |     | NULL    |       |
-| FISCALPRDENDDAY      | varchar(9)  | NO   |     | NULL    |       |
-| FISCALPRDDAYCNT      | smallint(6) | NO   |     | NULL    |       |
-| FISCALWEEKNO         | varchar(17) | NO   |     | NULL    |       |
-| FISCALPRDWEEKNAME    | varchar(6)  | NO   |     | NULL    |       |
-| FISCALYRWEEKNAME     | varchar(7)  | NO   |     | NULL    |       |
-| FISCALWKBGNDT        | date        | NO   |     | NULL    |       |
-| FISCALWKBGNDAY       | varchar(9)  | NO   |     | NULL    |       |
-| FISCALWKENDDT        | date        | NO   |     | NULL    |       |
-| FISCALWKENDDAY       | varchar(9)  | NO   |     | NULL    |       |
-| FISCALWKDAYCNT       | smallint(6) | NO   |     | NULL    |       |
-| MKTWINDOWNAME        | varchar(30) | YES  |     | NULL    |       |
-| MKTWINDOW            | varchar(8)  | YES  |     | NULL    |       |
-| MKTWINDOWDESC        | varchar(30) | YES  |     | NULL    |       |
-| FISCALWEEKPARTNAME   | varchar(15) | NO   |     | NULL    |       |
-| FISCALWEEKPARTBGNDAY | varchar(9)  | NO   |     | NULL    |       |
-| FISCALWEEKPARTENDDAY | varchar(9)  | NO   |     | NULL    |       |
-| BUSIDAYNO            | varchar(21) | NO   |     | NULL    |       |
-| BUSIDAYNAME          | varchar(9)  | NO   |     | NULL    |       |
-|             | date        | NO   |     | NULL    |       |
-| BUSIDAYCNT           | smallint(6) | NO   |     | NULL    |       |
-| DAYOFPERIOD          | smallint(6) | NO   |     | NULL    |       |
-| DAYOFWEEK            | smallint(6) | NO   |     | NULL    |       |
-+----------------------+-------------+------+-----+---------+-------+
-
-
-
-
 
