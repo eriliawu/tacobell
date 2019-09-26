@@ -123,7 +123,7 @@ Year <- factor(menu$year[menu$year<=2015],
 ggplot(data=menu[menu$year<=2015, ], aes(x=calories, group=Year, fill=Year)) +
       geom_histogram(bins=200) +
       labs(title="Change in menu item calories over time",
-           x="Calories", y="Number of menu items", fill="Year",
+           x="Mean calories", y="Number of menu items", fill="Year",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_fill_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
@@ -141,7 +141,7 @@ ggplot(data=trend, aes(x=as.character(year), y=serving_size,
       geom_point() +
       geom_line(size=1) +
       labs(title="Change in serving sizes over time",
-           x="Year", y="Serving size", col="Category",
+           x="Year", y="Mean serving size", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
@@ -154,7 +154,7 @@ ggplot(data=trend, aes(x=as.character(year), y=calories,
       geom_point() +
       geom_line(size=1) +
       labs(title="Change in calories over time",
-           x="Year", y="Calories", col="Category",
+           x="Year", y="Mean calories", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
@@ -167,14 +167,16 @@ ggplot(data=trend, aes(x=as.character(year), y=sfat_pct,
       geom_point() +
       geom_line(size=1) +
       labs(title="Change in saturated fat as % in total calories",
-           x="Year", y="Percentage", col="Category",
+           x="Year", y="Mean percentage", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"))
 ggsave("tables/tb-menu/saturated-fat-in-calories.jpeg", width=20, height=10, unit="cm")
 
+rm(unit, Year, cat)
 
+### look at how items are added or dropped each year ----
 
 
 ### link menu stat to transaction data ----
