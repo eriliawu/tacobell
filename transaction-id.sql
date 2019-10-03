@@ -495,10 +495,6 @@ select (select count(*) from TLD_FACT_2014_Q04 left join PRODUCT_DIM using(DW_PR
 
 --select (select count(*) from TLD_FACT_2013_Q04 left join PRODUCT_DIM using(DW_PRODUCT) where (PRODUCTDESC like ("%COMBO 1%") or PRODUCTDESC like ("%COMBO 2%") or PRODUCTDESC like ("%COMBO 3%") or PRODUCTDESC like ("%COMBO 4%") or PRODUCTDESC like ("%COMBO 5%") or PRODUCTDESC like ("%COMBO 6%") or PRODUCTDESC like ("%COMBO 7%") or PRODUCTDESC like ("%COMBO 8%") or PRODUCTDESC like ("%COMBO 9%") or PRODUCTDESC like ("%COMBO #10%") or PRODUCTDESC like ("%COMBO 10%") or PRODUCTDESC like ("%COMBO 11%")) and PRODUCTDESC not like ("%KFC%") and PRODUCTDESC not like ("%PHI%") and PRODUCTDESC not like ("%PIZZA HUT%") and PRODUCTDESC not like ("%LJS%") and PRODUCTDESC not like ("%AWR%")) as combo;
 
-
-
-
-
 -- 
 select p.PRODUCTDESC, g.PRODUCTGROUPDESC
 from PRODUCT_DIM p
@@ -520,10 +516,6 @@ select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q01 left join TIME_MINUTE_DIM t
 select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
 select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
 select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-
-
-
-
 
 
 select t.DW_PRODUCT, g.PRODUCTGROUPDESC, p.PRODUCTDESC, t.DW_GC_HEADER
@@ -622,4 +614,38 @@ order by DW_GC_HEADER, DW_PRODUCT;
 |   5047855937 |       5528 |             5528 | FRANCHISE LOCAL MENU |          2948 |       0.00 |       1.0 |          0 |         0.00 |          0.00 |        0.00 |   0.00 |
 +--------------+------------+------------------+----------------------+---------------+------------+-----------+------------+--------------+---------------+-------------+--------+
 */
+
+-- transaction by payment type
+select t.TENDERTYPEDESC, count(*) from GC_HEADER_DIM_2012_Q01 left join TENDERTYPE_DIM t using(DW_TENDERTYPE) group by TENDERTYPEDESC;
+
+-- transaction dollar amount, by meal time
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+
+-- transaction amount, by weekday/weekend
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q04 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q04 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q04 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
 
