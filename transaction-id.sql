@@ -619,33 +619,52 @@ order by DW_GC_HEADER, DW_PRODUCT;
 select t.TENDERTYPEDESC, count(*) from GC_HEADER_DIM_2012_Q01 left join TENDERTYPE_DIM t using(DW_TENDERTYPE) group by TENDERTYPEDESC;
 
 -- transaction dollar amount, by meal time
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2015_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2015_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2015_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
+
 
 -- transaction amount, by weekday/weekend
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2012_Q04 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2013_Q04 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2014_Q04 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q01 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
-select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
 select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+
+-- transaction amount, by occasion
+select o.OCCASIONDESC, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 g left join OCCASION_DIM o using(DW_OCCASION) group by OCCASIONDESC order by DW_OCCASION;
+
+-- fix 2012 Q3 numbers
+select o.OCCASIONDESC, count(distinct DW_GC_HEADER), sum(t.ACTGROSSSALES) from TLD_FACT_2012_Q03 t left join OCCASION_DIM o using(DW_OCCASION) group by OCCASIONDESC order by DW_OCCASION;
+select m.DW_DAYPART,  count(distinct DW_GC_HEADER), sum(t.ACTGROSSSALES) from TLD_FACT_2012_Q03 t left join TIME_MINUTE_DIM m using(DW_MINUTE) group by DW_DAYPART;
+select d.BUSIDAYNAME, count(distinct DW_GC_HEADER), sum(t.ACTGROSSSALES) from TLD_FACT_2012_Q03 t left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
+
 
