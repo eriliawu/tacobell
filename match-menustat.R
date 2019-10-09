@@ -1,7 +1,7 @@
 # match menu stat nutritional info to sample transactions
 
 getwd()
-setwd("C:/Users/wue04/Box Sync/tacobell")
+setwd("C:/Users/wue04/OneDrive - NYU Langone Health/tacobell")
 
 current_warning <- getOption("warn")
 options(warn = -1)
@@ -10,6 +10,8 @@ options(warn = -1)
 library(ggplot2)
 #install.packages("dplyr")
 library(dplyr)
+#install.packages("gridExtra")
+library(gridExtra)
 
 ### read and clean data ----
 #read clean restaurant data
@@ -176,8 +178,130 @@ ggsave("tables/tb-menu/saturated-fat-in-calories.jpeg", width=20, height=10, uni
 
 rm(unit, Year, cat)
 
-### look at how items are added or dropped each year ----
+### look at how calories change for burritos and such ----
+# collect specific labelling data on:
+# burritos, tacos, chalupa, tostada, taquito, quesadilla, pizza
+burrito <- subset(menu,
+            (menu$category=="Sandwiches"|menu$category=="Entrees")&grepl("Burrito", menu$item_name),
+            select=c("item_name","year", "serving_size", "calories", "saturated_fat"))
+quesadilla <- subset(menu,
+            (menu$category=="Sandwiches"|menu$category=="Entrees")&(grepl("Quesadilla", menu$item_name)|grepl("Pizza", menu$item_name)),
+            select=c("item_name","year", "serving_size", "calories", "saturated_fat"))
+taco <- subset(menu,
+            (menu$category=="Sandwiches"|menu$category=="Entrees")&(grepl("Taco", menu$item_name)|grepl("Chalupa", menu$item_name)),
+            select=c("item_name","year", "serving_size", "calories", "saturated_fat"))
+other <- subset(menu,
+            (menu$category=="Sandwiches"|menu$category=="Entrees")&(grepl("Gordita", menu$item_name)|grepl("Taquito", menu$item_name)),
+            select=c("item_name","year", "serving_size", "calories", "saturated_fat"))
+burrito$cat <- "burrito"
+quesadilla$cat <- "quesadilla"
+taco$cat <- "taco"
+other$cat <- "other"
+main <- rbind(burrito, quesadilla, taco, other)
+main$fat_pct <- main$saturated_fat*10/main$calories*100
+rm(burrito, quesadilla, taco, other)
 
+trend <- count(main[main$year<=2015, ], year, cat)
+serving_size <- aggregate(data=main[main$year<=2015, ],
+                  serving_size~year+cat, FUN=mean, na.rm=TRUE)
+calories <- aggregate(data=main[main$year<=2015, ],
+                  calories~year+cat, FUN=mean, na.rm=TRUE)
+sat_fat <- aggregate(data=main[main$year<=2015, ],
+                      fat_pct~year+cat, FUN=mean, na.rm=TRUE)
+trend <- merge(trend, serving_size, by=c("cat", "year"))
+trend <- merge(trend, calories, by=c("cat", "year"))
+trend <- merge(trend, sat_fat, by=c("cat", "year"))
+rm(serving_size, calories, sat_fat)
+
+trend$cat <- paste0(toupper(substr(trend$cat, 1, 1)), 
+                    substr(trend$cat, 2, nchar(trend$cat)))
+
+### plot specific menu item data ----
+cat <- factor(trend$cat,
+              levels=c("Burrito", "Quesadilla", "Taco", "Other"))
+
+ggplot(data=trend, aes(x=as.character(year), y=n,
+                       group=cat, col=cat)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in menu item offering",
+           x="Year", y="Number of items", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/num_menu_item_sandwiches.jpeg", width=20, height=10, unit="cm")
+
+# serving size
+unit <- factor(paste(trend$cat, " (g)", sep = ""),
+               levels=c("Burrito (g)", "Quesadilla (g)",
+                        "Taco (g)", "Other (g)"))
+ggplot(data=trend, aes(x=as.character(year), y=serving_size,
+                       group=unit, col=unit)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in serving sizes over time",
+           x="Year", y="Mean serving size (g)", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/serving-size_sandwiches.jpeg", width=20, height=10, unit="cm")
+
+# calories
+g1 <- ggplot(data=trend, aes(x=as.character(year), y=calories,
+                       group=cat, col=cat)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in calories over time",
+           x="Year", y="Mean calories", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/mean-calories_sandwiches.jpeg", width=20, height=10, unit="cm")
+
+# saturated fat
+g2 <- ggplot(data=trend, aes(x=as.character(year), y=fat_pct,
+                       group=cat, col=cat)) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Change in saturated fat as % of total calories over time",
+           x="Year", y="%", col="Category",
+           caption="Data source: MenuStat, http://menustat.org") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/tb-menu/sat-fat_sandwiches.jpeg", width=20, height=10, unit="cm")
+
+
+multiplot <- function(..., plotlist=NULL, cols) {
+      require(grid)
+      
+      # Make a list from the ... arguments and plotlist
+      plots <- c(list(...), plotlist)
+      
+      numPlots = length(plots)
+      
+      # Make the panel
+      plotCols = cols                          # Number of columns of plots
+      plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
+      
+      # Set up the page
+      grid.newpage()
+      pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+      vplayout <- function(x, y)
+            viewport(layout.pos.row = x, layout.pos.col = y)
+      
+      # Make each plot, in the correct location
+      for (i in 1:numPlots) {
+            curRow = ceiling(i/plotCols)
+            curCol = (i-1) %% plotCols + 1
+            print(plots[[i]], vp = vplayout(curRow, curCol ))
+      }
+      
+}
+multiplot(g1, g2, cols=1)
 
 ### link menu stat to transaction data ----
 sample <- menu[menu$item_name=="Bean Burrito", ]
