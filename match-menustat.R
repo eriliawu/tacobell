@@ -215,6 +215,7 @@ rm(serving_size, calories, sat_fat)
 
 trend$cat <- paste0(toupper(substr(trend$cat, 1, 1)), 
                     substr(trend$cat, 2, nchar(trend$cat)))
+rm(main)
 
 ### plot specific menu item data ----
 cat <- factor(trend$cat,
@@ -224,7 +225,7 @@ ggplot(data=trend, aes(x=as.character(year), y=n,
                        group=cat, col=cat)) +
       geom_point() +
       geom_line(size=1) +
-      labs(title="Change in menu item offering",
+      labs(title="Number of menu items over time",
            x="Year", y="Number of items", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
@@ -240,7 +241,7 @@ ggplot(data=trend, aes(x=as.character(year), y=serving_size,
                        group=unit, col=unit)) +
       geom_point() +
       geom_line(size=1) +
-      labs(title="Change in serving sizes over time",
+      labs(title="Mean serving sizes over time",
            x="Year", y="Mean serving size (g)", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
@@ -249,11 +250,11 @@ ggplot(data=trend, aes(x=as.character(year), y=serving_size,
 ggsave("tables/tb-menu/serving-size_sandwiches.jpeg", width=20, height=10, unit="cm")
 
 # calories
-g1 <- ggplot(data=trend, aes(x=as.character(year), y=calories,
+ggplot(data=trend, aes(x=as.character(year), y=calories,
                        group=cat, col=cat)) +
       geom_point() +
       geom_line(size=1) +
-      labs(title="Change in calories over time",
+      labs(title="Mean calories over time",
            x="Year", y="Mean calories", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
@@ -262,11 +263,11 @@ g1 <- ggplot(data=trend, aes(x=as.character(year), y=calories,
 ggsave("tables/tb-menu/mean-calories_sandwiches.jpeg", width=20, height=10, unit="cm")
 
 # saturated fat
-g2 <- ggplot(data=trend, aes(x=as.character(year), y=fat_pct,
+ggplot(data=trend, aes(x=as.character(year), y=fat_pct,
                        group=cat, col=cat)) +
       geom_point() +
       geom_line(size=1) +
-      labs(title="Change in saturated fat as % of total calories over time",
+      labs(title="Mean saturated fat as % of total calories over time",
            x="Year", y="%", col="Category",
            caption="Data source: MenuStat, http://menustat.org") +
       scale_color_brewer(palette="Set3") +
@@ -274,34 +275,36 @@ g2 <- ggplot(data=trend, aes(x=as.character(year), y=fat_pct,
             plot.caption=element_text(hjust=0, face="italic"))
 ggsave("tables/tb-menu/sat-fat_sandwiches.jpeg", width=20, height=10, unit="cm")
 
+burrito <- subset(menu,
+                  (menu$category=="Sandwiches"|menu$category=="Entrees")&grepl("Burrito", menu$item_name)&menu$year<=2015,
+                  select=c("id","item_name","year", "serving_size", "calories", "saturated_fat"))
+burrito <- burrito[order(burrito$id, burrito$year), ]
+burrito <- burrito[, c("id", "item_name", "year")]
 
-multiplot <- function(..., plotlist=NULL, cols) {
-      require(grid)
-      
-      # Make a list from the ... arguments and plotlist
-      plots <- c(list(...), plotlist)
-      
-      numPlots = length(plots)
-      
-      # Make the panel
-      plotCols = cols                          # Number of columns of plots
-      plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
-      
-      # Set up the page
-      grid.newpage()
-      pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-      vplayout <- function(x, y)
-            viewport(layout.pos.row = x, layout.pos.col = y)
-      
-      # Make each plot, in the correct location
-      for (i in 1:numPlots) {
-            curRow = ceiling(i/plotCols)
-            curCol = (i-1) %% plotCols + 1
-            print(plots[[i]], vp = vplayout(curRow, curCol ))
-      }
-      
+Mode <- function(x) {
+      ux <- unique(x)
+      ux[which.max(tabulate(match(x, ux)))]
 }
-multiplot(g1, g2, cols=1)
+name <- aggregate(data=burrito,
+      item_name~id, FUN=Mode)
+colnames(name)[2] <- "name"
+burrito <- merge(burrito, name, by="id")
+burrito <- burrito[order(burrito$id, burrito$year), ]
+rm(name)
+burrito$id <- NULL
+burrito <- reshape(burrito, direction = "wide",
+                   idvar = "name",
+                   timevar = "year")
+names(burrito)
+colnames(burrito)[2:7] <- c("2008", "2010", "2012", "2013", "2014", "2015")
+burrito[, 2:7][!is.na(burrito[, 2:7])] <- "1"
+burrito[, 2:7][is.na(burrito[, 2:7])] <- "0"
+burrito[2:7] <- sapply(burrito[2:7], as.integer)
+sapply(burrito, class)
+
+
+
+
 
 ### link menu stat to transaction data ----
 sample <- menu[menu$item_name=="Bean Burrito", ]
