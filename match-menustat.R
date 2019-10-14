@@ -301,6 +301,7 @@ burrito[, 2:7][!is.na(burrito[, 2:7])] <- "1"
 burrito[, 2:7][is.na(burrito[, 2:7])] <- "0"
 burrito[2:7] <- sapply(burrito[2:7], as.integer)
 sapply(burrito, class)
+write.csv(burrito, "data/burrito-availability.csv", row.names = FALSE)
 
 
 
