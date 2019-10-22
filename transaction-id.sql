@@ -1,3 +1,9 @@
+/* -- access tacobell database
+srun --time=23:00:00 --pty bash
+module load mariadb/5.5.64
+mysql -p -h db -P 33061 tacobell
+*/
+
 /*
 +--------------+--------+-----------+------------+-------------+------------+--------------+---------------+-------------+--------+-------------------------+-------------------------+
 | DW_GC_HEADER | DW_DAY | DW_RESTID | DW_PRODUCT | DW_LINEITEM | ACTQTYSOLD | ACTPRODPRICE | ACTGROSSSALES | ACTNETSALES | ACTTAX | LINEITEMDESC            | PRODUCTDESC             |
@@ -513,10 +519,6 @@ select DW_OCCASION, count(*) from TLD_FACT_2014_Q03 group by DW_OCCASION;
 
 -- characterize purchase time, late night/breakfast/lunch/afternoon/dinner/evening
 select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q01 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q02 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q03 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from TLD_FACT_2015_Q04 left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-
 
 select t.DW_PRODUCT, g.PRODUCTGROUPDESC, p.PRODUCTDESC, t.DW_GC_HEADER
 FROM TLD_FACT_2007_Q02 t
@@ -619,42 +621,7 @@ order by DW_GC_HEADER, DW_PRODUCT;
 select t.TENDERTYPEDESC, count(*) from GC_HEADER_DIM_2012_Q01 left join TENDERTYPE_DIM t using(DW_TENDERTYPE) group by TENDERTYPEDESC;
 
 -- transaction dollar amount, by meal time
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2007_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2008_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2009_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2010_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2011_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2012_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2013_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2014_Q04 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2015_Q01 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART; 
-select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2015_Q02 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
 select t.DW_DAYPART, count(*) from GC_HEADER_DIM_2015_Q03 g left join TIME_MINUTE_DIM t using(DW_MINUTE) group by DW_DAYPART;
-
 
 -- transaction amount, by weekday/weekend
 select d.BUSIDAYNAME, count(*), sum(g.TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 g left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
@@ -667,4 +634,58 @@ select o.OCCASIONDESC, count(distinct DW_GC_HEADER), sum(t.ACTGROSSSALES) from T
 select m.DW_DAYPART,  count(distinct DW_GC_HEADER), sum(t.ACTGROSSSALES) from TLD_FACT_2012_Q03 t left join TIME_MINUTE_DIM m using(DW_MINUTE) group by DW_DAYPART;
 select d.BUSIDAYNAME, count(distinct DW_GC_HEADER), sum(t.ACTGROSSSALES) from TLD_FACT_2012_Q03 t left join TIME_DAY_DIM d using(DW_DAY) group by BUSIDAYNAME order by DAYOFWEEK;
 
+-- figure out fiscal quarters
+select FISCALQTRNO, FISCALQTRNAME, FISCALQTRBGNDT, FISCALQTRENDDT, QTRNO, QTRNAME, FISCALPRDNO, FISCALPRDNAME, FISCALPRDBGNDT, FISCALPRDENDDT  from TIME_DAY_DIM limit 50;
+select distinct FISCALQTRNO, FISCALQTRBGNDT, FISCALQTRENDDT from TIME_DAY_DIM limit 50;
+select distinct FISCALQTRNO, FISCALQTRBGNDT, FISCALQTRENDDT from TIME_DAY_DIM where FISCALQTRBGNDT>="2006-12-20" order by FISCALQTRNO into outfile '/gpfs/home/wue04/fiscal_dates.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+/* +-------------+----------------+----------------+
+| FISCALQTRNO | FISCALQTRBGNDT | FISCALQTRENDDT |
++-------------+----------------+----------------+
+| Y2007 Q01   | 2006-12-27     | 2007-03-20     |
+| Y2007 Q02   | 2007-03-21     | 2007-06-12     |
+| Y2007 Q03   | 2007-06-13     | 2007-09-04     |
+| Y2007 Q04   | 2007-09-05     | 2007-12-25     |
+| Y2008 Q01   | 2007-12-26     | 2008-03-18     |
+| Y2008 Q02   | 2008-03-19     | 2008-06-10     |
+| Y2008 Q03   | 2008-06-11     | 2008-09-02     |
+| Y2008 Q04   | 2008-09-03     | 2008-12-23     |
+| Y2009 Q01   | 2008-12-24     | 2009-03-17     |
+| Y2009 Q02   | 2009-03-18     | 2009-06-09     |
+| Y2009 Q03   | 2009-06-10     | 2009-09-01     |
+| Y2009 Q04   | 2009-09-02     | 2009-12-22     |
+| Y2010 Q01   | 2009-12-23     | 2010-03-16     |
+| Y2010 Q02   | 2010-03-17     | 2010-06-08     |
+| Y2010 Q03   | 2010-06-09     | 2010-08-31     |
+| Y2010 Q04   | 2010-09-01     | 2010-12-21     |
+| Y2011 Q01   | 2010-12-22     | 2011-03-15     |
+| Y2011 Q02   | 2011-03-16     | 2011-06-07     |
+| Y2011 Q03   | 2011-06-08     | 2011-08-30     |
+| Y2011 Q04   | 2011-08-31     | 2011-12-27     |
+| Y2012 Q01   | 2011-12-28     | 2012-03-20     |
+| Y2012 Q02   | 2012-03-21     | 2012-06-12     |
+| Y2012 Q03   | 2012-06-13     | 2012-09-04     |
+| Y2012 Q04   | 2012-09-05     | 2012-12-25     |
+| Y2013 Q01   | 2012-12-26     | 2013-03-19     |
+| Y2013 Q02   | 2013-03-20     | 2013-06-11     |
+| Y2013 Q03   | 2013-06-12     | 2013-09-03     |
+| Y2013 Q04   | 2013-09-04     | 2013-12-24     |
+| Y2014 Q01   | 2013-12-25     | 2014-03-18     |
+| Y2014 Q02   | 2014-03-19     | 2014-06-10     |
+| Y2014 Q03   | 2014-06-11     | 2014-09-02     |
+| Y2014 Q04   | 2014-09-03     | 2014-12-23     |
+| Y2015 Q01   | 2014-12-24     | 2015-03-17     |
+| Y2015 Q02   | 2015-03-18     | 2015-06-09     |
+| Y2015 Q03   | 2015-06-10     | 2015-09-01     |
+| Y2015 Q04   | 2015-09-02     | 2015-12-22     |
++-------------+----------------+----------------+ */
+
+--- export restaurants ownership, 2007-2011
+select * from OWNERSHIP_2007_Q04 into outfile '/gpfs/home/wue04/ownership_2007_q04.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select AGREEMENTTYPE, RESTID from ALIGN_DIM into outfile '/gpfs/home/wue04/ownership.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+
+-- re-export restaurant file with ownership type to it
+select DW_RESTID, STATUSDESC,  AGREEMENT_DESC, KFC_AGREEMENT_DESC,  TBC_AGREEMENT_DESC, PHI_AGREEMENT_DESC, LJS_AGREEMENT_DESC, AWR_AGREEMENT_DESC,
+ADDRESS_LINE_1, ADDRESS_LINE_2, ADDRESS_LINE_3, CITYNAME, COUNTYNAME, STATENAME, PSTL_ZIP_CD,
+OPENEDDT,  TEMPCLOSEDDT, REOPENDT, CLOSEDDT, LATITUDE, LONGITUDE, CONCEPTDESC, CONCEPTBEGINDT, CONCEPTENDDT,
+DRIVETHRUIND, DRVTHU_TYPE from ALIGN_DIM into outfile '/gpfs/home/wue04/restaurants.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
