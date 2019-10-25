@@ -109,17 +109,56 @@ restaurants <- restaurants[order(restaurants$state, restaurants$address,
                                  restaurants$open, restaurants$close),
                            c(1, 28, 14, 16:22, 25:26, 2:13, 15, 23:24, 27)]
 
-# export address data for census bureau geocoder
+### export address data for census bureau geocoder ----
 address <- restaurants[, c("address1","city", "state", "zip")]
 address <- address[!duplicated(address), ]
 write.csv(address, "data/geocoding/address.csv")
+rm(address)
+
+coords <- read.csv("data/geocoding/GeocodeResults.csv",
+                   stringsAsFactors = FALSE, header=FALSE, skip=0)
+coords <- coords[coords$V3=="Match", c(2, 6, 9:12)]
+colnames(coords)[1:6] <- c("address_match", "coords", "state_num", "county_num", "tract_num", "block_num")
+coords$lon_bureau <- as.numeric(unlist(strsplit(coords$coords, ","))[seq(from=1, to=(2*dim(coords)[1]-1), by=2)])
+coords$lat_bureau <- as.numeric(unlist(strsplit(coords$coords, ","))[seq(from=2, to=(2*dim(coords)[1]), by=2)])
+coords$coords <- NULL
+
+### merge census geocoding results ----
+restaurants$address_match <- paste0(restaurants$address1, ", ", restaurants$city, ", ",
+                              restaurants$state, ", ", restaurants$zip)
+restaurants <- merge(restaurants, coords, by="address_match", all=TRUE)
+names(restaurants)
+restaurants$address_match <- NULL
+
+### examine duplicate addresses ----
+address <- restaurants[, c("restid", "address", "open", "close", "lat", "lon",
+                           "ownership", "drive_thru", "status_desc")]
+address <- address[address$address %in% address$address[duplicated(address$address)],]
+address[address$status_desc=="DEAD SITE"&!(is.na(address$open)&!is.na(address$close)),] #dead sites can be dropped
+
+# re-order address, by open/close date
+address <- address[order(address$address, address$open, address$close), ]
+address <- address[, -c(1, 7:9)]
+
+# create duplicate id tags for all addresses
+id <- data.frame(address[!duplicated(address$address), 1])
+id$id <- seq(1, dim(id)[1], by=1)
+colnames(id)[1] <- "address"
+test <- merge(address, id, by="address", all=TRUE)
+test$dup <- ifelse(is.na(test$dup), 0, test$dup)
+
+
+address <- reshape(address, direction="wide",
+                   timevar = "address",
+                   idvar = c(),
+                   v.names = )
 
 
 
 
 
-
-
+# drop dead sites
+restaurants <- restaurants[restaurants$status_desc!="DEAD SITE", ]
 
 
 
