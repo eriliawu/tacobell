@@ -8,6 +8,9 @@ options(warn = -1)
 #options(warn = current_warning)
 
 library(tools)
+library(dplyr)
+#install.packages("tidyr")
+library(tidyr)
 
 ### read data ----
 sample <- read.csv("data/from-bigpurple/restaurants.csv",
@@ -129,10 +132,11 @@ restaurants$address_match <- paste0(restaurants$address1, ", ", restaurants$city
 restaurants <- merge(restaurants, coords, by="address_match", all=TRUE)
 names(restaurants)
 restaurants$address_match <- NULL
+rm(coords)
 
 ### examine duplicate addresses ----
 address <- restaurants[, c("restid", "address", "open", "close", "lat", "lon",
-                           "ownership", "drive_thru", "status_desc")]
+                           "ownership", "drive_thru", "status_desc", "temp_close", "reopen")]
 address <- address[address$address %in% address$address[duplicated(address$address)],]
 address[address$status_desc=="DEAD SITE"&!(is.na(address$open)&!is.na(address$close)),] #dead sites can be dropped
 
@@ -140,25 +144,52 @@ address[address$status_desc=="DEAD SITE"&!(is.na(address$open)&!is.na(address$cl
 address <- address[order(address$address, address$open, address$close), ]
 address <- address[, -c(1, 7:9)]
 
-# create duplicate id tags for all addresses
+# create id numbers correspondent to addresses
 id <- data.frame(address[!duplicated(address$address), 1])
 id$id <- seq(1, dim(id)[1], by=1)
 colnames(id)[1] <- "address"
-test <- merge(address, id, by="address", all=TRUE)
-test$dup <- ifelse(is.na(test$dup), 0, test$dup)
+address <- merge(address, id, by="address", all=TRUE)
+rm(id)
 
+# create duplicate tags for each unique address
+address <- address %>%
+      group_by(address) %>%
+      mutate(count=n()) %>%
+      mutate(rank <- seq(1, count[1], 1))
+address <- address[, -(8:9)]
+colnames(address)[8] <- "dup"
 
-address <- reshape(address, direction="wide",
-                   timevar = "address",
-                   idvar = c(),
-                   v.names = )
+address <- address %>%
+      pivot_wider(names_from = dup, values_from = c(open, close, lat, lon, temp_close, reopen))
+names(address)
+address <- address[, c(1:2, 7, 22, 27,
+                       3, 8, 23, 28, 
+                       4, 9, 22, 29,
+                       5, 10, 23, 30,
+                       6, 11, 24, 31,
+                       12:21)]
 
+# merge restaurant level info
+# create new restaurant id, each unique address is one row
+id <- data.frame(unique(restaurants$address))
+id$newid <- seq(1, dim(id)[1], by=1)
+colnames(id)[1] <- "address"
+restaurants <- merge(restaurants, id, by="address", all=TRUE)
+rm(id)
 
+# export to csv
+write.csv(restaurants, "data/restaurants/analytic_restaurants.csv", row.names = FALSE)
 
+# drop dead sites, drop ownership columns
+#restaurants <- read.csv("data/restaurants/analytic_restaurants.csv", stringsAsFactors = FALSE)
+restaurants <- restaurants[restaurants$status_desc!="DEAD SITE",
+                           c("newid", "address", "state", "city", "open", "temp_close", "reopen", "close",
+                             "lat", "lon", "state_num", "county_num", "tract_num",
+                             "block_num", "lon_bureau", "lat_bureau")]
+colnames(restaurants)[5:10] <- c("open_1", "temp_close_1", "reopen_1", "close_1",
+                                 "lat_1", "lon_1")
+test <- merge(address, restaurants, by="address", all=TRUE)
 
-
-# drop dead sites
-restaurants <- restaurants[restaurants$status_desc!="DEAD SITE", ]
 
 
 
