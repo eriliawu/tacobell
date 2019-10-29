@@ -188,8 +188,23 @@ restaurants <- restaurants[restaurants$status_desc!="DEAD SITE",
                              "block_num", "lon_bureau", "lat_bureau")]
 colnames(restaurants)[5:10] <- c("open_1", "temp_close_1", "reopen_1", "close_1",
                                  "lat_1", "lon_1")
-test <- merge(address, restaurants, by="address", all=TRUE)
+restaurants <- merge(address, restaurants, by="address", all=TRUE)
 
+# clean up duplicate columns after merge
+restaurants$open_1.x[is.na(restaurants$open_1.x)] <- restaurants$open_1.y[is.na(restaurants$open_1.x)]
+restaurants$close_1.x[is.na(restaurants$close_1.x)] <- restaurants$close_1.y[is.na(restaurants$close_1.x)]
+restaurants$temp_close_1.x[is.na(restaurants$temp_close_1.x)] <- restaurants$temp_close_1.y[is.na(restaurants$temp_close_1.x)]
+restaurants$reopen_1.x[is.na(restaurants$reopen_1.x)] <- restaurants$reopen_1.y[is.na(restaurants$reopen_1.x)]
+restaurants$lat_1.x[is.na(restaurants$lat_1.x)] <- restaurants$lat_1.y[is.na(restaurants$lat_1.x)]
+restaurants$lon_1.x[is.na(restaurants$lon_1.x)] <- restaurants$lon_1.y[is.na(restaurants$lon_1.x)]
+names(restaurants)
+restaurants <- restaurants[, -(35:40)]
+colnames(restaurants)[c(2:5, 22, 27)] <- c("open_1", "close_1", "temo_close_1",
+                                           "reopen_1", "lat_1", "lon_1")
+restaurants$temp_close_1.x.1 <- NULL
+restaurants$temp_close_2.1 <- NULL
+restaurants <- restaurants[!duplicated(restaurants), ] #drop all dup rows
+restaurants <- restaurants[, c(30, 1)]
 
 
 
