@@ -11,6 +11,7 @@ library(tools)
 library(dplyr)
 #install.packages("tidyr")
 library(tidyr)
+library(ggplot2)
 
 ### read data ----
 sample <- read.csv("data/from-bigpurple/restaurants.csv",
@@ -204,7 +205,101 @@ colnames(restaurants)[c(2:5, 22, 27)] <- c("open_1", "close_1", "temo_close_1",
 restaurants$temp_close_1.x.1 <- NULL
 restaurants$temp_close_2.1 <- NULL
 restaurants <- restaurants[!duplicated(restaurants), ] #drop all dup rows
-restaurants <- restaurants[, c(30, 1)]
+restaurants <- restaurants[, c(30, 1, 31:32, 2:3, 20, 25, 4:19, 21:24, 26:29, 33:38)]
+rm(address)
+
+### merge restaurant with transaction data ----
+temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
+                         stringsAsFactors = FALSE)
+names(temp_address)
+temp_address <- temp_address[, c(1:2, 35)]
+
+# clean up transaction data
+transaction <- NULL
+for (i in c(2007:2015)) {
+      for (j in c(1:4)) {
+            if (i==2015 & j==4) {
+                  next
+            } else {
+                  transaction_temp <- read.csv(paste0("data/from-bigpurple/transaction-by-restaurant/by_restaurant_transaction_", i, "q", j, ".csv"),
+                                               stringsAsFactors = FALSE, sep = ";", header = FALSE, quote = "\"'",
+                                               col.names = c("restid", "volume", "dollar"))
+                  #print(sapply(transaction_temp, class))
+                  transaction_temp$year <- i
+                  transaction_temp$quarter <- paste0("Q", j)
+                  transaction <- rbind(transaction, transaction_temp)
+            }
+      }
+}
+rm(i, j, transaction_temp)
+
+transaction <- merge(transaction, temp_address, by="restid")
+rm(temp_address)
+
+# sum volume and dollar by address
+transaction <- aggregate(cbind(volume, dollar) ~ year+quarter+newid, transaction, sum)
+transaction <- merge(transaction, restaurants, by="newid")
+names(transaction)
+transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
+write.csv(transaction, "data/restaurants/transaction-by-address.csv", row.names = FALSE)
+
+### by-address analysis ----
+#transaction <- read.csv("data/restaurants/transaction-by-address.csv", stringsAsFactors = FALSE)
+
+# standardize sales by number of weeks in a quarter
+# 12 weeks for quarters 1-3, 16 weeks for quarter 4
+transaction$volume_std <- ifelse(transaction$quarter=="Q4",
+                                 transaction$volume/16, transaction$volume/12)
+transaction$dollar_std <- ifelse(transaction$quarter=="Q4",
+                                 transaction$dollar/16, transaction$dollar/12)
+
+# create mean spending per order
+transaction$mean_spending <- transaction$dollar / transaction$volume
+
+# create region code for all states
+transaction$region[transaction$state=="NH"|transaction$state=="VT"|transaction$state=="MA"|transaction$state=="ME"|transaction$state=="RI"|transaction$state=="CT"|transaction$state=="NJ"|transaction$state=="PA"|transaction$state=="NY"] <- "northeast"
+transaction$region[transaction$state=="ND"|transaction$state=="SD"|transaction$state=="NE"|transaction$state=="KS"|transaction$state=="MN"|transaction$state=="IA"|transaction$state=="MO"|transaction$state=="WI"|transaction$state=="IL"|transaction$state=="MI"|transaction$state=="IN"|transaction$state=="OH"] <- "midwest"
+transaction$region[transaction$state=="DE"|transaction$state=="DC"|transaction$state=="MD"|transaction$state=="OK"|transaction$state=="TX"|transaction$state=="AR"|transaction$state=="LA"|transaction$state=="MS"|transaction$state=="KY"|transaction$state=="TN"|transaction$state=="AL"|transaction$state=="WV"|transaction$state=="GA"|transaction$state=="VA"|transaction$state=="NC"|transaction$state=="SC"|transaction$state=="FL"] <- "south"
+transaction$region[transaction$state=="AK"|transaction$state=="HI"|transaction$state=="WA"|transaction$state=="OR"|transaction$state=="CA"|transaction$state=="ID"|transaction$state=="NV"|transaction$state=="MT"|transaction$state=="WY"|transaction$state=="UT"|transaction$state=="AZ"|transaction$state=="CO"|transaction$state=="NM"] <- "west"
+
+# make column quarter numeric
+transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
+
+# sales by region
+#qplot(x=volume_std, data=transaction, color=as.factor(region))
+Region <- factor(transaction$region[transaction$year==2015&transaction$quarter==2],
+                 levels=c("northeast", "midwest", "south", "west"))
+
+ggplot(data=subset(transaction, year==2015&quarter==2),
+            aes(x=volume_std, group=Region, fill=Region)) +
+      geom_histogram(bins=200) +
+      labs(title="Mean weekly number of transactions, 2015 Q2",
+           x="Number of transactions, standardized by week", y="Frequency", fill="Region",
+           caption="Data source: Taco Bell") +
+      scale_fill_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/by-restaurant-transaction/num-transaction-2015Q2.jpeg", width=20, height=10, unit="cm")
+
+# mean spending
+ggplot(data=subset(transaction, year==2015&quarter==2),
+       aes(x=mean_spending, group=Region, fill=Region)) +
+      geom_histogram(bins=200) +
+      labs(title="Mean spending per order, 2015 Q2",
+           x="Spending ($)", y="Frequency", fill="Region",
+           caption="Data source: Taco Bell") +
+      scale_fill_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/by-restaurant-transaction/mean-spending-2015Q2.jpeg", width=20, height=10, unit="cm")
+
+
+
+
+
+
+
+
 
 
 
