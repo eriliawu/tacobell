@@ -267,13 +267,10 @@ transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
 
 # sales by region
 #qplot(x=volume_std, data=transaction, color=as.factor(region))
-Region <- factor(transaction$region[transaction$year==2015&transaction$quarter==2],
-                 levels=c("northeast", "midwest", "south", "west"))
-
 ggplot(data=subset(transaction, year==2015&quarter==2),
-            aes(x=volume_std, group=Region, fill=Region)) +
+            aes(x=volume_std, group=as.factor(region), fill=as.factor(region))) +
       geom_histogram(bins=200) +
-      labs(title="Mean weekly number of transactions, 2015 Q2",
+      labs(title="Number of transactions, 2015 Q2",
            x="Number of transactions, standardized by week", y="Frequency", fill="Region",
            caption="Data source: Taco Bell") +
       scale_fill_brewer(palette="Set3") +
@@ -283,7 +280,7 @@ ggsave("tables/by-restaurant-transaction/num-transaction-2015Q2.jpeg", width=20,
 
 # mean spending
 ggplot(data=subset(transaction, year==2015&quarter==2),
-       aes(x=mean_spending, group=Region, fill=Region)) +
+       aes(x=mean_spending, group=as.factor(region), fill=as.factor(region))) +
       geom_histogram(bins=200) +
       labs(title="Mean spending per order, 2015 Q2",
            x="Spending ($)", y="Frequency", fill="Region",
@@ -293,12 +290,68 @@ ggplot(data=subset(transaction, year==2015&quarter==2),
             plot.caption=element_text(hjust=0, face="italic"))
 ggsave("tables/by-restaurant-transaction/mean-spending-2015Q2.jpeg", width=20, height=10, unit="cm")
 
+# look at numbers by region, state, county, tract
+region <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+region, transaction, sum)
+region$mean_spending <- region$dollar_std/region$volume_std
+count <- aggregate(address~year+quarter+region, transaction, length)
+colnames(count)[4] <- "n"
+region <- merge(region, count, by=c("year", "quarter", "region"))
+rm(count)
+
+state <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+state, transaction, sum)
+county <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+state+county_num, transaction, sum)
+
+tract <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+state+county_num+tract_num, transaction, sum)
+tract$mean_spending <- tract$dollar_std/tract$volume_std
+count <- aggregate(address~year+quarter+state+county_num+tract_num, transaction, length)
+colnames(count)[6] <- "n"
+tract <- merge(tract, count, by=c("year", "quarter", "state", "county_num", "tract_num"))
+rm(count)
 
 
+# num of transactions by region, over time
+ggplot(data=region, aes(x=paste(year, "Q", quarter, sep=""), y=volume_std,
+                       group=as.factor(region), col=as.factor(region))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Number of transactions, by region",
+           x="Year", y="Number of transactions, standardized by week", col="Region",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/by-restaurant-transaction/num-transactions-by-region.jpeg", width=20, height=10, unit="cm")
 
+# mean spending by region, over time
+ggplot(data=region, aes(x=paste(year, "Q", quarter, sep=""), y=mean_spending,
+                        group=as.factor(region), col=as.factor(region))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Mean spending per order, by region",
+           x="Year", y="Spending ($)", col="Region",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/by-restaurant-transaction/mean-spending-by-region.jpeg", width=20, height=10, unit="cm")
 
+# num of restaurants by region, over time
+ggplot(data=region, aes(x=paste(year, "Q", quarter, sep=""), y=n,
+                        group=as.factor(region), col=as.factor(region))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Number of restaurants, by region",
+           x="Year", y="Number of restaurants", col="Region",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/by-restaurant-transaction/num-restaurants-by-region.jpeg", width=20, height=10, unit="cm")
 
-
+# 
 
 
 
