@@ -182,7 +182,7 @@ rm(id)
 write.csv(restaurants, "data/restaurants/analytic_restaurants.csv", row.names = FALSE)
 
 # drop dead sites, drop ownership columns
-#restaurants <- read.csv("data/restaurants/analytic_restaurants.csv", stringsAsFactors = FALSE)
+restaurants <- read.csv("data/restaurants/analytic_restaurants.csv", stringsAsFactors = FALSE)
 restaurants <- restaurants[restaurants$status_desc!="DEAD SITE",
                            c("newid", "address", "state", "city", "open", "temp_close", "reopen", "close",
                              "lat", "lon", "state_num", "county_num", "tract_num",
@@ -243,7 +243,7 @@ names(transaction)
 transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
 write.csv(transaction, "data/restaurants/transaction-by-address.csv", row.names = FALSE)
 
-### by-address analysis ----
+### by-address analysis, by region ----
 #transaction <- read.csv("data/restaurants/transaction-by-address.csv", stringsAsFactors = FALSE)
 
 # standardize sales by number of weeks in a quarter
@@ -308,7 +308,6 @@ colnames(count)[6] <- "n"
 tract <- merge(tract, count, by=c("year", "quarter", "state", "county_num", "tract_num"))
 rm(count)
 
-
 # num of transactions by region, over time
 ggplot(data=region, aes(x=paste(year, "Q", quarter, sep=""), y=volume_std,
                        group=as.factor(region), col=as.factor(region))) +
@@ -351,12 +350,62 @@ ggplot(data=region, aes(x=paste(year, "Q", quarter, sep=""), y=n,
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/by-restaurant-transaction/num-restaurants-by-region.jpeg", width=20, height=10, unit="cm")
 
-# 
+# export lon/lat coordinates for geocode census county and tract numbers ----
+# in ArcGIS
+geocode <- restaurants[, c(1:2, 7:8)]
+geocode <- geocode[!duplicated(geocode), ]
+colnames(geocode)[3:4] <- c("lat", "lon")
+write.csv(geocode, "data/geocoding/geocoding-county.csv", row.names = FALSE)
 
+geocode <- read.csv("data/geocoding/geocoding-county_results.csv", stringsAsFactors = FALSE)
+names(restaurants)
+restaurants <- restaurants[, -c(33:38)]
+names(geocode)
+geocode<- geocode[, c(4, 11, 8)]
+colnames(geocode)[3:4] <- c("county_num", "state_num")
+restaurants <- merge(restaurants, geocode, by="address", all=TRUE)
+sum(is.na(restaurants$address))
+rm(geocode)
+write.csv(restaurants, row.names = FALSE,
+          "data/restaurants/unique-address-w-county_num.csv")
 
+### by address analysis, by county ----
+temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
+                         stringsAsFactors = FALSE)
+names(temp_address)
+temp_address <- temp_address[, c(1:2, 35)]
 
+# clean up transaction data
+transaction <- NULL
+for (i in c(2007:2015)) {
+      for (j in c(1:4)) {
+            if (i==2015 & j==4) {
+                  next
+            } else {
+                  transaction_temp <- read.csv(paste0("data/from-bigpurple/transaction-by-restaurant/by_restaurant_transaction_", i, "q", j, ".csv"),
+                                               stringsAsFactors = FALSE, sep = ";", header = FALSE, quote = "\"'",
+                                               col.names = c("restid", "volume", "dollar"))
+                  #print(sapply(transaction_temp, class))
+                  transaction_temp$year <- i
+                  transaction_temp$quarter <- paste0("Q", j)
+                  transaction <- rbind(transaction, transaction_temp)
+            }
+      }
+}
+rm(i, j, transaction_temp)
+transaction <- transaction[, -c(1, 6)]
 
+transaction <- merge(restaurants, transaction, by="newid", all=TRUE)
+names(transaction)
+transaction <- transaction[, c(1:3, 33:38)]
+transaction <- transaction[, c(1:2, 8:9, 6:7, 3:5)]
+transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
+transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
 
-
-
+# aggregate to county level
+county <- aggregate(cbind(volume, dollar) ~ year+quarter+county_num, transaction, sum)
+county <- county[order(county$county_num, county$year, county$quarter), ] 
+county$volume_std <- ifelse(county$quarter==4, county$volume/16, county$volume/12)
+county$dollar_std <- ifelse(county$quarter==4, county$dollar/16, county$dollar/12)
+county$mean_spending <- county$dollar_std/county$volume_std
 
