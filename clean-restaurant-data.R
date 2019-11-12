@@ -352,6 +352,7 @@ ggsave("tables/by-restaurant-transaction/num-restaurants-by-region.jpeg", width=
 
 # export lon/lat coordinates for geocode census county and tract numbers ----
 # in ArcGIS
+# county
 geocode <- restaurants[, c(1:2, 7:8)]
 geocode <- geocode[!duplicated(geocode), ]
 colnames(geocode)[3:4] <- c("lat", "lon")
@@ -368,6 +369,16 @@ sum(is.na(restaurants$address))
 rm(geocode)
 write.csv(restaurants, row.names = FALSE,
           "data/restaurants/unique-address-w-county_num.csv")
+
+# tracts
+geocode <- read.csv("data/geocoding/geocoding-tract_results.csv", stringsAsFactors = FALSE)
+names(geocode)
+geocode <- geocode[, c(4, 11)]
+colnames(geocode)[2] <- "tract_num"
+restaurants <- merge(restaurants, geocode, by="address", all=TRUE)
+write.csv(restaurants, row.names = FALSE,
+          "data/restaurants/unique-address-w-tract_num.csv")
+rm(geocode)
 
 ### by address analysis, by county ----
 temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
@@ -408,4 +419,68 @@ county <- county[order(county$county_num, county$year, county$quarter), ]
 county$volume_std <- ifelse(county$quarter==4, county$volume/16, county$volume/12)
 county$dollar_std <- ifelse(county$quarter==4, county$dollar/16, county$dollar/12)
 county$mean_spending <- county$dollar_std/county$volume_std
+
+### by address analysis, by census tract ----
+temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
+                         stringsAsFactors = FALSE)
+names(temp_address)
+temp_address <- temp_address[, c(1:2, 35)]
+
+# clean up transaction data
+transaction <- NULL
+for (i in c(2007:2015)) {
+      for (j in c(1:4)) {
+            if (i==2015 & j==4) {
+                  next
+            } else {
+                  transaction_temp <- read.csv(paste0("data/from-bigpurple/transaction-by-restaurant/by_restaurant_transaction_", i, "q", j, ".csv"),
+                                               stringsAsFactors = FALSE, sep = ";", header = FALSE, quote = "\"'",
+                                               col.names = c("restid", "volume", "dollar"))
+                  #print(sapply(transaction_temp, class))
+                  transaction_temp$year <- i
+                  transaction_temp$quarter <- paste0("Q", j)
+                  transaction <- rbind(transaction, transaction_temp)
+            }
+      }
+}
+rm(i, j, transaction_temp)
+
+transaction <- merge(transaction, temp_address, by="restid", all=TRUE)
+transaction$restid <- NULL
+transaction <- aggregate(cbind(volume, dollar) ~ year+quarter+address, transaction, sum)
+rm(temp_address)
+
+transaction <- merge(restaurants, transaction, by="address", all=TRUE)
+names(transaction)
+transaction <- transaction[, c(1:4, 33:39)]
+transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
+transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
+
+# aggregate to county level
+tract <- aggregate(cbind(volume, dollar) ~ year+quarter+tract_num, transaction, sum)
+tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ] 
+tract$volume_std <- ifelse(tract$quarter==4, tract$volume/16, tract$volume/12)
+tract$dollar_std <- ifelse(tract$quarter==4, tract$dollar/16, tract$dollar/12)
+tract$mean_spending <- tract$dollar_std/tract$volume_std
+tract <- tract[, -c(4:5)]
+
+### clean up income and race data
+# from IPUMS, year 2015, 5-year ACS data
+income <- read.csv("data/census-data/tract/nhgis0003_income_race_ethnicity/nhgis0003_ds215_20155_2015_tract.csv",
+                   stringsAsFactors = FALSE)
+names(income)
+income <- income[, c(1, 59, 38, 40:41, 43, 49)]
+colnames(income)[1:7] <- c("tract_num", "income", "pop", "white", "black", "asian", "hisp")
+
+
+
+
+
+
+
+
+
+
+
+
 
