@@ -12,6 +12,8 @@ library(dplyr)
 #install.packages("tidyr")
 library(tidyr)
 library(ggplot2)
+#install.packages("stringr")
+library(stringr)
 
 ### read data ----
 sample <- read.csv("data/from-bigpurple/restaurants.csv",
@@ -373,8 +375,9 @@ write.csv(restaurants, row.names = FALSE,
 # tracts
 geocode <- read.csv("data/geocoding/geocoding-tract_results.csv", stringsAsFactors = FALSE)
 names(geocode)
-geocode <- geocode[, c(4, 11)]
-colnames(geocode)[2] <- "tract_num"
+geocode <- geocode[, c(3:4, 8:12)]
+colnames(geocode)[3:7] <- c("state_num", "county_num", "short_tract_num", "tract_num", "tract_name")
+geocode$tract_num <- as.character(geocode$tract_num)
 restaurants <- merge(restaurants, geocode, by="address", all=TRUE)
 write.csv(restaurants, row.names = FALSE,
           "data/restaurants/unique-address-w-tract_num.csv")
@@ -456,7 +459,7 @@ transaction <- transaction[, c(1:4, 33:39)]
 transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
 transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
 
-# aggregate to county level
+# aggregate to tract level
 tract <- aggregate(cbind(volume, dollar) ~ year+quarter+tract_num, transaction, sum)
 tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ] 
 tract$volume_std <- ifelse(tract$quarter==4, tract$volume/16, tract$volume/12)
@@ -464,13 +467,46 @@ tract$dollar_std <- ifelse(tract$quarter==4, tract$dollar/16, tract$dollar/12)
 tract$mean_spending <- tract$dollar_std/tract$volume_std
 tract <- tract[, -c(4:5)]
 
-### clean up income and race data
+### clean up income and race data ----
 # from IPUMS, year 2015, 5-year ACS data
 income <- read.csv("data/census-data/tract/nhgis0003_income_race_ethnicity/nhgis0003_ds215_20155_2015_tract.csv",
                    stringsAsFactors = FALSE)
 names(income)
-income <- income[, c(1, 59, 38, 40:41, 43, 49)]
-colnames(income)[1:7] <- c("tract_num", "income", "pop", "white", "black", "asian", "hisp")
+income <- income[, c(1, 6, 8, 11, 37, 59, 38, 40:41, 43, 49)]
+colnames(income)[1:11] <- c("tract_num", "state_num", "county_num", "short_tract_num",
+                           "tract_name", "income", "pop", 
+                           "white", "black", "asian", "hisp")
+
+# fix census tract number
+# format: 2-digit state num, 3-digit county num, 6-digit tract num
+income$state_num <- str_pad(as.character(income$state_num), 2, side="left", pad="0")
+income$county_num <- str_pad(as.character(income$county_num), 3, side="left", pad="0")
+income$short_tract_num <- str_pad(as.character(income$short_tract_num), 6, side="left", pad="0")
+income$tract_num <- paste0(income$state_num, income$county_num, income$short_tract_num)
+income <- income[, -c(2:5)]
+tract$tract_num <- str_pad(as.character(tract$tract_num), 11, side="left", pad="0")
+
+# calculate income quintiles and other indices for ethnicity
+breaks <- quantile(income$income, probs = c(0, 0.2, 0.4, 0.6, 0.8, 1), na.rm = TRUE)
+income$income5 <- cut(income$income, breaks=breaks, labels=1:5, include.lowest=TRUE)
+
+# make ethnicity percetnage
+income$white <- income$white/income$pop
+income$black <- income$black/income$pop
+income$asian <- income$asian/income$pop
+income$hisp <- income$hisp/income$pop
+breaks <- quantile(income$white, probs = c(0, 0.2, 0.4, 0.6, 0.8, 1), na.rm = TRUE)
+income$white5 <- cut(income$white, breaks=breaks, labels=1:5, include.lowest=TRUE)
+
+tract <- merge(tract, income, by="tract_num", all=TRUE)
+rm(income)
+tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ]
+tract <- tract[!is.na(tract$year), ]
+
+# merge ruca index from USDA
+ruca <- read.csv("data/census-data/tract/RUCA_USDA_2010.csv", stringsAsFactors = FALSE)
+ruca$tract_num <- str_pad(as.character(ruca$tract_num), 11, side="left", pad="0")
+test <- merge(ruca, tract, by="tract_num")
 
 
 
@@ -478,9 +514,18 @@ colnames(income)[1:7] <- c("tract_num", "income", "pop", "white", "black", "asia
 
 
 
+# count number of restaurants that ever existed in a census tract
+number <- restaurants[, c(1, 35)]
+number$tract_num <- str_pad(as.character(number$tract_num), 9, side="left", pad="0")
+number <- aggregate(address~tract_num, data=number, FUN=length)
+tract <- merge(tract, number, by="tract_num", all=TRUE)
+names(tract)
+colnames(tract)[13] <- "n"
+tract <- tract[, c(1, 13, 2:12)]
+rm(number)
+tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ]
 
-
-
+tract$n <- NULL
 
 
 
