@@ -72,7 +72,7 @@ rm(test)
 colnames(menu)[2] <- "product"
 
 start_time <- Sys.time()
-join <- stringdist_join(product, menu, 
+join_jw <- stringdist_join(product, menu, 
                 by="product",
                 mode = "left",
                 ignore_case = FALSE, 
@@ -85,10 +85,31 @@ end_time <- Sys.time()
 end_time - start_time
 rm(start_time, end_time)
 
-names(join)
-join <- join[, c(1, 4, 6, 2, 5, 3)]
-colnames(join)[1:2] <- c("product.tb", "product.menustat")
-join <- join[order(join$dist.jw, join$product.tb), ]
+join_dl <- stringdist_join(product, menu, 
+                           by="product",
+                           mode = "left",
+                           ignore_case = FALSE, 
+                           method = "dl", 
+                           max_dist = 99, 
+                           distance_col = "dist.dl") %>%
+      group_by(product.x) %>%
+      top_n(1, -dist.dl)
+
+join_jc <- stringdist_join(product, menu, 
+                           by="product",
+                           mode = "left",
+                           ignore_case = FALSE, 
+                           method = "jaccard", 
+                           max_dist = 99, 
+                           distance_col = "dist.jc") %>%
+      group_by(product.x) %>%
+      top_n(1, -dist.jc)
+
+
+names(join_jc)
+join_jc <- join_jc[, c(1, 4, 6, 2, 5, 3)]
+colnames(join_jc)[1:2] <- c("product.tb", "product.menustat")
+join_jc <- join_jc[order(join_jc$dist.jc, join_jc$product.tb), ]
 
 ### analyze matching results ----
 length(join$dist.jw[join$dist.jw==0])
