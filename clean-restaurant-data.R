@@ -115,106 +115,38 @@ restaurants <- restaurants[order(restaurants$state, restaurants$address,
                                  restaurants$open, restaurants$close),
                            c(1, 28, 14, 16:22, 25:26, 2:13, 15, 23:24, 27)]
 
-### export address data for census bureau geocoder ----
-address <- restaurants[, c("address1","city", "state", "zip")]
-address <- address[!duplicated(address), ]
-write.csv(address, "data/geocoding/address.csv")
-rm(address)
-
-coords <- read.csv("data/geocoding/GeocodeResults.csv",
-                   stringsAsFactors = FALSE, header=FALSE, skip=0)
-coords <- coords[coords$V3=="Match", c(2, 6, 9:12)]
-colnames(coords)[1:6] <- c("address_match", "coords", "state_num", "county_num", "tract_num", "block_num")
-coords$lon_bureau <- as.numeric(unlist(strsplit(coords$coords, ","))[seq(from=1, to=(2*dim(coords)[1]-1), by=2)])
-coords$lat_bureau <- as.numeric(unlist(strsplit(coords$coords, ","))[seq(from=2, to=(2*dim(coords)[1]), by=2)])
-coords$coords <- NULL
-
-### merge census geocoding results ----
-restaurants$address_match <- paste0(restaurants$address1, ", ", restaurants$city, ", ",
-                              restaurants$state, ", ", restaurants$zip)
-restaurants <- merge(restaurants, coords, by="address_match", all=TRUE)
-names(restaurants)
-restaurants$address_match <- NULL
-rm(coords)
-
 ### examine duplicate addresses ----
 address <- restaurants[, c("restid", "address", "open", "close", "lat", "lon",
                            "ownership", "drive_thru", "status_desc", "temp_close", "reopen")]
-address <- address[address$address %in% address$address[duplicated(address$address)],]
+#address <- address[address$address %in% address$address[duplicated(address$address)],]
 address[address$status_desc=="DEAD SITE"&!(is.na(address$open)&!is.na(address$close)),] #dead sites can be dropped
 
 # re-order address, by open/close date
 address <- address[order(address$address, address$open, address$close), ]
 address <- address[, -c(1, 7:9)]
 
-# create id numbers correspondent to addresses
-id <- data.frame(address[!duplicated(address$address), 1])
-id$id <- seq(1, dim(id)[1], by=1)
-colnames(id)[1] <- "address"
-address <- merge(address, id, by="address", all=TRUE)
-rm(id)
-
 # create duplicate tags for each unique address
 address <- address %>%
       group_by(address) %>%
       mutate(count=n()) %>%
       mutate(rank <- seq(1, count[1], 1))
-address <- address[, -(8:9)]
-colnames(address)[8] <- "dup"
+colnames(address)[9] <- "dup"
+address$count <- NULL
 
 address <- address %>%
       pivot_wider(names_from = dup, values_from = c(open, close, lat, lon, temp_close, reopen))
 names(address)
-address <- address[, c(1:2, 7, 22, 27,
-                       3, 8, 23, 28, 
-                       4, 9, 22, 29,
-                       5, 10, 23, 30,
-                       6, 11, 24, 31,
-                       12:21)]
 
-# merge restaurant level info
-# create new restaurant id, each unique address is one row
-id <- data.frame(unique(restaurants$address))
-id$newid <- seq(1, dim(id)[1], by=1)
-colnames(id)[1] <- "address"
-restaurants <- merge(restaurants, id, by="address", all=TRUE)
-rm(id)
-
-# export to csv
-write.csv(restaurants, "data/restaurants/analytic_restaurants.csv", row.names = FALSE)
-
-# drop dead sites, drop ownership columns
-restaurants <- read.csv("data/restaurants/analytic_restaurants.csv", stringsAsFactors = FALSE)
-restaurants <- restaurants[restaurants$status_desc!="DEAD SITE",
-                           c("newid", "address", "state", "city", "open", "temp_close", "reopen", "close",
-                             "lat", "lon", "state_num", "county_num", "tract_num",
-                             "block_num", "lon_bureau", "lat_bureau")]
-colnames(restaurants)[5:10] <- c("open_1", "temp_close_1", "reopen_1", "close_1",
-                                 "lat_1", "lon_1")
-restaurants <- merge(address, restaurants, by="address", all=TRUE)
-
-# clean up duplicate columns after merge
-restaurants$open_1.x[is.na(restaurants$open_1.x)] <- restaurants$open_1.y[is.na(restaurants$open_1.x)]
-restaurants$close_1.x[is.na(restaurants$close_1.x)] <- restaurants$close_1.y[is.na(restaurants$close_1.x)]
-restaurants$temp_close_1.x[is.na(restaurants$temp_close_1.x)] <- restaurants$temp_close_1.y[is.na(restaurants$temp_close_1.x)]
-restaurants$reopen_1.x[is.na(restaurants$reopen_1.x)] <- restaurants$reopen_1.y[is.na(restaurants$reopen_1.x)]
-restaurants$lat_1.x[is.na(restaurants$lat_1.x)] <- restaurants$lat_1.y[is.na(restaurants$lat_1.x)]
-restaurants$lon_1.x[is.na(restaurants$lon_1.x)] <- restaurants$lon_1.y[is.na(restaurants$lon_1.x)]
-names(restaurants)
-restaurants <- restaurants[, -(35:40)]
-colnames(restaurants)[c(2:5, 22, 27)] <- c("open_1", "close_1", "temo_close_1",
-                                           "reopen_1", "lat_1", "lon_1")
-restaurants$temp_close_1.x.1 <- NULL
-restaurants$temp_close_2.1 <- NULL
-restaurants <- restaurants[!duplicated(restaurants), ] #drop all dup rows
-restaurants <- restaurants[, c(30, 1, 31:32, 2:3, 20, 25, 4:19, 21:24, 26:29, 33:38)]
-rm(address)
+# drop dead sites and export restaurant data to csv
+restaurants  <- restaurants[restaurants$status_desc!="DEAD SITE", ]
+#write.csv(restaurants, "data/restaurants/analytic_restaurants.csv", row.names = FALSE)
+#write.csv(address, "data/restaurants/analytic_address.csv", row.names = FALSE)
 
 ### merge restaurant with transaction data ----
-temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
+temp <- read.csv("data/restaurants/analytic_restaurants.csv",
                          stringsAsFactors = FALSE)
-names(temp_address)
-temp_address <- temp_address[, c(1:2, 35)]
+names(temp)
+temp <- temp[, c(1:2)]
 
 # clean up transaction data
 transaction <- NULL
@@ -235,14 +167,22 @@ for (i in c(2007:2015)) {
 }
 rm(i, j, transaction_temp)
 
-transaction <- merge(transaction, temp_address, by="restid")
-rm(temp_address)
+transaction <- merge(transaction, temp, by="restid")
+rm(temp)
 
 # sum volume and dollar by address
-transaction <- aggregate(cbind(volume, dollar) ~ year+quarter+newid, transaction, sum)
-transaction <- merge(transaction, restaurants, by="newid")
+transaction <- aggregate(cbind(volume, dollar) ~ year+quarter+address, transaction, sum)
 names(transaction)
-transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
+transaction <- transaction[order(transaction$address, transaction$year, transaction$quarter), ]
+
+# merge with other restaurant info
+transaction <- merge(transaction, address, by="address", all=TRUE)
+names(transaction)
+transaction <- transaction[, -c()]
+temp <- restaurants[, c(2:3, 28)]
+temp <- temp[!duplicated(temp$address), ]
+transaction <- merge(transaction, temp, by="address", all=TRUE)
+rm(temp)
 write.csv(transaction, "data/restaurants/transaction-by-address.csv", row.names = FALSE)
 
 ### by-address analysis, by region ----
@@ -272,7 +212,7 @@ transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
 ggplot(data=subset(transaction, year==2015&quarter==2),
             aes(x=volume_std, group=as.factor(region), fill=as.factor(region))) +
       geom_histogram(bins=200) +
-      labs(title="Number of transactions, 2015 Q2",
+      labs(title="Number of transactions per restaurant, 2015 Q2",
            x="Number of transactions, standardized by week", y="Frequency", fill="Region",
            caption="Data source: Taco Bell") +
       scale_fill_brewer(palette="Set3") +
@@ -280,34 +220,12 @@ ggplot(data=subset(transaction, year==2015&quarter==2),
             plot.caption=element_text(hjust=0, face="italic"))
 ggsave("tables/by-restaurant-transaction/num-transaction-2015Q2.jpeg", width=20, height=10, unit="cm")
 
-# mean spending
-ggplot(data=subset(transaction, year==2015&quarter==2),
-       aes(x=mean_spending, group=as.factor(region), fill=as.factor(region))) +
-      geom_histogram(bins=200) +
-      labs(title="Mean spending per order, 2015 Q2",
-           x="Spending ($)", y="Frequency", fill="Region",
-           caption="Data source: Taco Bell") +
-      scale_fill_brewer(palette="Set3") +
-      theme(plot.title=element_text(hjust=0.5, size=18),
-            plot.caption=element_text(hjust=0, face="italic"))
-ggsave("tables/by-restaurant-transaction/mean-spending-2015Q2.jpeg", width=20, height=10, unit="cm")
-
 # look at numbers by region, state, county, tract
 region <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+region, transaction, sum)
 region$mean_spending <- region$dollar_std/region$volume_std
 count <- aggregate(address~year+quarter+region, transaction, length)
 colnames(count)[4] <- "n"
 region <- merge(region, count, by=c("year", "quarter", "region"))
-rm(count)
-
-state <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+state, transaction, sum)
-county <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+state+county_num, transaction, sum)
-
-tract <- aggregate(cbind(volume_std, dollar_std) ~ year+quarter+state+county_num+tract_num, transaction, sum)
-tract$mean_spending <- tract$dollar_std/tract$volume_std
-count <- aggregate(address~year+quarter+state+county_num+tract_num, transaction, length)
-colnames(count)[6] <- "n"
-tract <- merge(tract, count, by=c("year", "quarter", "state", "county_num", "tract_num"))
 rm(count)
 
 # num of transactions by region, over time
@@ -352,114 +270,38 @@ ggplot(data=region, aes(x=paste(year, "Q", quarter, sep=""), y=n,
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/by-restaurant-transaction/num-restaurants-by-region.jpeg", width=20, height=10, unit="cm")
 
+rm(region)
+
 # export lon/lat coordinates for geocode census county and tract numbers ----
 # in ArcGIS
 # county
 geocode <- restaurants[, c(1:2, 7:8)]
 geocode <- geocode[!duplicated(geocode), ]
 colnames(geocode)[3:4] <- c("lat", "lon")
-write.csv(geocode, "data/geocoding/geocoding-county.csv", row.names = FALSE)
+write.csv(geocode, "data/geocoding/geocoding-tract.csv", row.names = FALSE)
 
-geocode <- read.csv("data/geocoding/geocoding-county_results.csv", stringsAsFactors = FALSE)
-names(restaurants)
-restaurants <- restaurants[, -c(33:38)]
-names(geocode)
-geocode<- geocode[, c(4, 11, 8)]
-colnames(geocode)[3:4] <- c("county_num", "state_num")
-restaurants <- merge(restaurants, geocode, by="address", all=TRUE)
-sum(is.na(restaurants$address))
-rm(geocode)
-write.csv(restaurants, row.names = FALSE,
-          "data/restaurants/unique-address-w-county_num.csv")
-
+### merge geocode results ----
 # tracts
 geocode <- read.csv("data/geocoding/geocoding-tract_results.csv", stringsAsFactors = FALSE)
 names(geocode)
 geocode <- geocode[, c(3:4, 8:12)]
 colnames(geocode)[3:7] <- c("state_num", "county_num", "short_tract_num", "tract_num", "tract_name")
-geocode$tract_num <- as.character(geocode$tract_num)
-restaurants <- merge(restaurants, geocode, by="address", all=TRUE)
+geocode$tract_num <- paste0(str_pad(as.character(geocode$state_num), 2, side="left", pad="0"),
+                            str_pad(as.character(geocode$county_num), 3, side="left", pad="0"),
+                            str_pad(as.character(geocode$short_tract_num), 6, side="left", pad="0"))
+
+address <- merge(address, geocode, by="address", all=TRUE)
 write.csv(restaurants, row.names = FALSE,
           "data/restaurants/unique-address-w-tract_num.csv")
+transaction <- merge(transaction, geocode, by="address", all=TRUE)
+transaction$tract_name <- NULL
 rm(geocode)
-
-### by address analysis, by county ----
-temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
-                         stringsAsFactors = FALSE)
-names(temp_address)
-temp_address <- temp_address[, c(1:2, 35)]
-
-# clean up transaction data
-transaction <- NULL
-for (i in c(2007:2015)) {
-      for (j in c(1:4)) {
-            if (i==2015 & j==4) {
-                  next
-            } else {
-                  transaction_temp <- read.csv(paste0("data/from-bigpurple/transaction-by-restaurant/by_restaurant_transaction_", i, "q", j, ".csv"),
-                                               stringsAsFactors = FALSE, sep = ";", header = FALSE, quote = "\"'",
-                                               col.names = c("restid", "volume", "dollar"))
-                  #print(sapply(transaction_temp, class))
-                  transaction_temp$year <- i
-                  transaction_temp$quarter <- paste0("Q", j)
-                  transaction <- rbind(transaction, transaction_temp)
-            }
-      }
-}
-rm(i, j, transaction_temp)
-transaction <- transaction[, -c(1, 6)]
-
-transaction <- merge(restaurants, transaction, by="newid", all=TRUE)
-names(transaction)
-transaction <- transaction[, c(1:3, 33:38)]
-transaction <- transaction[, c(1:2, 8:9, 6:7, 3:5)]
-transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
-transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
-
-# aggregate to county level
-county <- aggregate(cbind(volume, dollar) ~ year+quarter+county_num, transaction, sum)
-county <- county[order(county$county_num, county$year, county$quarter), ] 
-county$volume_std <- ifelse(county$quarter==4, county$volume/16, county$volume/12)
-county$dollar_std <- ifelse(county$quarter==4, county$dollar/16, county$dollar/12)
-county$mean_spending <- county$dollar_std/county$volume_std
-
-### by address analysis, by census tract ----
-temp_address <- read.csv("data/restaurants/analytic_restaurants.csv",
-                         stringsAsFactors = FALSE)
-names(temp_address)
-temp_address <- temp_address[, c(1:2, 35)]
-
-# clean up transaction data
-transaction <- NULL
-for (i in c(2007:2015)) {
-      for (j in c(1:4)) {
-            if (i==2015 & j==4) {
-                  next
-            } else {
-                  transaction_temp <- read.csv(paste0("data/from-bigpurple/transaction-by-restaurant/by_restaurant_transaction_", i, "q", j, ".csv"),
-                                               stringsAsFactors = FALSE, sep = ";", header = FALSE, quote = "\"'",
-                                               col.names = c("restid", "volume", "dollar"))
-                  #print(sapply(transaction_temp, class))
-                  transaction_temp$year <- i
-                  transaction_temp$quarter <- paste0("Q", j)
-                  transaction <- rbind(transaction, transaction_temp)
-            }
-      }
-}
-rm(i, j, transaction_temp)
-
-transaction <- merge(transaction, temp_address, by="restid", all=TRUE)
-transaction$restid <- NULL
-transaction <- aggregate(cbind(volume, dollar) ~ year+quarter+address, transaction, sum)
-rm(temp_address)
-
-transaction <- merge(restaurants, transaction, by="address", all=TRUE)
-names(transaction)
-transaction <- transaction[, c(1:4, 33:39)]
-transaction$quarter <- as.integer(substr(transaction$quarter, 2, 2))
-transaction <- transaction[order(transaction$newid, transaction$year, transaction$quarter), ]
+write.csv(transaction, row.names = FALSE,
+          "data/restaurants/transaction-by-address-with-tract-num.csv")
 
 # aggregate to tract level
+#transaction <- read.csv("data/restaurants/transaction-by-address-with-tract-num.csv",
+#                       stringsAsFactors = FALSE)
 tract <- aggregate(cbind(volume, dollar) ~ year+quarter+tract_num, transaction, sum)
 tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ] 
 tract$volume_std <- ifelse(tract$quarter==4, tract$volume/16, tract$volume/12)
@@ -484,7 +326,6 @@ income$county_num <- str_pad(as.character(income$county_num), 3, side="left", pa
 income$short_tract_num <- str_pad(as.character(income$short_tract_num), 6, side="left", pad="0")
 income$tract_num <- paste0(income$state_num, income$county_num, income$short_tract_num)
 income <- income[, -c(2:5)]
-tract$tract_num <- str_pad(as.character(tract$tract_num), 11, side="left", pad="0")
 
 # calculate income quintiles and other indices for ethnicity
 breaks <- quantile(income$income, probs = c(0, 0.2, 0.4, 0.6, 0.8, 1), na.rm = TRUE)
@@ -501,31 +342,81 @@ income$white5 <- cut(income$white, breaks=breaks, labels=1:5, include.lowest=TRU
 tract <- merge(tract, income, by="tract_num", all=TRUE)
 rm(income)
 tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ]
-tract <- tract[!is.na(tract$year), ]
+#tract <- tract[!is.na(tract$year), ]
 
 # merge ruca index from USDA
 ruca <- read.csv("data/census-data/tract/RUCA_USDA_2010.csv", stringsAsFactors = FALSE)
 ruca$tract_num <- str_pad(as.character(ruca$tract_num), 11, side="left", pad="0")
-test <- merge(ruca, tract, by="tract_num")
-
-
-
-
-
-
+tract <- merge(ruca, tract, by="tract_num", all=TRUE)
+rm(ruca, breaks)
 
 # count number of restaurants that ever existed in a census tract
-number <- restaurants[, c(1, 35)]
-number$tract_num <- str_pad(as.character(number$tract_num), 9, side="left", pad="0")
+number <- address[, c(1, 36)]
 number <- aggregate(address~tract_num, data=number, FUN=length)
+summary(number$address)
 tract <- merge(tract, number, by="tract_num", all=TRUE)
 names(tract)
-colnames(tract)[13] <- "n"
-tract <- tract[, c(1, 13, 2:12)]
+colnames(tract)[17] <- "n"
+tract <- tract[, c(1, 17, 2:16)]
 rm(number)
 tract <- tract[order(tract$tract_num, tract$year, tract$quarter), ]
 
-tract$n <- NULL
+tract$pop_density <- as.numeric(gsub(pattern = ",", tract$pop_density, replacement = ""))
+
+### by-tract analysis ----
+tract$n[is.na(tract$n)] <- 0
+
+# median income
+length(unique(tract$tract_num[tract$n==0]))
+summary(tract$income[tract$n==0])
+summary(tract$white[tract$n==0])
+summary(tract$asian[tract$n==0])
+summary(tract$black[tract$n==0])
+summary(tract$hisp[tract$n==0])
+summary(tract$pop_density[tract$n==0])
+
+unique_tract <- tract[!duplicated(tract$tract_num), c(1:4, 10:17)]
+summary(unique_tract$n[unique_tract$n==0])
+summary(unique_tract$income[unique_tract$n==0])
+summary(unique_tract$white[unique_tract$n==0])
+summary(unique_tract$asian[unique_tract$n==0])
+summary(unique_tract$black[unique_tract$n==0])
+summary(unique_tract$hisp[unique_tract$n==0])
+summary(unique_tract$pop_density[unique_tract$n==0])
+
+summary(unique_tract$n[unique_tract$n==1])
+summary(unique_tract$income[unique_tract$n==1])
+summary(unique_tract$white[unique_tract$n==1])
+summary(unique_tract$asian[unique_tract$n==1])
+summary(unique_tract$black[unique_tract$n==1])
+summary(unique_tract$hisp[unique_tract$n==1])
+summary(unique_tract$pop_density[unique_tract$n==1])
+
+tract_tb <- tract[tract$n!=0, ]
+
+# examine number of transactions
+ggplot(data=tract_tb, aes(x=paste(year, "Q", quarter, sep=""), y=volume_std,
+                        group=as.factor(income5), col=as.factor(income5))) +
+      geom_point() +
+      #geom_line(size=1) +
+      labs(title="Number of transactions per tract, by income",
+           x="Year", y="Number of transactions, standardized by week", col="Income",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/by-restaurant-transaction/num-transactions-by-region.jpeg", width=20, height=10, unit="cm")
+
+
+
+
+
+
+
+
+
+
 
 
 
