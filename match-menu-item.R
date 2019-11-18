@@ -105,11 +105,10 @@ join_jc <- stringdist_join(product, menu,
       group_by(product.x) %>%
       top_n(1, -dist.jc)
 
-
-names(join_jc)
-join_jc <- join_jc[, c(1, 4, 6, 2, 5, 3)]
-colnames(join_jc)[1:2] <- c("product.tb", "product.menustat")
-join_jc <- join_jc[order(join_jc$dist.jc, join_jc$product.tb), ]
+names(join_jw)
+join_jw <- join_jw[, c(1, 4, 6, 2, 5, 3)]
+colnames(join_jw)[1:2] <- c("product.tb", "product.menustat")
+join_jw <- join_jw[order(join_jw$dist.jw, join_jw$product.tb), ]
 
 ### analyze matching results ----
 length(join$dist.jw[join$dist.jw==0])
