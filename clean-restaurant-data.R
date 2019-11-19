@@ -213,7 +213,8 @@ ggplot(data=subset(transaction, year==2015&quarter==2),
             aes(x=volume_std, group=as.factor(region), fill=as.factor(region))) +
       geom_histogram(bins=200) +
       labs(title="Number of transactions per restaurant, 2015 Q2",
-           x="Number of transactions, standardized by week", y="Frequency", fill="Region",
+           x="Number of transactions, standardized by week",
+           y="Number of restaurants", fill="Region",
            caption="Data source: Taco Bell") +
       scale_fill_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
@@ -393,22 +394,40 @@ summary(unique_tract$hisp[unique_tract$n==1])
 summary(unique_tract$pop_density[unique_tract$n==1])
 
 tract_tb <- tract[tract$n!=0, ]
+income <- aggregate(cbind(volume_std, dollar_std, mean_spending) ~ year+quarter+income5, tract_tb, mean)
 
 # examine number of transactions
-ggplot(data=tract_tb, aes(x=paste(year, "Q", quarter, sep=""), y=volume_std,
+ggplot(data=income, aes(x=paste0(year, "Q", quarter),
+                          y=volume_std,
                         group=as.factor(income5), col=as.factor(income5))) +
       geom_point() +
-      #geom_line(size=1) +
-      labs(title="Number of transactions per tract, by income",
-           x="Year", y="Number of transactions, standardized by week", col="Income",
-           caption="Data source: Taco Bell") +
+      geom_line(size=1) +
+      labs(title="Mean number of transactions per tract, by income",
+           x="Time", y="Number of transactions, standardized by week",
+           col="Income", caption="Data source: Taco Bell") +
       scale_color_brewer(palette="Set3") +
+      scale_y_continuous(limits=c(0, 5000)) +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/by-restaurant-transaction/num-transactions-by-region.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/by-restaurant-transaction/mean-num-transactions-by-tract.jpeg", width=20, height=10, unit="cm")
 
-
+# mean spending
+ggplot(data=income, aes(x=paste0(year, "Q", quarter),
+                        y=mean_spending,
+                        group=as.factor(income5), col=as.factor(income5))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Mean spending per order, by income",
+           x="Time", y="Spending",
+           col="Income", caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      #scale_y_continuous(limits=c(0, 5000)) +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/by-restaurant-transaction/mean-spending-by-tract.jpeg", width=20, height=10, unit="cm")
+rm(income)
 
 
 
