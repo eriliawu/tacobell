@@ -36,10 +36,13 @@ rm(group)
 ### clean house ----
 table(product$group)
 
+# drop commas and other punctuations
+product$product <- gsub(pattern = ",", replacement = "", x=product$product)
+
 # based on product group and product description
 # drop other YUM brand products
 product <- product[!grepl("AW", product$group)&!grepl("BYB", product$group)&!grepl("KFC", product$group)&!grepl("LJS", product$group)&!grepl("PH", product$group)&!grepl("PIZZA HUT", product$group)&product$group!="KRYSTAL"&product$group!="ICBIY (YOGURT)"&product$group!="TCBY (YOGURT)", ]
-product <- product[!grepl("AWR", product$product)&!grepl("AW,", product$product)&!grepl("AW ", product$product)&!grepl("BYB", product$product)&!grepl("KFC", product$product)&!grepl("LJS", product$product)&!grepl("PH", product$product)&!grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&!grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
+product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)&!grepl("BYB", product$product)&!grepl("KFC", product$product)&!grepl("LJS", product$product)&!grepl("PH", product$product)&!grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&!grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
 length(unique(product$product))
 
 # drop non-descriptive items
@@ -57,7 +60,12 @@ product <- product[, c(4, 9, 1:2, 3, 5:8, 10:12)]
 # extract only unique product names
 product <- product[!duplicated(product$product), c(1:2)]
 
-### read menu stat data
+# extract all substrings in product names
+# fill out abbreviations
+strings <- unique(unlist(strsplit(product$product, split=" ")))
+
+
+### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 menu$item_name <- toupper(menu$item_name)
 menu <- menu[!duplicated(menu$item_name), c(1, 4:5)]
@@ -84,6 +92,11 @@ join_jw <- stringdist_join(product, menu,
 end_time <- Sys.time()
 end_time - start_time
 rm(start_time, end_time)
+names(join_jw)
+join_jw <- join_jw[, c(1, 4, 6, 2, 5, 3)]
+colnames(join_jw)[1:2] <- c("product.tb", "product.menustat")
+join_jw <- join_jw[order(join_jw$dist.jw, join_jw$product.tb), ]
+
 
 join_dl <- stringdist_join(product, menu, 
                            by="product",
@@ -95,6 +108,7 @@ join_dl <- stringdist_join(product, menu,
       group_by(product.x) %>%
       top_n(1, -dist.dl)
 
+# jaccard distance
 join_jc <- stringdist_join(product, menu, 
                            by="product",
                            mode = "left",
@@ -105,10 +119,6 @@ join_jc <- stringdist_join(product, menu,
       group_by(product.x) %>%
       top_n(1, -dist.jc)
 
-names(join_jw)
-join_jw <- join_jw[, c(1, 4, 6, 2, 5, 3)]
-colnames(join_jw)[1:2] <- c("product.tb", "product.menustat")
-join_jw <- join_jw[order(join_jw$dist.jw, join_jw$product.tb), ]
 
 ### analyze matching results ----
 length(join$dist.jw[join$dist.jw==0])
