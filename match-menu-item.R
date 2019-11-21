@@ -62,12 +62,14 @@ product <- product[!duplicated(product$product), c(1:2)]
 
 # extract all substrings in product names
 # fill out abbreviations
-strings <- unique(unlist(strsplit(product$product, split=" ")))
+strings <- as.data.frame(unique(unlist(strsplit(product$product, split=" "))))
+colnames(strings)[1] <- "original"
 
 
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 menu$item_name <- toupper(menu$item_name)
+#menu <- menu[grepl("16", menu$item_name), ]
 menu <- menu[!duplicated(menu$item_name), c(1, 4:5)]
 length(unique(menu$item_name))
 #menu <- menu[menu$year<=2016, ]
