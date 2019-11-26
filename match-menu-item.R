@@ -64,6 +64,10 @@ product <- product[!duplicated(product$product), c(1:2)]
 # fill out abbreviations
 strings <- as.data.frame(unique(unlist(strsplit(product$product, split=" "))))
 colnames(strings)[1] <- "original"
+class(strings$original)
+strings$original <- as.character(strings$original)
+strings$length <- nchar(strings$original)
+strings <- strings[order(strings$length),]
 
 
 ### read menu stat data ----
@@ -75,8 +79,8 @@ length(unique(menu$item_name))
 #menu <- menu[menu$year<=2016, ]
 
 ### find exact matches ----
-test <- merge(product, menu, by.x="product", by.y="item_name") #64 exact matches
-rm(test)
+#match <- merge(product, menu, by.x="product", by.y="item_name") #64 exact matches
+#rm(match)
 
 ### fuzzy matching ----
 colnames(menu)[2] <- "product"
