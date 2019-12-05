@@ -2,6 +2,12 @@
 srun --time=23:00:00 --pty bash
 module load mariadb/5.5.64
 mysql -p -h db -P 33061 tacobell
+
+-- run SQL squirrel on HPC
+-- launch Xming first
+srun --partition=cpu_short --ntasks=2 --cpus-per-task=1 --mem-per-cpu=8G --time=08:00:00 --x11 --pty bash
+module load mariadb/5.5.64 squirrel/4.0.0
+java -jar $SQUIRREL_ROOT/squirrel-sql.jar
 */
 
 /*
@@ -691,51 +697,49 @@ DRIVETHRUIND, DRVTHU_TYPE from ALIGN_DIM into outfile '/gpfs/home/wue04/restaura
 -- plot transaction volumn/dollar by restaurant/state and time
 -- for restaurants with identical addresses, create new restaurant id
 -- merge results based on DW_RESTID, but aggregate by new restaurant id
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2008_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2008q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2008_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2008q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2008_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2008q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2008_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2008q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2009_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2009q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2009_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2009q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2009_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2009q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2009_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2009q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2010_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2010q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2010_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2010q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2010_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2010q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2010_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2010q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2011_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2011q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2011_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2011q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2011_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2011q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2011_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2011q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2012_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2012q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2012_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2012q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2012_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2012q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2012_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2012q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2013_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2013q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2013_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2013q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2013_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2013q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2013_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2013q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2014_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2014q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2014_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2014q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2014_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2014q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2014_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2014q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2015_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2015q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2015_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2015q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT_2015_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/by_restaurant_transaction_2015q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-
-
-
-
-
-
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
+select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
 
 
@@ -747,6 +751,59 @@ select DW_RESTID, count(distinct DW_GC_HEADER), sum(ACTGROSSSALES) from TLD_FACT
 
 
 
+
+
+
+
+
+--- sample query
+select count(*) from TLD_FACT_2014_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%");
+
+create unique index PRODUCT_DIM_DW_PRODUCT on PRODUCT_DIM (DW_PRODUCT);
+create index TLD_FACT_2014_Q01_DW_PRODUCT on TLD_FACT_2014_Q01 (DW_PRODUCT);
+
+create index TLD_FACT_2007_Q01_DW_PRODUCT on TLD_FACT_2007_Q01 (DW_PRODUCT);
+create index TLD_FACT_2007_Q02_DW_PRODUCT on TLD_FACT_2007_Q02 (DW_PRODUCT);
+create index TLD_FACT_2007_Q03_DW_PRODUCT on TLD_FACT_2007_Q03 (DW_PRODUCT);
+create index TLD_FACT_2007_Q04_DW_PRODUCT on TLD_FACT_2007_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2008_Q01_DW_PRODUCT on TLD_FACT_2008_Q01 (DW_PRODUCT);
+create index TLD_FACT_2008_Q02_DW_PRODUCT on TLD_FACT_2008_Q02 (DW_PRODUCT);
+create index TLD_FACT_2008_Q03_DW_PRODUCT on TLD_FACT_2008_Q03 (DW_PRODUCT);
+create index TLD_FACT_2008_Q04_DW_PRODUCT on TLD_FACT_2008_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2009_Q01_DW_PRODUCT on TLD_FACT_2009_Q01 (DW_PRODUCT);
+create index TLD_FACT_2009_Q02_DW_PRODUCT on TLD_FACT_2009_Q02 (DW_PRODUCT);
+create index TLD_FACT_2009_Q03_DW_PRODUCT on TLD_FACT_2009_Q03 (DW_PRODUCT);
+create index TLD_FACT_2009_Q04_DW_PRODUCT on TLD_FACT_2009_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2010_Q01_DW_PRODUCT on TLD_FACT_2010_Q01 (DW_PRODUCT);
+create index TLD_FACT_2010_Q02_DW_PRODUCT on TLD_FACT_2010_Q02 (DW_PRODUCT);
+create index TLD_FACT_2010_Q03_DW_PRODUCT on TLD_FACT_2010_Q03 (DW_PRODUCT);
+create index TLD_FACT_2010_Q04_DW_PRODUCT on TLD_FACT_2010_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2011_Q01_DW_PRODUCT on TLD_FACT_2011_Q01 (DW_PRODUCT);
+create index TLD_FACT_2011_Q02_DW_PRODUCT on TLD_FACT_2011_Q02 (DW_PRODUCT);
+create index TLD_FACT_2011_Q03_DW_PRODUCT on TLD_FACT_2011_Q03 (DW_PRODUCT);
+create index TLD_FACT_2011_Q04_DW_PRODUCT on TLD_FACT_2011_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2012_Q01_DW_PRODUCT on TLD_FACT_2012_Q01 (DW_PRODUCT);
+create index TLD_FACT_2012_Q02_DW_PRODUCT on TLD_FACT_2012_Q02 (DW_PRODUCT);
+create index TLD_FACT_2012_Q03_DW_PRODUCT on TLD_FACT_2012_Q03 (DW_PRODUCT);
+create index TLD_FACT_2012_Q04_DW_PRODUCT on TLD_FACT_2012_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2013_Q01_DW_PRODUCT on TLD_FACT_2013_Q01 (DW_PRODUCT);
+create index TLD_FACT_2013_Q02_DW_PRODUCT on TLD_FACT_2013_Q02 (DW_PRODUCT);
+create index TLD_FACT_2013_Q03_DW_PRODUCT on TLD_FACT_2013_Q03 (DW_PRODUCT);
+create index TLD_FACT_2013_Q04_DW_PRODUCT on TLD_FACT_2013_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2014_Q02_DW_PRODUCT on TLD_FACT_2014_Q02 (DW_PRODUCT);
+create index TLD_FACT_2014_Q03_DW_PRODUCT on TLD_FACT_2014_Q03 (DW_PRODUCT);
+create index TLD_FACT_2014_Q04_DW_PRODUCT on TLD_FACT_2014_Q04 (DW_PRODUCT);
+
+create index TLD_FACT_2015_Q01_DW_PRODUCT on TLD_FACT_2015_Q01 (DW_PRODUCT);
+create index TLD_FACT_2015_Q02_DW_PRODUCT on TLD_FACT_2015_Q02 (DW_PRODUCT);
+create index TLD_FACT_2015_Q03_DW_PRODUCT on TLD_FACT_2015_Q03 (DW_PRODUCT);
 
 
 
