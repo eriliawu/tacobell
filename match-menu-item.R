@@ -62,6 +62,7 @@ product <- product[, c(4, 9, 1:2, 3, 5:8, 10:12)]
 
 # extract only unique product names
 product <- product[!duplicated(product$product), c(1:2)]
+#write.csv(product, "data/menu-matching/full_product_names.csv", row.names = FALSE)
 
 # extract all substrings in product names to fill out abbreviations ----
 # extract all substrings
@@ -177,6 +178,7 @@ join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb), 
 
 # number of exact matches
 length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #226
+length(join_jaccard$full.tb[join_jaccard$dist.jc==0]) #281
 
 
 
