@@ -14,6 +14,7 @@ library(dplyr)
 library(stringdist)
 library(tidyr)
 library(stringr)
+library(ggplot2)
 
 # read product data ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",
@@ -180,17 +181,130 @@ join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb), 
 length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #226
 length(join_jaccard$full.tb[join_jaccard$dist.jc==0]) #281
 
+# visualize
+hist(join_jaccard$dist.jc, breaks = 100,
+     main="Distribution of distances",
+     xlab = "Jaccard distance")
+
+### merge matched menu items back to product table ----
+# re-run the 1st two sections of the script
+# get product ids
+product <- read.csv("data/from-bigpurple/product_dim.csv",
+                    sep = ";", header = FALSE, quote = "\"'",
+                    stringsAsFactors = FALSE,
+                    col.names = c("dw_product", "dw_productgroup", "productcd",
+                                  "product", "product_statuscd",
+                                  "product_statusdt", "product_lastupdt", "lastupdtuserid"))
+sapply(product, class)
+product$lastupdtuserid <- NULL
+
+group <- read.csv("data/from-bigpurple/product_group_det.csv",
+                  sep = ";", header = FALSE, quote = "\"'",
+                  stringsAsFactors = FALSE,
+                  col.names = c("dw_productgroup", "groupcd", "group",
+                                "groups_tatuscd",
+                                "group_statusdt", "group_lastupdt", "lastupdtuserid"))
+group$lastupdtuserid <- NULL
+
+product <- merge(product, group, by="dw_productgroup")
+rm(group)
+
+# drop commas and other punctuations
+product$product <- gsub(pattern = ",", replacement = "", x=product$product)
+
+# based on product group and product description
+# drop other YUM brand products
+product <- product[!grepl("AW", product$group)&!grepl("BYB", product$group)&!grepl("KFC", product$group)&!grepl("LJS", product$group)&!grepl("PH", product$group)&!grepl("PIZZA HUT", product$group)&product$group!="KRYSTAL"&product$group!="ICBIY (YOGURT)"&product$group!="TCBY (YOGURT)", ]
+product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)&!grepl("BYB", product$product)&!grepl("KFC", product$product)&!grepl("LJS", product$product)&!grepl("PH", product$product)&!grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&!grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
+
+# drop non-descriptive items
+product <- product[product$group!="N/A"&product$group!="CFM MANAGER SPECIALS"&product$group!="COMBOS"&product$product!=""&!grepl("* NEW PRODCT ADDED BY", product$product)&!grepl("COMBO", product$product)&!grepl("FRANCHISE LOCAL MENU", product$product)&product$product!="NEW ITEM"&!grepl("SPECIAL PROMOTION", product$product), ]
+
+# drop non-food items
+product <- product[product$group!="NON-FOOD SALES (PRE", ]
 
 
+# keep only the product names and ids
+# merge with join_jaccard table, identify the items that had exact matches
+names(product)
+product <- product[, c(2, 4)]
+product <- merge(product, join_jaccard,by = "product", all = TRUE)
+product <- product[product$dist.jc==0, c(1:2)]
 
-### analyze matching results ----
-length(join$dist.jw[join$dist.jw==0])
-jpeg("tables/product-matching/jw-distance-distribution.jpeg",
-     width=600, height=400, quality=100)
-hist(join$dist.jw, breaks=50,
-     xlab="Distance",
-     main="Distribution of distances")
-dev.off()
+### check sales volume represented by exact match items ----
+# build empty shell for summary stats
+sales_all <- data.frame(matrix(data=NA, nrow=(9*4-1), ncol = 4),
+                        stringsAsFactors = FALSE)
+colnames(sales_all)[1:4] <- c("year", "quarter", "sales", "matched")
+
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+sapply(detail, class)
+
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                  sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                          i, "_Q0", j, ".csv"),
+                                    sep = ";", header = FALSE, quote = "\"'",
+                                    stringsAsFactors = FALSE,
+                                    col.names = c("p_detail", "sales", "qty"))
+                  #sapply(sales, class)
+                  sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                  #print(paste0("1st merge done: ", "year ", i, " Q", j))
+                        
+                  # clean house
+                  sales <- sales[!is.na(sales$sales), ]
+                  sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                 !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                 !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                 !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                 !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        
+                  sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                 sales$detail_desc!=""&
+                                 !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                 !grepl("COMBO", sales$detail_desc)&
+                                 !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                 sales$detail_desc!="NEW ITEM"&
+                                 !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        
+                  sales <- merge(sales, join_jaccard, by.x = "detail_desc", by.y = "product", all = TRUE)
+                  #print(paste0("2nd merge done: ", "year ", i, " Q", j))
+                  #names(sales)
+                  #detial$id <- NULL
+                  sales <- sales[!is.na(sales$p_detail), ]
+                  
+                  # delete duplicated rows
+                  sales <- sales[!duplicated(sales$detail_desc), c(1, 3:4, 7)]
+
+                  # fill in summary stats
+                  sales_all[j+4*(i-2007), 1] <- i
+                  sales_all[j+4*(i-2007), 2] <- j
+                  sales_all[j+4*(i-2007), 3] <- sum(sales$qty, na.rm = TRUE)
+                  sales_all[j+4*(i-2007), 4] <- sum(sales$qty[sales$dist.jc==0], na.rm = TRUE)    
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales)
+sales_all$matched_pct <- sales_all$matched/sales_all$sales
+
+# visualization
+ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, group=1)) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
+      labs(title="Number of sold items represented by matched products",
+           x="Year", y="Percent",
+           caption="Data source: Taco Bell") +
+      #scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
 
 
 
