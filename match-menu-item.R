@@ -65,7 +65,7 @@ product <- product[, c(4, 9, 1:2, 3, 5:8, 10:12)]
 product <- product[!duplicated(product$product), c(1:2)]
 #write.csv(product, "data/menu-matching/full_product_names.csv", row.names = FALSE)
 
-# extract all substrings in product names to fill out abbreviations ----
+### extract all substrings in product names to fill out abbreviations ----
 # extract all substrings
 strings <- as.data.frame(unlist(strsplit(product$product, split=" ")))
 colnames(strings)[1] <- "original"
@@ -158,12 +158,13 @@ menu$item_name <- gsub(", ", " ", menu$item_name)
 ### fuzzy matching ----
 colnames(menu)[2] <- "full"
 
+# a default q=1
 start_time <- Sys.time()
 join_jaccard <- stringdist_join(product, menu, 
                 by="full",
                 mode = "left",
                 ignore_case = FALSE, 
-                method = "jaccard", 
+                method = "jaccard", #q=1
                 max_dist = 99, 
                 distance_col = "dist.jc") %>%
       group_by(full.x) %>%
@@ -184,7 +185,36 @@ length(join_jaccard$full.tb[join_jaccard$dist.jc==0]) #281
 # visualize
 hist(join_jaccard$dist.jc, breaks = 100,
      main="Distribution of distances",
-     xlab = "Jaccard distance")
+     xlab = "Jaccard distance, q=1")
+
+
+# q=2
+# re-match menu items that did not make a dist=0 match in round 1
+product2 <- join_jaccard[(join_jaccard$dist.jc!=0)&!duplicated(join_jaccard$full.tb), c(6, 1, 4)]
+colnames(product2)[2] <- "full"
+
+join_jaccard2 <- stringdist_join(product2, menu, 
+                                by="full",
+                                mode = "left",
+                                ignore_case = FALSE, 
+                                method = "jaccard", q=2,
+                                max_dist = 99, 
+                                distance_col = "dist.jc") %>%
+      group_by(full.x) %>%
+      top_n(1, -dist.jc) #
+
+#names(join_jaccard2)
+join_jaccard2 <- join_jaccard2[, c(2, 5, 7, 3, 6, 1, 4)]
+colnames(join_jaccard2)[1:2] <- c("full.tb", "full.menustat")
+join_jaccard2 <- join_jaccard2[order(join_jaccard2$dist.jc, join_jaccard2$full.tb), ]
+
+length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc<=0.37])) #414
+length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc>0.37])) #2924
+
+hist(join_jaccard2$dist.jc, breaks = 100,
+     main="Distribution of distances for re-matched items",
+     xlab = "Jaccard distance, q=2")
+rm(product2)
 
 ### merge matched menu items back to product table ----
 # re-run the 1st two sections of the script
@@ -222,7 +252,6 @@ product <- product[product$group!="N/A"&product$group!="CFM MANAGER SPECIALS"&pr
 
 # drop non-food items
 product <- product[product$group!="NON-FOOD SALES (PRE", ]
-
 
 # keep only the product names and ids
 # merge with join_jaccard table, identify the items that had exact matches
@@ -305,6 +334,22 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
+rm(sales_all)
 
+### match drinks ----
+# re-run product cleaning code, lines 19-141
+drinks <- product[product$group=="DRINKS", ]
+length(unique(drinks$full))
+names(drinks)
 
+# strip drink names of size info
+# OZ, CENT, SMALL, MEDIUM, LARGE, EXTRA LARGE
+drinks$rename <- gsub("[0-9]+", "", drinks$full)
+drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON", "", drinks$rename)
+drinks$rename <- gsub("LARGE", "", drinks$rename)
+drinks$rename <- trimws(drinks$rename, "both")
 
+drinks <- drinks[!duplicated(drinks$rename), 4]
+drinks <- as.data.frame(drinks)
+drinks$diet <- ifelse(grepl(pattern = "DIET", drinks$drinks), 1, 0)
+sum(drinks$diet==1)
