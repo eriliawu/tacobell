@@ -351,5 +351,6 @@ drinks$rename <- trimws(drinks$rename, "both")
 
 drinks <- drinks[!duplicated(drinks$rename), 4]
 drinks <- as.data.frame(drinks)
-drinks$diet <- ifelse(grepl(pattern = "DIET", drinks$drinks), 1, 0)
+drinks$diet <- ifelse(grepl("DIET", drinks$drinks), 1, 0)
 sum(drinks$diet==1)
+sum(grepl("ZERO", drinks$drinks))
