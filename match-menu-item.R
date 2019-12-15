@@ -345,12 +345,107 @@ names(drinks)
 # strip drink names of size info
 # OZ, CENT, SMALL, MEDIUM, LARGE, EXTRA LARGE
 drinks$rename <- gsub("[0-9]+", "", drinks$full)
-drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON", "", drinks$rename)
+drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|MEGA JUG",
+                      "", drinks$rename)
 drinks$rename <- gsub("LARGE", "", drinks$rename)
 drinks$rename <- trimws(drinks$rename, "both")
 
-drinks <- drinks[!duplicated(drinks$rename), 4]
-drinks <- as.data.frame(drinks)
-drinks$diet <- ifelse(grepl("DIET", drinks$drinks), 1, 0)
+#drinks <- drinks[!duplicated(drinks$rename), 4]
+#drinks <- as.data.frame(drinks)
+drinks$diet <- ifelse(grepl("DIET", drinks$rename), 1, 0)
 sum(drinks$diet==1)
 sum(grepl("ZERO", drinks$drinks))
+
+# 3 categories: diet, pepsi & mt dew, other sugary drinks
+drinks$category <- ifelse(grepl("DIET", drinks$rename), "Low-calorie",
+                          ifelse(grepl("PEPSI|BAJA BLAST", drinks$rename),
+                                 "Pepsi/Mt. Dew Baja Blast", "Other SBS"))
+
+table(drinks$diet, drinks$category)
+drinks[drinks$category=="Pepsi/Mt. Dew Baja Blast", ]
+
+# match drinks names to sales volume
+sales_all <- NULL
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+#sapply(detail, class)
+
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, ".csv"),
+                                          sep = ";", header = FALSE, quote = "\"'",
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "sales", "qty"))
+                        #sapply(sales, class)
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        #print(paste0("1st merge done: ", "year ", i, " Q", j))
+                        
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        
+                        sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
+                        sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail), ]
+                        #print(paste0("2nd merge done: ", "year ", i, " Q", j))
+                        #names(sales)
+                        #detial$id <- NULL
+
+                        # collapse all drink sales into 3 categories
+                        sales <- aggregate(data=sales, qty~category, sum)
+                        sales$year <- i
+                        sales$quarter <- j
+                        sales$pct <- sales$qty / sum(sales$qty)
+                        sales_all <- rbind(sales_all, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales)
+
+# visualization
+ggplot(data=sales_all,
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=as.factor(category), col=as.factor(category))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
+      labs(title="Drink sales, low-calorie vs. SBS",
+           x="Year", y="Sales percentage", col="Category",
+           caption="Data source: Taco Bell") +
+      #scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales.jpeg", width=20, height=10, unit="cm")
+rm(sales_all)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
