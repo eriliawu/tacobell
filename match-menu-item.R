@@ -155,7 +155,7 @@ menu$item_name <- gsub(", ", " ", menu$item_name)
 #match <- merge(product, menu, by.x="product", by.y="item_name") #64 exact matches
 #rm(match)
 
-### fuzzy matching ----
+### fuzzy matching, jaccard distance ----
 colnames(menu)[2] <- "full"
 
 # a default q=1
@@ -187,7 +187,6 @@ hist(join_jaccard$dist.jc, breaks = 100,
      main="Distribution of distances",
      xlab = "Jaccard distance, q=1")
 
-
 # q=2
 # re-match menu items that did not make a dist=0 match in round 1
 product2 <- join_jaccard[(join_jaccard$dist.jc!=0)&!duplicated(join_jaccard$full.tb), c(6, 1, 4)]
@@ -215,6 +214,53 @@ hist(join_jaccard2$dist.jc, breaks = 100,
      main="Distribution of distances for re-matched items",
      xlab = "Jaccard distance, q=2")
 rm(product2)
+
+### fuzzy matching, jaro distance ----
+join_jw <- stringdist_join(product, menu, 
+                           by="full",
+                           mode = "left",
+                           ignore_case = FALSE, 
+                           method = "jw",
+                           max_dist = 99, 
+                           distance_col = "dist.jw") %>%
+      group_by(full.x) %>%
+      top_n(1, -dist.jw)
+
+names(join_jw)
+join_jw <- join_jw[, c(2, 5, 7, 3, 6, 1, 4)]
+colnames(join_jw)[1:2] <- c("full.tb", "full.menustat")
+join_jw <- join_jw[order(join_jw$dist.jw, join_jw$full.tb), ]
+
+# visualize
+hist(join_jw$dist.jw, breaks = 100,
+     main="Distribution of distances",
+     xlab = "Jaro distance")
+
+# compare distance results from jaccard (q=1) and jaro
+dist.jc <- join_jaccard[!duplicated(join_jaccard$full.tb), c(1, 3)]
+dist.jc$method <- "Jaccard"
+colnames(dist.jc)[2] <- "dist"
+
+dist.jw <- join_jw[!duplicated(join_jw$full.tb), c(1, 3)]
+dist.jw$method <- "Jaro"
+colnames(dist.jw)[2] <- "dist"
+
+dist <- rbind(dist.jc, dist.jw)
+rm(dist.jc, dist.jw)
+
+# visualize
+ggplot(data=dist,
+       aes(x=dist, group=as.factor(method), fill=as.factor(method))) +
+      geom_histogram(bins=100) +
+      labs(title="Distribution of distances, Jaccard vs. Jaro",
+           x="Distance",
+           y="Frequency", fill="Distance measure",
+           caption="Data source: Taco Bell") +
+      #scale_fill_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/product-matching/compare-jaro-vs-jaccard.jpeg", width=20, height=10, unit="cm")
+rm(dist)
 
 ### merge matched menu items back to product table ----
 # re-run the 1st two sections of the script
@@ -328,7 +374,7 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
       scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
       labs(title="Number of sold items represented by matched products",
            x="Year", y="Percent",
-           caption="Data source: Taco Bell") +
+           caption="Data source: Taco Bell \nNote: 226 items (6.26%) with exact matches. The percentage is based on number of items sold.") +
       #scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
@@ -345,24 +391,25 @@ names(drinks)
 # strip drink names of size info
 # OZ, CENT, SMALL, MEDIUM, LARGE, EXTRA LARGE
 drinks$rename <- gsub("[0-9]+", "", drinks$full)
-drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|MEGA JUG",
+drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|MEGA JUG|LITER",
                       "", drinks$rename)
 drinks$rename <- gsub("LARGE", "", drinks$rename)
 drinks$rename <- trimws(drinks$rename, "both")
-
-#drinks <- drinks[!duplicated(drinks$rename), 4]
-#drinks <- as.data.frame(drinks)
-drinks$diet <- ifelse(grepl("DIET", drinks$rename), 1, 0)
-sum(drinks$diet==1)
-sum(grepl("ZERO", drinks$drinks))
+drinks$rename <- gsub("UP", "7UP", drinks$rename)
+drinks <- drinks[!grepl("ONION|NACHOS", drinks$rename), ]
+length(unique(drinks$rename)) #245
 
 # 3 categories: diet, pepsi & mt dew, other sugary drinks
-drinks$category <- ifelse(grepl("DIET", drinks$rename), "Low-calorie",
+drinks$category <- ifelse(grepl("DIET|WATER|COFFEE|UNSWEETENED|HOT TEA|BREWED TEA", drinks$rename)
+                          &!grepl("SWEET|MOCHA|VANILLA|CARAMEL", drinks$rename), "Low-calorie",
                           ifelse(grepl("PEPSI|BAJA BLAST", drinks$rename),
-                                 "Pepsi/Mt. Dew Baja Blast", "Other SBS"))
+                                 "Pepsi/Mt. Dew Baja Blast", "Other SSB"))
 
-table(drinks$diet, drinks$category)
-drinks[drinks$category=="Pepsi/Mt. Dew Baja Blast", ]
+table(drinks$category)
+#drinks[drinks$category=="Pepsi/Mt. Dew Baja Blast", ]
+length(unique(drinks$rename[drinks$category=="Low-calorie"]))
+length(unique(drinks$rename[drinks$category=="Pepsi/Mt. Dew Baja Blast"]))
+length(unique(drinks$rename[drinks$category=="Other SSB"]))
 
 # match drinks names to sales volume
 sales_all <- NULL
@@ -418,21 +465,40 @@ for (i in 2007:2015) {
 }
 rm(i, j, detail, sales)
 
+sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
+
 # visualization
+# sales, in percentage
 ggplot(data=sales_all,
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
            group=as.factor(category), col=as.factor(category))) +
       geom_point() +
       geom_line(size=1) +
       scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      labs(title="Drink sales, low-calorie vs. SBS",
+      labs(title="Drink sales, share of low-calorie vs. SSB",
            x="Year", y="Sales percentage", col="Category",
            caption="Data source: Taco Bell") +
       #scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-pct.jpeg", width=20, height=10, unit="cm")
+
+# sales, in actual volume
+ggplot(data=sales_all,
+       aes(x=paste(year, "Q", quarter, sep=""), y=qty,
+           group=as.factor(category), col=as.factor(category))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(limits=c(0, 12000000)) +
+      labs(title="Mean weekly drink sales volumes, low-calorie vs. SSB",
+           x="Year", y="Sales", col="Category",
+           caption="Data source: Taco Bell") +
+      #scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-volume.jpeg", width=20, height=10, unit="cm")
 rm(sales_all)
 
 
