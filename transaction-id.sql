@@ -5,7 +5,7 @@ mysql -p -h db -P 33061 tacobell
 
 -- run SQL squirrel on HPC
 -- launch Xming first
-srun --partition=cpu_short --ntasks=2 --cpus-per-task=1 --mem-per-cpu=8G --time=08:00:00 --x11 --pty bash
+srun --partition=cpu_short --ntasks=2 --cpus-per-task=1 --mem-per-cpu=8G --time=23:00:00 --x11 --pty bash
 module load mariadb/5.5.64 squirrel/4.0.0
 java -jar $SQUIRREL_ROOT/squirrel-sql.jar
 */
@@ -741,84 +741,29 @@ select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_201
 select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---- sample query
-select count(*) from TLD_FACT_2014_Q01 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC like ("%* NEW PRODCT ADDED BY TLD *%");
-
+--- sample query, create index
 create unique index PRODUCT_DIM_DW_PRODUCT on PRODUCT_DIM (DW_PRODUCT);
 create index TLD_FACT_2014_Q01_DW_PRODUCT on TLD_FACT_2014_Q01 (DW_PRODUCT);
 
-create index TLD_FACT_2007_Q01_DW_PRODUCT on TLD_FACT_2007_Q01 (DW_PRODUCT);
-create index TLD_FACT_2007_Q02_DW_PRODUCT on TLD_FACT_2007_Q02 (DW_PRODUCT);
-create index TLD_FACT_2007_Q03_DW_PRODUCT on TLD_FACT_2007_Q03 (DW_PRODUCT);
-create index TLD_FACT_2007_Q04_DW_PRODUCT on TLD_FACT_2007_Q04 (DW_PRODUCT);
+select t.DW_GC_HEADER, p.PRODUCTDESC, d.PRODUCTDESC, m.PRODUCTDESC,
+	t.DW_LINEITEM, l.LINEITEMDESC,
+	t.ACTNETSALES, t.ACTPRODPRICE, t.ACTQTYSOLD
+	from TLD_FACT_2007_Q02 t
+		left join PRODUCT_DETAIL_DIM_V1 d using(DW_PRODUCTDETAIL)
+		left join PRODUCT_DIM p using(DW_PRODUCT)
+		left join PRODUCT_MODIFICATION_DIM_V1 m using(DW_PRODUCTMOD)
+		left join LINEITEM_DIM l using(DW_LINEITEM)
+	order by DW_GC_HEADER, DW_LINEITEM
+	limit 100;
 
-create index TLD_FACT_2008_Q01_DW_PRODUCT on TLD_FACT_2008_Q01 (DW_PRODUCT);
-create index TLD_FACT_2008_Q02_DW_PRODUCT on TLD_FACT_2008_Q02 (DW_PRODUCT);
-create index TLD_FACT_2008_Q03_DW_PRODUCT on TLD_FACT_2008_Q03 (DW_PRODUCT);
-create index TLD_FACT_2008_Q04_DW_PRODUCT on TLD_FACT_2008_Q04 (DW_PRODUCT);
+select sum(ACTNETSALES) from TLD_FACT_2007_Q02 left join PRODUCT_DIM using(DW_PRODUCT) where PRODUCTDESC="";
 
-create index TLD_FACT_2009_Q01_DW_PRODUCT on TLD_FACT_2009_Q01 (DW_PRODUCT);
-create index TLD_FACT_2009_Q02_DW_PRODUCT on TLD_FACT_2009_Q02 (DW_PRODUCT);
-create index TLD_FACT_2009_Q03_DW_PRODUCT on TLD_FACT_2009_Q03 (DW_PRODUCT);
-create index TLD_FACT_2009_Q04_DW_PRODUCT on TLD_FACT_2009_Q04 (DW_PRODUCT);
+--- check sales volume by item
+select DW_PRODUCT, sum(ACTNETSALES), sum(ACTQTYSOLD) from TLD_FACT_2007_Q01 group by DW_PRODUCT into outfile '/gpfs/home/wue04/tb-data/sales-vol-by-product/sales_2007_Q01.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';;
+--- check volumes by item, connect with product details
+select t.DW_PRODUCTDETAIL, sum(ACTNETSALES), sum(ACTQTYSOLD) from TLD_FACT_2007_Q01 t group by DW_PRODUCTDETAIL into outfile '/gpfs/home/wue04/tb-data/sales-vol-by-product/sales_detail_2007_Q01.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';;
 
-create index TLD_FACT_2010_Q01_DW_PRODUCT on TLD_FACT_2010_Q01 (DW_PRODUCT);
-create index TLD_FACT_2010_Q02_DW_PRODUCT on TLD_FACT_2010_Q02 (DW_PRODUCT);
-create index TLD_FACT_2010_Q03_DW_PRODUCT on TLD_FACT_2010_Q03 (DW_PRODUCT);
-create index TLD_FACT_2010_Q04_DW_PRODUCT on TLD_FACT_2010_Q04 (DW_PRODUCT);
-
-create index TLD_FACT_2011_Q01_DW_PRODUCT on TLD_FACT_2011_Q01 (DW_PRODUCT);
-create index TLD_FACT_2011_Q02_DW_PRODUCT on TLD_FACT_2011_Q02 (DW_PRODUCT);
-create index TLD_FACT_2011_Q03_DW_PRODUCT on TLD_FACT_2011_Q03 (DW_PRODUCT);
-create index TLD_FACT_2011_Q04_DW_PRODUCT on TLD_FACT_2011_Q04 (DW_PRODUCT);
-
-create index TLD_FACT_2012_Q01_DW_PRODUCT on TLD_FACT_2012_Q01 (DW_PRODUCT);
-create index TLD_FACT_2012_Q02_DW_PRODUCT on TLD_FACT_2012_Q02 (DW_PRODUCT);
-create index TLD_FACT_2012_Q03_DW_PRODUCT on TLD_FACT_2012_Q03 (DW_PRODUCT);
-create index TLD_FACT_2012_Q04_DW_PRODUCT on TLD_FACT_2012_Q04 (DW_PRODUCT);
-
-create index TLD_FACT_2013_Q01_DW_PRODUCT on TLD_FACT_2013_Q01 (DW_PRODUCT);
-create index TLD_FACT_2013_Q02_DW_PRODUCT on TLD_FACT_2013_Q02 (DW_PRODUCT);
-create index TLD_FACT_2013_Q03_DW_PRODUCT on TLD_FACT_2013_Q03 (DW_PRODUCT);
-create index TLD_FACT_2013_Q04_DW_PRODUCT on TLD_FACT_2013_Q04 (DW_PRODUCT);
-
-create index TLD_FACT_2014_Q02_DW_PRODUCT on TLD_FACT_2014_Q02 (DW_PRODUCT);
-create index TLD_FACT_2014_Q03_DW_PRODUCT on TLD_FACT_2014_Q03 (DW_PRODUCT);
-create index TLD_FACT_2014_Q04_DW_PRODUCT on TLD_FACT_2014_Q04 (DW_PRODUCT);
-
-create index TLD_FACT_2015_Q01_DW_PRODUCT on TLD_FACT_2015_Q01 (DW_PRODUCT);
-create index TLD_FACT_2015_Q02_DW_PRODUCT on TLD_FACT_2015_Q02 (DW_PRODUCT);
-create index TLD_FACT_2015_Q03_DW_PRODUCT on TLD_FACT_2015_Q03 (DW_PRODUCT);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+select * from PRODUCT_DETAIL_DIM_V1 into outfile '/gpfs/home/wue04/tb-data/product_detail.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';;
 
 
 
