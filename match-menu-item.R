@@ -45,12 +45,38 @@ product$product <- gsub(pattern = ",", replacement = "", x=product$product)
 
 # based on product group and product description
 # drop other YUM brand products
-product <- product[!grepl("AW", product$group)&!grepl("BYB", product$group)&!grepl("KFC", product$group)&!grepl("LJS", product$group)&!grepl("PH", product$group)&!grepl("PIZZA HUT", product$group)&product$group!="KRYSTAL"&product$group!="ICBIY (YOGURT)"&product$group!="TCBY (YOGURT)", ]
-product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)&!grepl("BYB", product$product)&!grepl("KFC", product$product)&!grepl("LJS", product$product)&!grepl("PH", product$product)&!grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&!grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
+product <- product[!grepl("AW", product$group)&!grepl("BYB", product$group)&
+                         !grepl("KFC", product$group)&!grepl("LJS", product$group)&
+                         !grepl("PH", product$group)&!grepl("PIZZA HUT", product$group)&
+                         product$group!="KRYSTAL"&product$group!="ICBIY (YOGURT)"&
+                         product$group!="TCBY (YOGURT)", ]
+product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)&
+                         !grepl("BYB", product$product)&!grepl("KFC", product$product)&
+                         !grepl("LJS", product$product)&!grepl("PH", product$product)&
+                         !grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&
+                         !grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
 length(unique(product$product))
 
 # drop non-descriptive items
-product <- product[product$group!="N/A"&product$group!="CFM MANAGER SPECIALS"&product$group!="COMBOS"&product$product!=""&!grepl("* NEW PRODCT ADDED BY", product$product)&!grepl("COMBO", product$product)&!grepl("FRANCHISE LOCAL MENU", product$product)&product$product!="NEW ITEM"&!grepl("SPECIAL PROMOTION", product$product), ]
+product <- product[product$group!="N/A"&product$group!="CFM MANAGER SPECIALS"&
+                         product$group!="COMBOS"&product$product!=""&
+                         !grepl("* NEW PRODCT ADDED BY", product$product)&
+                         !grepl("COMBO", product$product)&
+                         !grepl("FRANCHISE LOCAL MENU", product$product)&
+                         product$product!="NEW ITEM"&!grepl("SPECIAL PROMOTION", product$product), ]
+product <- product[product$product!="TB I'M ALL EARS"&product$product!="SPECIAL"&
+                         product$product!="DO NOT ALTER THIS ITEM"&
+                         product$product!="BORDER SWEAT SHIRT"&
+                         product$product!="TB I'M THINKING YOU ME"&
+                         product$product!="CFM DOWNLOAD 1"&
+                         product$product!="TB HELLO FRIEND"&
+                         product$product!="CANADA BATMAN CUP INDIVIDUAL"&
+                         product$product!="DELETED ITEM, DO NOT USE"&
+                         product$product!="CLEV INDIANS/TB BANDANNA 1.4"&
+                         product$product!="CFM DOWNLOAD 2"&
+                         product$product!="TB I'M THINKING YOU ME DINNER"&
+                         product$product!="CANADA BATMAN CUP W/PURCHASE"&
+                         product$product!="TB HELLO FRIEND", ]
 length(unique(product$product))
 
 # drop non-food items
@@ -88,19 +114,16 @@ strings <- strings[order(strings$count, decreasing = TRUE), ]
 write.csv(strings, "data/menu-matching/product-names_unique_substrings.csv", row.names = FALSE)
 
 # incorporate full names
-strings <- read.csv("data/menu-matching/product-names_unique_substrings_with_abbr.csv", stringsAsFactors = FALSE)
-strings$X <- NULL
+strings <- read.csv("data/menu-matching/product-names_unique_substrings_w_correction.csv",
+                    stringsAsFactors = FALSE)
+#strings$X <- NULL
 sapply(strings, class)
-strings$check <- as.integer(strings$check)
+#strings$check <- as.integer(strings$check)
 
 # replace all unchanged strings with its original value
 strings$full[strings$full==""] <- strings$original[strings$full==""]
-strings$check <- NULL
-strings$length <- NULL
-
-# keep only the strings that have known full spellings
-#strings <- strings[is.na(strings$check) & strings$full!="", ]
 #strings$check <- NULL
+strings$length <- NULL
 
 # replace abbreviations with full spelling
 # first, break product names into separate substrings in their own columns
@@ -135,10 +158,12 @@ product <- product[, c(18:19, 9)]
 product <- product[!duplicated(product), ]
 
 # drop key words from product names: TEST, (), DO NOT ALTER THIS ITEM
-product <- product[product$product!="DO NOT ALTER THIS ITEM", ]
-product$full <- gsub("TEST ", "", product$full)
+product$full <- gsub("STEAK LOUIS", replacement = "ST LOUIS", product$full)
+product$full <- gsub("TEST", "", product$full)
 product$full <- gsub("\\(", "", product$full)
 product$full <- gsub("\\)", "", product$full)
+product$full <- gsub("TB ", "", product$full)
+product <- product[product$full!="", ]
 
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
@@ -150,10 +175,6 @@ length(unique(menu$item_name))
 
 # remove signs
 menu$item_name <- gsub(", ", " ", menu$item_name)
-
-### find exact matches ----
-#match <- merge(product, menu, by.x="product", by.y="item_name") #64 exact matches
-#rm(match)
 
 ### fuzzy matching, jaccard distance ----
 colnames(menu)[2] <- "full"
@@ -170,7 +191,7 @@ join_jaccard <- stringdist_join(product, menu,
       group_by(full.x) %>%
       top_n(1, -dist.jc)
 end_time <- Sys.time()
-end_time - start_time #55 secs
+end_time - start_time # approx. 55 secs
 rm(start_time, end_time)
 
 names(join_jaccard)
@@ -179,8 +200,8 @@ colnames(join_jaccard)[1:2] <- c("full.tb", "full.menustat")
 join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb), ]
 
 # number of exact matches
-length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #226
-length(join_jaccard$full.tb[join_jaccard$dist.jc==0]) #281
+length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #240
+length(join_jaccard$full.tb[join_jaccard$dist.jc==0]) #317
 
 # visualize
 hist(join_jaccard$dist.jc, breaks = 100,
@@ -207,8 +228,8 @@ join_jaccard2 <- join_jaccard2[, c(2, 5, 7, 3, 6, 1, 4)]
 colnames(join_jaccard2)[1:2] <- c("full.tb", "full.menustat")
 join_jaccard2 <- join_jaccard2[order(join_jaccard2$dist.jc, join_jaccard2$full.tb), ]
 
-length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc<=0.37])) #414
-length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc>0.37])) #2924
+length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc<=0.37])) #426
+length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc>0.37])) #2844
 
 hist(join_jaccard2$dist.jc, breaks = 100,
      main="Distribution of distances for re-matched items",
@@ -263,46 +284,13 @@ ggsave("tables/product-matching/compare-jaro-vs-jaccard.jpeg", width=20, height=
 rm(dist)
 
 ### merge matched menu items back to product table ----
-# re-run the 1st two sections of the script
-# get product ids
-product <- read.csv("data/from-bigpurple/product_dim.csv",
-                    sep = ";", header = FALSE, quote = "\"'",
-                    stringsAsFactors = FALSE,
-                    col.names = c("dw_product", "dw_productgroup", "productcd",
-                                  "product", "product_statuscd",
-                                  "product_statusdt", "product_lastupdt", "lastupdtuserid"))
-sapply(product, class)
-product$lastupdtuserid <- NULL
-
-group <- read.csv("data/from-bigpurple/product_group_det.csv",
-                  sep = ";", header = FALSE, quote = "\"'",
-                  stringsAsFactors = FALSE,
-                  col.names = c("dw_productgroup", "groupcd", "group",
-                                "groups_tatuscd",
-                                "group_statusdt", "group_lastupdt", "lastupdtuserid"))
-group$lastupdtuserid <- NULL
-
-product <- merge(product, group, by="dw_productgroup")
-rm(group)
-
-# drop commas and other punctuations
-product$product <- gsub(pattern = ",", replacement = "", x=product$product)
-
-# based on product group and product description
-# drop other YUM brand products
-product <- product[!grepl("AW", product$group)&!grepl("BYB", product$group)&!grepl("KFC", product$group)&!grepl("LJS", product$group)&!grepl("PH", product$group)&!grepl("PIZZA HUT", product$group)&product$group!="KRYSTAL"&product$group!="ICBIY (YOGURT)"&product$group!="TCBY (YOGURT)", ]
-product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)&!grepl("BYB", product$product)&!grepl("KFC", product$product)&!grepl("LJS", product$product)&!grepl("PH", product$product)&!grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&!grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
-
-# drop non-descriptive items
-product <- product[product$group!="N/A"&product$group!="CFM MANAGER SPECIALS"&product$group!="COMBOS"&product$product!=""&!grepl("* NEW PRODCT ADDED BY", product$product)&!grepl("COMBO", product$product)&!grepl("FRANCHISE LOCAL MENU", product$product)&product$product!="NEW ITEM"&!grepl("SPECIAL PROMOTION", product$product), ]
-
-# drop non-food items
-product <- product[product$group!="NON-FOOD SALES (PRE", ]
+# re-run lines 19-88
+product <- product[!duplicated(product$product), ]
 
 # keep only the product names and ids
 # merge with join_jaccard table, identify the items that had exact matches
 names(product)
-product <- product[, c(2, 4)]
+product <- product[, c(1, 4)]
 product <- merge(product, join_jaccard,by = "product", all = TRUE)
 product <- product[product$dist.jc==0, c(1:2)]
 
@@ -383,7 +371,7 @@ ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", wi
 rm(sales_all)
 
 ### match drinks ----
-# re-run product cleaning code, lines 19-141
+# re-run product cleaning code, lines 19-166
 drinks <- product[product$group=="DRINKS", ]
 length(unique(drinks$full))
 names(drinks)
@@ -391,19 +379,32 @@ names(drinks)
 # strip drink names of size info
 # OZ, CENT, SMALL, MEDIUM, LARGE, EXTRA LARGE
 drinks$rename <- gsub("[0-9]+", "", drinks$full)
-drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|MEGA JUG|LITER",
+drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|
+                      MEGA JUG|LITER|LARGE",
                       "", drinks$rename)
-drinks$rename <- gsub("LARGE", "", drinks$rename)
 drinks$rename <- trimws(drinks$rename, "both")
 drinks$rename <- gsub("UP", "7UP", drinks$rename)
+drinks$rename <- gsub("7UPSELL", "UPSELL", drinks$rename)
 drinks <- drinks[!grepl("ONION|NACHOS", drinks$rename), ]
-length(unique(drinks$rename)) #245
+length(unique(drinks$rename)) #266
 
 # 3 categories: diet, pepsi & mt dew, other sugary drinks
 drinks$category <- ifelse(grepl("DIET|WATER|COFFEE|UNSWEETENED|HOT TEA|BREWED TEA", drinks$rename)
-                          &!grepl("SWEET|MOCHA|VANILLA|CARAMEL", drinks$rename), "Low-calorie",
+                          &!grepl("SWEET |MOCHA|VANILLA|CARAMEL", drinks$rename), "Low-calorie",
                           ifelse(grepl("PEPSI|BAJA BLAST", drinks$rename),
                                  "Pepsi/Mt. Dew Baja Blast", "Other SSB"))
+
+# export unique drink names and cateogrize
+unique_drinks <- drinks[!duplicated(drinks$rename), ]
+write.csv(unique_drinks, "data/menu-matching/unique-drinks.csv", row.names = FALSE)
+
+# merge back
+cat <- read.csv("data/menu-matching/unique-drinks.csv", stringsAsFactors = FALSE)
+cat <- cat[, c(4:5)]
+drinks <- merge(drinks, cat, by="rename")
+drinks$category.x <- NULL
+colnames(drinks)[5] <- "category"
+rm(cat, unique_drinks)
 
 table(drinks$category)
 #drinks[drinks$category=="Pepsi/Mt. Dew Baja Blast", ]
@@ -475,10 +476,10 @@ ggplot(data=sales_all,
       geom_point() +
       geom_line(size=1) +
       scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      labs(title="Drink sales, share of low-calorie vs. SSB",
+      labs(title="Drink sales, by category",
            x="Year", y="Sales percentage", col="Category",
            caption="Data source: Taco Bell") +
-      #scale_color_brewer(palette="Set3") +
+      scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
