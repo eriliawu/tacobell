@@ -15,6 +15,14 @@ library(stringdist)
 library(tidyr)
 library(stringr)
 library(ggplot2)
+#install.packages("tm") #text mining
+#install.packages("SnowballC") #text stemming
+#install.packages("wordcloud") #generate word cloud
+#install.packages("RColorBrewer")
+library(tm)
+library(SnowballC)
+library(RColorBrewer)
+library(wordcloud)
 
 # read product data ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",
@@ -55,7 +63,7 @@ product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)
                          !grepl("LJS", product$product)&!grepl("PH", product$product)&
                          !grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&
                          !grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
-length(unique(product$product))
+length(unique(product$product)) #4800
 
 # drop non-descriptive items
 product <- product[product$group!="N/A"&product$group!="CFM MANAGER SPECIALS"&
@@ -165,6 +173,8 @@ product$full <- gsub("\\)", "", product$full)
 product$full <- gsub("TB ", "", product$full)
 product <- product[product$full!="", ]
 
+length(unique(product$full))
+
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 menu$item_name <- toupper(menu$item_name)
@@ -175,6 +185,69 @@ length(unique(menu$item_name))
 
 # remove signs
 menu$item_name <- gsub(", ", " ", menu$item_name)
+
+### generate word cloud, for both taco bell and menustat ----
+rquery.wordcloud <- function(x, type=c("text", "url", "file"), 
+                             lang="english", excludeWords=NULL, 
+                             textStemming=FALSE,  colorPalette="Dark2",
+                             min.freq=2, max.words=200) { 
+      library("tm")
+      library("SnowballC")
+      library("wordcloud")
+      library("RColorBrewer") 
+      
+      if(type[1]=="file") text <- readLines(x)
+      else if(type[1]=="url") text <- html_to_text(x)
+      else if(type[1]=="text") text <- x
+      
+      # Load the text as a corpus
+      docs <- Corpus(VectorSource(text))
+      # Convert the text to lower case
+      docs <- tm_map(docs, content_transformer(tolower))
+      # Remove numbers
+      docs <- tm_map(docs, removeNumbers)
+      # Remove stopwords for the language 
+      docs <- tm_map(docs, removeWords, stopwords(lang))
+      # Remove punctuations
+      docs <- tm_map(docs, removePunctuation)
+      # Eliminate extra white spaces
+      docs <- tm_map(docs, stripWhitespace)
+      # Remove your own stopwords
+      if(!is.null(excludeWords)) 
+            docs <- tm_map(docs, removeWords, excludeWords) 
+      # Text stemming
+      if(textStemming) docs <- tm_map(docs, stemDocument)
+      # Create term-document matrix
+      tdm <- TermDocumentMatrix(docs)
+      m <- as.matrix(tdm)
+      v <- sort(rowSums(m),decreasing=TRUE)
+      d <- data.frame(word = names(v),freq=v)
+      # check the color palette name 
+      if(!colorPalette %in% rownames(brewer.pal.info)) colors = colorPalette
+      else colors = brewer.pal(8, colorPalette) 
+      # Plot the word cloud
+      set.seed(1234)
+      wordcloud(d$word,d$freq, min.freq=min.freq, max.words=max.words,
+                random.order=FALSE, rot.per=0.35, 
+                use.r.layout=FALSE, colors=colors)
+      
+      invisible(list(tdm=tdm, freqTable = d))
+}
+
+cloud_tb <- rquery.wordcloud(x=product$full, type="text", lang="english",
+                             min.freq = 2, max.words = 200)
+freq <- cloud_tb$freqTable
+barplot(freq[1:15,]$freq, las=2, names.arg = freq[1:15,]$word,
+        col="lightblue", main="Top 15 most frequent words from Taco Bell",
+        ylab = "Word frequencies")
+
+cloud_menustat <- rquery.wordcloud(x=menu$item_name, type="text",
+                                   lang="english", min.freq = 2, max.words = 200)
+freq <- cloud_menustat$freqTable
+barplot(freq[1:15,]$freq, las=2, names.arg = freq[1:15,]$word,
+        col="lightblue", main="Top 15 most frequent words from MenuStat",
+        ylab = "Word frequencies")
+rm(rquery.wordcloud, cloud_menustat, cloud_tb, freq)
 
 ### fuzzy matching, jaccard distance ----
 colnames(menu)[2] <- "full"
@@ -362,7 +435,7 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
       scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
       labs(title="Number of sold items represented by matched products",
            x="Year", y="Percent",
-           caption="Data source: Taco Bell \nNote: 226 items (6.26%) with exact matches. The percentage is based on number of items sold.") +
+           caption="Data source: Taco Bell \nNote: 318 items (8.84%) with exact matches. The percentage is based on number of items sold.") +
       #scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
@@ -370,7 +443,7 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
 rm(sales_all)
 
-### match drinks ----
+### clean up drink names, categorize ----
 # re-run product cleaning code, lines 19-166
 drinks <- product[product$group=="DRINKS", ]
 length(unique(drinks$full))
@@ -411,8 +484,9 @@ table(drinks$category)
 length(unique(drinks$rename[drinks$category=="Low-calorie"]))
 length(unique(drinks$rename[drinks$category=="Pepsi/Mt. Dew Baja Blast"]))
 length(unique(drinks$rename[drinks$category=="Other SSB"]))
+#write.csv(drinks, "data/menu-matching/drinks.csv", row.names = FALSE)
 
-# match drinks names to sales volume
+### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
 detail <- read.csv("data/from-bigpurple/product_detail.csv",
                    stringsAsFactors = FALSE)
@@ -485,7 +559,7 @@ ggplot(data=sales_all,
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-pct.jpeg", width=20, height=10, unit="cm")
 
-# sales, in actual volume
+# sales, in actual volume 
 ggplot(data=sales_all,
        aes(x=paste(year, "Q", quarter, sep=""), y=qty,
            group=as.factor(category), col=as.factor(category))) +
@@ -502,17 +576,115 @@ ggplot(data=sales_all,
 ggsave("tables/product-matching/drink-sales-volume.jpeg", width=20, height=10, unit="cm")
 rm(sales_all)
 
+### matche drinks sales, drive thru vs. others----
+sales_all <- NULL
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+#sapply(detail, class)
 
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, "_drive-thru", ".csv"),
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "occasion", "sales", "qty"))
+                        #sapply(sales, class)
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        #print(paste0("1st merge done: ", "year ", i, " Q", j))
+                        
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        
+                        sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
+                        sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail) &
+                                             sales$occasion!=0, ]
+                        #print(paste0("2nd merge done: ", "year ", i, " Q", j))
+                        #names(sales)
+                        #detial$id <- NULL
+                        
+                        # collapse all drink sales into 3 categories
+                        sales <- aggregate(data=sales, qty~category+occasion, sum)
+                        sales$year <- i
+                        sales$quarter <- j
+                        sales$pct <- sales$qty / sum(sales$qty)
+                        sales_all <- rbind(sales_all, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales)
 
+sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
 
+# visualization
+# sales, in percentage
+sales_drive <- sales_all[sales_all$occasion==2, ]
+ggplot(data=sales_drive,
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=as.factor(category), col=as.factor(category))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 0.3)) +
+      labs(title="Drive-through drink sales, by category",
+           x="Year", y="Sales percentage", col="Category",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-drivethru_pct.jpeg", width=20, height=10, unit="cm")
 
+sales_eatin <- sales_all[sales_all$occasion==1, ]
+ggplot(data=sales_eatin,
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=as.factor(category), col=as.factor(category))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 0.3)) +
+      labs(title="Eat-in drink sales, by category",
+           x="Year", y="Sales percentage", col="Category",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-eatin-pct.jpeg", width=20, height=10, unit="cm")
 
+sales_takeout <- sales_all[sales_all$occasion==3, ]
+ggplot(data=sales_takeout,
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=as.factor(category), col=as.factor(category))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 0.3)) +
+      labs(title="Takeout drink sales, by category",
+           x="Year", y="Sales percentage", col="Category",
+           caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-takeout-pct.jpeg", width=20, height=10, unit="cm")
 
+rm(sales_drive, sales_eatin, sales_takeout)
 
-
-
-
-
+### 
 
 
 
