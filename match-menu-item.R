@@ -6,7 +6,7 @@ current_warning <- getOption("warn")
 options(warn = -1)
 #options(warn = current_warning)
 
-# install and load packages ----
+### install and load packages ----
 #install.packages("fuzzyjoin")
 library(fuzzyjoin)
 library(dplyr)
@@ -24,7 +24,7 @@ library(SnowballC)
 library(RColorBrewer)
 library(wordcloud)
 
-# read product data ----
+### read product data ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",
                     sep = ";", header = FALSE, quote = "\"'",
                     stringsAsFactors = FALSE,
