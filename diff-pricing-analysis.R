@@ -121,6 +121,77 @@ same.time[same.time$state=="NY"&same.time$dw_product==802&
 
 same.time[same.time$state=="NY"&same.time$dw_product==3139, c(3:4, 6)]
 
+### cross-time analysis ----
+# see diff-pricing.R script on HPC 
+price <- NULL
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/diff-pricing/pepsi_burrito_sales_",
+                                                 i, "_Q0", j, ".csv"),
+                                          stringsAsFactors = FALSE)
+                        sales$year <- i
+                        sales$quarter <- j
+                        price <- rbind(price, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+                        )
+      }
+}
+rm(i, j, sales)
+names(price)
+colnames(price)[1:3] <- c("restid", "dw_product", "price")
+
+# see what stores showed consistent sales of items
+# create duplicate tags for each unique address
+price <- price %>%
+      group_by(restid, dw_product) %>%
+      mutate(count=n()) %>%
+      mutate(rank <- seq(1, count[1], 1))
+colnames(price)[7] <- "dup"
+summary(price$count)
+length(unique(price$address[price$count==35&price$dw_product==802])) #646
+max(price$count[price$dw_product==802&price$state=="NY"&
+                      (price$county=="New York"|price$county=="Bronx"|
+                             price$county=="Kings"|price$county=="Queens"|
+                             price$county=="Richmond")]) #32
+
+max(price$count[price$dw_product==3139]) #27
+
+# merge restid with restaurant data
+price <- merge(price, restaurants, by="restid")
+names(price)
+price <- price[, c(1:13, 29:30)]
+
+table(price$county[price$count==35&price$dw_product==802&
+                       price$year==2015&price$quarter==1&
+                       price$state=="NY"])
+table(price$county[price$count==32&price$dw_product==802&
+                         price$year==2015&price$quarter==1&
+                         price$state=="NY"&
+                         (price$county=="New York"|price$county=="Bronx"|
+                                price$county=="Kings"|price$county=="Queens"|
+                                price$county=="Richmond")])
+
+# price of a bean burrito over time, in Flushing
+flushing <- price[price$address=="172-12 Northern Blvd., Flushing, NY 11358", ]
+ggplot(data=flushing, aes(x=paste0(year, "Q", quarter),
+                        y=price,
+                        group=as.factor(dw_product), col=as.factor(dw_product))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Price of bean burrito and medium pepsi",
+           x="Time", y="Price",
+           col="Product", caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      #scale_y_continuous(limits=c(0, 5000)) +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+
+
+
 
 
 
