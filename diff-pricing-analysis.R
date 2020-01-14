@@ -15,6 +15,10 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(ggplot2)
+#install.packages("ggmap")
+library(ggmap)
+#install.packages("maps")
+library(maps)
 
 ### read restaurant data ----
 restaurants <- read.csv("data/restaurants/analytic_restaurants.csv",
@@ -90,38 +94,8 @@ bean <- product[product$product=="BEAN BURRITO"&product$group=="BURRITO"&product
 
 sample <- rbind(pepsi, bean)
 rm(pepsi, bean)
-### run queries in database to find records ----
-# see diff-pricing.R script on HPC
 
-### across-city analysis, 2010 Q2
-# merge sales data with restaurants
-same.time <- read.csv("data/from-bigpurple/diff-pricing/sales_pepsi_burrito_2010Q2.csv",
-                      stringsAsFactors = FALSE,
-                      col.names = c("restid", "product", "price"))
-
-same.time <- merge(same.time, restaurants, by="restid")
-same.time <- merge(same.time, sample, by.x="product", by.y="dw_product")
-names(same.time)
-same.time <- same.time[order(same.time$product, same.time$state, same.time$address),
-                       c(1:5, 25:26, 33)]
-colnames(same.time)[c(1, 8)] <- c("dw_product", "product")
-
-# look at distribution
-table(same.time$price[same.time$dw_product==802])
-table(same.time$price[same.time$dw_product==4098])
-table(same.time$price[same.time$dw_product==37956]) #none returned
-table(same.time$price[same.time$dw_product==3139])
-table(same.time$price[same.time$dw_product==3648])
-#bean burrito: 802; medium pepsi: 3139
-
-same.time[same.time$state=="NY"&same.time$dw_product==802&
-                (same.time$county=="New York"|same.time$county=="Bronx"|
-                       same.time$county=="Kings"|same.time$county=="Queens"|
-                       same.time$county=="Richmond"), c(3:4, 6)]
-
-same.time[same.time$state=="NY"&same.time$dw_product==3139, c(3:4, 6)]
-
-### cross-time analysis ----
+### read pricing data by quarter, merge with restaurant and product data ----
 # see diff-pricing.R script on HPC 
 price <- NULL
 for (i in 2007:2015) {
@@ -143,45 +117,62 @@ rm(i, j, sales)
 names(price)
 colnames(price)[1:3] <- c("restid", "dw_product", "price")
 
+# merge with restaurant address, product name
+price <- merge(price, sample[, c("dw_product", "product")], by="dw_product")
+price <- merge(price, restaurants[, c(c(1:9, 23:24))], by="restid")
+names(price)
+
 # see what stores showed consistent sales of items
 # create duplicate tags for each unique address
 price <- price %>%
-      group_by(restid, dw_product) %>%
+      group_by(address, dw_product) %>%
       mutate(count=n()) %>%
       mutate(rank <- seq(1, count[1], 1))
-colnames(price)[7] <- "dup"
+colnames(price)[18] <- "dup"
+
+### cross-time analysis, the same restaurant/area ----
 summary(price$count)
-length(unique(price$address[price$count==35&price$dw_product==802])) #646
+
+# why some restaurants show up more than the max 35 quarters
+table(price$address[price$count>=36])
+temp <- price[price$count>=36, ]
+temp <- temp[order(temp$state, temp$address, temp$year, temp$quarter), ]
+# sometimes restaurants changed hands during a quarter
+# that restaurant would show up more than the max of 25 quarters in the data
+rm(temp)
+
+# restaurants consistently selling bean burrito
+length(unique(price$address[price$count==35&price$dw_product==802])) #686
+
+# in new york city
 max(price$count[price$dw_product==802&price$state=="NY"&
                       (price$county=="New York"|price$county=="Bronx"|
                              price$county=="Kings"|price$county=="Queens"|
                              price$county=="Richmond")]) #32
 
-max(price$count[price$dw_product==3139]) #27
+# restaurants consistently selling medium pepsi
+max(price$count[price$dw_product==3139]) #29
 
-# merge restid with restaurant data
-price <- merge(price, restaurants, by="restid")
-names(price)
-price <- price[, c(1:13, 29:30)]
-
+# bean burrito sales in new york city
 table(price$county[price$count==35&price$dw_product==802&
                        price$year==2015&price$quarter==1&
-                       price$state=="NY"])
-table(price$county[price$count==32&price$dw_product==802&
+                       price$state=="NY"]) #flushing
+
+table(price$address[price$dw_product==802&
                          price$year==2015&price$quarter==1&
                          price$state=="NY"&
                          (price$county=="New York"|price$county=="Bronx"|
                                 price$county=="Kings"|price$county=="Queens"|
                                 price$county=="Richmond")])
 
-# price of a bean burrito over time, in Flushing
-flushing <- price[price$address=="172-12 Northern Blvd., Flushing, NY 11358", ]
-ggplot(data=flushing, aes(x=paste0(year, "Q", quarter),
-                        y=price,
-                        group=as.factor(dw_product), col=as.factor(dw_product))) +
+# price of a bean burrito over time, in Flushing ----
+ggplot(data=subset(price, address %in% "172-12 Northern Blvd., Flushing, NY 11358"),
+       aes(x=paste0(year, "Q", quarter),
+           y=price,
+           group=as.factor(product), col=as.factor(product))) +
       geom_point() +
       geom_line(size=1) +
-      labs(title="Price of bean burrito and medium pepsi",
+      labs(title="Price of bean burrito and medium Pepsi, Flushing, Queens",
            x="Time", y="Price",
            col="Product", caption="Data source: Taco Bell") +
       scale_color_brewer(palette="Set3") +
@@ -189,12 +180,92 @@ ggplot(data=flushing, aes(x=paste0(year, "Q", quarter),
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/diff-pricing/price-change-flushing.jpeg", width=20, height=10, unit="cm")
 
+# price of bean burrito and pepsi over time in queens county ----
+ggplot(data=subset(price, (state %in% "NY" & county %in% "Queens" & 
+                                 dw_product %in% c(802, 4098, 37956))),
+       aes(x=paste0(year, "Q", quarter),
+           y=price,
+           group=as.factor(address), col=as.factor(address))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Price of bean burrito, Queens",
+           x="Time", y="Price",
+           col="Address", caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      #scale_y_continuous(limits=c(0, 5000)) +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/diff-pricing/price-change-burrito-queens.jpeg", width=20, height=10, unit="cm")
 
+ggplot(data=subset(price, (state %in% "NY" & county %in% "Queens" & 
+                                 dw_product %in% c(3139, 3648))),
+       aes(x=paste0(year, "Q", quarter),
+           y=price,
+           group=as.factor(address), col=as.factor(address))) +
+      geom_point() +
+      geom_line(size=1) +
+      labs(title="Price of medium Pepsi, Queens",
+           x="Time", y="Price",
+           col="Address", caption="Data source: Taco Bell") +
+      scale_color_brewer(palette="Set3") +
+      #scale_y_continuous(limits=c(0, 5000)) +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/diff-pricing/price-change-pepsi-queens.jpeg", width=20, height=10, unit="cm")
 
+### price of bean burrito and pepsi across regions, 2010Q2 ----
+us <- map_data("state")
+ggplot() +
+      coord_fixed() +
+      geom_polygon(data=us,
+                   aes(x=long, y=lat, group=group),
+                   color="black", fill="lightblue", size=0.1) +
+      geom_point(data=subset(price, year==2015&quarter==1&(product=="BEAN BURRITO")&state!="AK"&
+                                   (price==0.99|price==1.09|price==1.19|
+                                          price==1.29|price==1.39|price==1.49|
+                                          price==1.59|price==1.69|price==1.99)), 
+                 aes(x=lon, y=lat, color=as.character(price)), size=0.5) +
+      labs(title="Price of bean burrito, 2015Q1", x="", y="", col="Price",
+           caption="Note: pricing information exclude Alaska and Hawaii.") +
+      scale_color_brewer(palette="YlOrRd") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(), 
+            panel.background = element_rect(fill = 'white', colour = 'white'), 
+            axis.line = element_line(colour = "white"),
+            axis.ticks=element_blank(), axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/diff-pricing/burrito-price_2015q1.jpeg", width=20, height=10, unit="cm")
 
-
-
+ggplot() +
+      coord_fixed() +
+      geom_polygon(data=us,
+                   aes(x=long, y=lat, group=group),
+                   color="black", fill="lightblue", size=0.1) +
+      geom_point(data=subset(price, year==2015&quarter==1&(product=="MEDIUM PEPSI")&state!="AK"&
+                                   (price==1.39|price==1.49|
+                                          price==1.59|price==1.69|price==1.79|
+                                          price==1.85|price==1.89|price==1.99|
+                                          price==2.09)), 
+                 aes(x=lon, y=lat, color=as.character(price)), size=0.5) +
+      labs(title="Price of medium Pepsi, 2015Q1", x="", y="", col="Price",
+           caption="Note: pricing information exclude Alaska and Hawaii.") +
+      scale_color_brewer(palette="YlOrRd") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(), 
+            panel.background = element_rect(fill = 'white', colour = 'white'), 
+            axis.line = element_line(colour = "white"),
+            axis.ticks=element_blank(), axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/diff-pricing/pepsi-price_2015q1.jpeg", width=20, height=10, unit="cm")
+rm(sample, us, restaurants, price, product)
 
 
 
