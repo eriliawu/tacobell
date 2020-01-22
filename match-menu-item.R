@@ -250,31 +250,29 @@ barplot(freq[1:15,]$freq, las=2, names.arg = freq[1:15,]$word,
 rm(rquery.wordcloud, cloud_menustat, cloud_tb, freq)
 
 ### fuzzy matching, jaccard distance ----
-colnames(menu)[2] <- "full"
-
 # a default q=1
 start_time <- Sys.time()
 join_jaccard <- stringdist_join(product, menu, 
-                by="full",
+                by=c("full"="item_name"),
                 mode = "left",
                 ignore_case = FALSE, 
                 method = "jaccard", #q=1
                 max_dist = 99, 
                 distance_col = "dist.jc") %>%
-      group_by(full.x) %>%
+      group_by(full) %>%
       top_n(1, -dist.jc)
 end_time <- Sys.time()
 end_time - start_time # approx. 55 secs
 rm(start_time, end_time)
 
 names(join_jaccard)
-join_jaccard <- join_jaccard[, c(2, 5, 7, 3, 6, 1, 4)]
-colnames(join_jaccard)[1:2] <- c("full.tb", "full.menustat")
-join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb), ]
+join_jaccard <- join_jaccard[, c(2, 5, 7, 3, 1, 6)]
+join_jaccard <- join_jaccard[order(join_jaccard$full, join_jaccard$dist.jc), ]
+#write.csv(join_jaccard, "data/menu-matching/manual-matching.csv", row.names = FALSE)
 
 # number of exact matches
-length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #240
-length(join_jaccard$full.tb[join_jaccard$dist.jc==0]) #317
+length(unique(join_jaccard$full[join_jaccard$dist.jc==0])) #240
+length(join_jaccard$full[join_jaccard$dist.jc==0]) #317
 
 # visualize
 hist(join_jaccard$dist.jc, breaks = 100,
@@ -640,7 +638,7 @@ ggplot(data=sales_drive,
            group=as.factor(category), col=as.factor(category))) +
       geom_point() +
       geom_line(size=1) +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 0.3)) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 0.5)) +
       labs(title="Drive-through drink sales, by category",
            x="Year", y="Sales percentage", col="Category",
            caption="Data source: Taco Bell") +
