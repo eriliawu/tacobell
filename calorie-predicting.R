@@ -83,7 +83,7 @@ par(mfrow = c(2, 2))
 plot(mod2)
 par(mfrow = c(1, 1))
 
-mod3 <- lm(calories~ca+chicken+beef+steak+cheese+rice+beant+as.character(year),
+mod3 <- lm(calories~cat+chicken+beef+steak+cheese+rice+bean+as.character(year),
            data=subset(menu, cat!="drink"&cat!="other"&calories<1000))
 summary(mod3)
 par(mfrow = c(2, 2))
