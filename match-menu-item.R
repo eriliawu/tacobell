@@ -266,9 +266,9 @@ end_time - start_time # approx. 55 secs
 rm(start_time, end_time)
 
 names(join_jaccard)
-join_jaccard <- join_jaccard[, c(2, 5, 7, 3, 1, 6)]
-join_jaccard <- join_jaccard[order(join_jaccard$full, join_jaccard$dist.jc), ]
-#write.csv(join_jaccard, "data/menu-matching/manual-matching.csv", row.names = FALSE)
+join_jaccard <- join_jaccard[, c(2, 5, 7, 3, 1, 6, 4)]
+join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full), ]
+write.csv(join_jaccard, "data/menu-matching/matching-jaccard1_id.csv", row.names = FALSE)
 
 # number of exact matches
 length(unique(join_jaccard$full[join_jaccard$dist.jc==0])) #240
@@ -281,26 +281,25 @@ hist(join_jaccard$dist.jc, breaks = 100,
 
 # q=2
 # re-match menu items that did not make a dist=0 match in round 1
-product2 <- join_jaccard[(join_jaccard$dist.jc!=0)&!duplicated(join_jaccard$full.tb), c(6, 1, 4)]
-colnames(product2)[2] <- "full"
+product2 <- join_jaccard[(join_jaccard$dist.jc!=0)&!duplicated(join_jaccard$full), c(1, 4, 5)]
 
 join_jaccard2 <- stringdist_join(product2, menu, 
-                                by="full",
+                                by=c("full"="item_name"),
                                 mode = "left",
                                 ignore_case = FALSE, 
                                 method = "jaccard", q=2,
                                 max_dist = 99, 
                                 distance_col = "dist.jc") %>%
-      group_by(full.x) %>%
+      group_by(full) %>%
       top_n(1, -dist.jc) #
 
-#names(join_jaccard2)
-join_jaccard2 <- join_jaccard2[, c(2, 5, 7, 3, 6, 1, 4)]
-colnames(join_jaccard2)[1:2] <- c("full.tb", "full.menustat")
-join_jaccard2 <- join_jaccard2[order(join_jaccard2$dist.jc, join_jaccard2$full.tb), ]
+names(join_jaccard2)
+join_jaccard2 <- join_jaccard2[, c(1, 5, 7, 2, 3, 6, 4)]
+join_jaccard2 <- join_jaccard2[order(join_jaccard2$dist.jc, join_jaccard2$full), ]
+#write.csv(join_jaccard2, "data/menu-matching/matching-jaccard2.csv", row.names = FALSE)
 
-length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc<=0.37])) #426
-length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc>0.37])) #2844
+length(unique(join_jaccard2$full[join_jaccard2$dist.jc<=0.37])) #426
+length(unique(join_jaccard2$full[join_jaccard2$dist.jc>0.37])) #2844
 
 hist(join_jaccard2$dist.jc, breaks = 100,
      main="Distribution of distances for re-matched items",
@@ -355,6 +354,8 @@ ggsave("tables/product-matching/compare-jaro-vs-jaccard.jpeg", width=20, height=
 rm(dist)
 
 ### merge matched menu items back to product table ----
+# manually search join_jaccard and join_jaccard2 tables
+# whether the matches are actually matches
 # re-run lines 19-88
 product <- product[!duplicated(product$product), ]
 
@@ -365,7 +366,7 @@ product <- product[, c(1, 4)]
 product <- merge(product, join_jaccard,by = "product", all = TRUE)
 product <- product[product$dist.jc==0, c(1:2)]
 
-### check sales volume represented by exact match items ----
+### check sales volume represented by exact match items where dist.jc=0 in join_jaccard ----
 # build empty shell for summary stats
 sales_all <- data.frame(matrix(data=NA, nrow=(9*4-1), ncol = 4),
                         stringsAsFactors = FALSE)
@@ -440,6 +441,130 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
 rm(sales_all)
+
+### check sales volume of manually matched items ----
+# re-run lines 19-88
+product <- product[!duplicated(product$product), ]
+
+match1 <- read.csv("data/menu-matching/matching-jaccard1.csv", stringsAsFactors = FALSE)
+names(match1)
+match2 <- read.csv("data/menu-matching/matching-jaccard2.csv", stringsAsFactors = FALSE)
+names(match2)
+match2$id <- NULL
+
+match <- rbind(match1, match2)
+rm(match1, match2)
+names(match)
+match <- match[, c(1, 4, 6)]
+
+# merge back to product table
+
+match$match[match$match!=1|is.na(match$match)] <- 0
+match <- match[!duplicated(match), ]
+
+# check if some items were match=0 in jaccard1 but match=1 in jaccard2
+# mutate data frame
+# create new column max_match
+# only keep match=max_match
+match <- match[order(match$full, match$match), ] # some items have both 1 and 0 matches
+temp <- aggregate(match$match, by=list(match$full), max)
+match <- merge(match, temp, by.x = "full", by.y = "Group.1")
+rm(temp)
+names(match)
+match$match <- NULL
+colnames(match)[3] <- "match"
+match <- match[!duplicated(match), ]
+match$match[match$match!=1|is.na(match$match)] <- 0
+
+# check sales volume by each item
+sales_all <- NULL
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, ".csv"),
+                                          sep = ";", header = FALSE, quote = "\"'",
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "sales", "qty"))
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        sales <- sales[sales$detail_desc!="TB I'M ALL EARS"&sales$detail_desc!="SPECIAL"&
+                                                 sales$detail_desc!="DO NOT ALTER THIS ITEM"&
+                                                 sales$detail_desc!="BORDER SWEAT SHIRT"&
+                                                 sales$detail_desc!="TB I'M THINKING YOU ME"&
+                                                 sales$detail_desc!="CFM DOWNLOAD 1"&
+                                                 sales$detail_desc!="TB HELLO FRIEND"&
+                                                 sales$detail_desc!="CANADA BATMAN CUP INDIVIDUAL"&
+                                                 sales$detail_desc!="DELETED ITEM, DO NOT USE"&
+                                                 sales$detail_desc!="CLEV INDIANS/TB BANDANNA 1.4"&
+                                                 sales$detail_desc!="CFM DOWNLOAD 2"&
+                                                 sales$detail_desc!="TB I'M THINKING YOU ME DINNER"&
+                                                 sales$detail_desc!="CANADA BATMAN CUP W/PURCHASE"&
+                                                 sales$detail_desc!="TB HELLO FRIEND", ]
+                        sales <- merge(sales, match, by.x = "detail_desc", by.y = "product", all=TRUE)
+                        sales <- sales[, c(1, 4:6)]
+                        sales$qty[is.na(sales$qty)] <- 0
+
+                        # aggregate sales by match and full columns
+                        sales <- aggregate(data=sales, qty~detail_desc+match, sum)
+                        sales$year <- i
+                        sales$quarter <- j
+                        sales$pct <- sales$qty / sum(sales$qty)
+                        sales_all <- rbind(sales_all, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales)
+length(unique(sales_all$detail_desc))
+sales_all <- sales_all[sales_all$qty>=0 , ]
+sales_all <- sales_all[order(sales_all$qty, decreasing = TRUE), ]
+#write.csv(sales_all, "data/menu-matching/sales-pct-nonmatched-items_by_quarter.csv", row.names = FALSE)
+
+# collapse year and quarter
+# calculate total num of sales per item
+sales_all <- aggregate(qty~detail_desc, data=sales_all, sum)
+sales_all <- sales_all[order(sales_all$qty, decreasing = TRUE), ]
+sales_all$pct <- sales_all$qty / sum(sales_all$qty)*100
+#write.csv(sales_all, "data/menu-matching/sales-pct-nonmatched-items_total.csv", row.names = FALSE)
+#sales_all <- read.csv("data/menu-matching/sales-pct-nonmatched-items.csv", stringsAsFactors = FALSE)
+
+# visualization, sales volume over time, match vs. non-match
+temp <- aggregate(data=sales_all, pct~year+quarter+match, sum)
+ggplot(data=temp, aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+                      color=as.factor(match), group=as.factor(match))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
+      labs(title="% of sales, matched items vs. non-matched",
+           x="Year", y="Percent", color="Match",
+           caption="Note: 619 (or 17%) of items were identified as having a match.") +
+      #scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/sales-vol-represented-by-matched-items-with-jaccard2.jpeg", width=20, height=10, unit="cm")
+rm(temp)
+
 
 ### clean up drink names, categorize ----
 # re-run product cleaning code, lines 19-166
