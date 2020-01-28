@@ -119,7 +119,7 @@ strings <- strings[!duplicated(strings), ]
 strings <- strings[order(strings$count, decreasing = TRUE), ]
 
 # export to fill out abbreviations
-write.csv(strings, "data/menu-matching/product-names_unique_substrings.csv", row.names = FALSE)
+#write.csv(strings, "data/menu-matching/product-names_unique_substrings.csv", row.names = FALSE)
 
 # incorporate full names
 strings <- read.csv("data/menu-matching/product-names_unique_substrings_w_correction.csv",
@@ -565,8 +565,7 @@ ggplot(data=temp, aes(x=paste(year, "Q", quarter, sep=""), y=pct,
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items-with-jaccard2.jpeg", width=20, height=10, unit="cm")
 rm(temp)
 
-
-### clean up drink names, categorize ----
+### clean up drink names, re-categorize and identify sizes ----
 # re-run product cleaning code, lines 19-166
 drinks <- product[product$group=="DRINKS", ]
 length(unique(drinks$full))
@@ -576,8 +575,7 @@ names(drinks)
 # OZ, CENT, SMALL, MEDIUM, LARGE, EXTRA LARGE
 drinks$rename <- gsub("[0-9]+", "", drinks$full)
 drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|
-                      MEGA JUG|LITER|LARGE",
-                      "", drinks$rename)
+                      MEGA JUG|LITER|LARGE", "", drinks$rename)
 drinks$rename <- trimws(drinks$rename, "both")
 drinks$rename <- gsub("UP", "7UP", drinks$rename)
 drinks$rename <- gsub("7UPSELL", "UPSELL", drinks$rename)
@@ -592,7 +590,7 @@ drinks$category <- ifelse(grepl("DIET|WATER|COFFEE|UNSWEETENED|HOT TEA|BREWED TE
 
 # export unique drink names and cateogrize
 unique_drinks <- drinks[!duplicated(drinks$rename), ]
-write.csv(unique_drinks, "data/menu-matching/unique-drinks.csv", row.names = FALSE)
+#write.csv(unique_drinks, "data/menu-matching/unique-drinks.csv", row.names = FALSE)
 
 # merge back
 cat <- read.csv("data/menu-matching/unique-drinks.csv", stringsAsFactors = FALSE)
@@ -608,6 +606,9 @@ length(unique(drinks$rename[drinks$category=="Low-calorie"]))
 length(unique(drinks$rename[drinks$category=="Pepsi/Mt. Dew Baja Blast"]))
 length(unique(drinks$rename[drinks$category=="Other SSB"]))
 #write.csv(drinks, "data/menu-matching/drinks.csv", row.names = FALSE)
+
+# identify drink sizes
+
 
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
