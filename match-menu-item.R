@@ -608,6 +608,10 @@ length(unique(drinks$rename[drinks$category=="Other SSB"]))
 #write.csv(drinks, "data/menu-matching/drinks.csv", row.names = FALSE)
 
 # identify drink sizes
+drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|", drinks$full), "small",
+                      ifelse(grepl("MEDIUM|20 OZ|24 OZ", drinks$full), "medium",
+                             ifelse(grepl("EXTRA LARGE|MEGA JUG|40 OZ|44 OZ|", drinks$full), "xl",
+                                    ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large", ))))
 
 
 ### match drinks names to sales volume, sugary and otherwise ----
