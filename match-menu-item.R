@@ -602,17 +602,16 @@ rm(cat, unique_drinks)
 
 table(drinks$category)
 #drinks[drinks$category=="Pepsi/Mt. Dew Baja Blast", ]
-length(unique(drinks$rename[drinks$category=="Low-calorie"]))
 length(unique(drinks$rename[drinks$category=="Pepsi/Mt. Dew Baja Blast"]))
 length(unique(drinks$rename[drinks$category=="Other SSB"]))
 #write.csv(drinks, "data/menu-matching/drinks.csv", row.names = FALSE)
 
 # identify drink sizes
-drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|", drinks$full), "small",
-                      ifelse(grepl("MEDIUM|20 OZ|24 OZ", drinks$full), "medium",
-                             ifelse(grepl("EXTRA LARGE|MEGA JUG|40 OZ|44 OZ|", drinks$full), "xl",
-                                    ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large", ))))
-
+drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small",
+                      ifelse(grepl("MEDIUM|20 OZ|24 OZ|REGULAR|18 OZ", drinks$full), "medium",
+                             ifelse(grepl("EXTRA LARGE|MEGA JUG|40 OZ|44 OZ|42 OZ|GALLON|2 LITER", drinks$full), "xl",
+                                    ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large",
+                                           ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "medium")))))
 
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
@@ -657,7 +656,7 @@ for (i in 2007:2015) {
                         #detial$id <- NULL
 
                         # collapse all drink sales into 3 categories
-                        sales <- aggregate(data=sales, qty~category, sum)
+                        sales <- aggregate(data=sales, qty~category+size, sum)
                         sales$year <- i
                         sales$quarter <- j
                         sales$pct <- sales$qty / sum(sales$qty)
@@ -674,34 +673,19 @@ sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12
 # sales, in percentage
 ggplot(data=sales_all,
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
-           group=as.factor(category), col=as.factor(category))) +
-      geom_point() +
-      geom_line(size=1) +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      labs(title="Drink sales, by category",
-           x="Year", y="Sales percentage", col="Category",
-           caption="Data source: Taco Bell") +
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.5)) +
+      labs(title="Drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-pct.jpeg", width=20, height=10, unit="cm")
-
-# sales, in actual volume 
-ggplot(data=sales_all,
-       aes(x=paste(year, "Q", quarter, sep=""), y=qty,
-           group=as.factor(category), col=as.factor(category))) +
-      geom_point() +
-      geom_line(size=1) +
-      scale_y_continuous(limits=c(0, 12000000)) +
-      labs(title="Mean weekly drink sales volumes, low-calorie vs. SSB",
-           x="Year", y="Sales", col="Category",
-           caption="Data source: Taco Bell") +
-      #scale_color_brewer(palette="Set3") +
-      theme(plot.title=element_text(hjust=0.5, size=18),
-            plot.caption=element_text(hjust=0, face="italic"),
-            axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-volume.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=20, height=10, unit="cm")
 rm(sales_all)
 
 ### matche drinks sales, drive thru vs. others----
@@ -742,12 +726,8 @@ for (i in 2007:2015) {
                         sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
                         sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail) &
                                              sales$occasion!=0, ]
-                        #print(paste0("2nd merge done: ", "year ", i, " Q", j))
-                        #names(sales)
-                        #detial$id <- NULL
-                        
                         # collapse all drink sales into 3 categories
-                        sales <- aggregate(data=sales, qty~category+occasion, sum)
+                        sales <- aggregate(data=sales, qty~category+occasion+size, sum)
                         sales$year <- i
                         sales$quarter <- j
                         sales$pct <- sales$qty / sum(sales$qty)
@@ -761,56 +741,55 @@ rm(i, j, detail, sales)
 sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
 
 # visualization
-# sales, in percentage
-sales_drive <- sales_all[sales_all$occasion==2, ]
-ggplot(data=sales_drive,
+# sales, in percentage, drive-thru, eat-in and takeout
+ggplot(data=subset(sales_all, sales_all$occasion==2),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
-           group=as.factor(category), col=as.factor(category))) +
-      geom_point() +
-      geom_line(size=1) +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 0.5)) +
-      labs(title="Drive-through drink sales, by category",
-           x="Year", y="Sales percentage", col="Category",
-           caption="Data source: Taco Bell") +
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.3)) +
+      labs(title="Drive-through drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-drivethru_pct.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-drivethru_pct_size.jpeg", width=20, height=10, unit="cm")
 
-sales_eatin <- sales_all[sales_all$occasion==1, ]
-ggplot(data=sales_eatin,
+ggplot(data=subset(sales_all, sales_all$occasion==1),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
-           group=as.factor(category), col=as.factor(category))) +
-      geom_point() +
-      geom_line(size=1) +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 0.3)) +
-      labs(title="Eat-in drink sales, by category",
-           x="Year", y="Sales percentage", col="Category",
-           caption="Data source: Taco Bell") +
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.3)) +
+      labs(title="Eat-in drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-eatin-pct.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-eatin_pct_size.jpeg", width=20, height=10, unit="cm")
 
-sales_takeout <- sales_all[sales_all$occasion==3, ]
-ggplot(data=sales_takeout,
+ggplot(data=subset(sales_all, sales_all$occasion==3),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
-           group=as.factor(category), col=as.factor(category))) +
-      geom_point() +
-      geom_line(size=1) +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 0.3)) +
-      labs(title="Takeout drink sales, by category",
-           x="Year", y="Sales percentage", col="Category",
-           caption="Data source: Taco Bell") +
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.3)) +
+      labs(title="Takeout drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-takeout-pct.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=20, height=10, unit="cm")
 
-rm(sales_drive, sales_eatin, sales_takeout)
 
 ### 
 
