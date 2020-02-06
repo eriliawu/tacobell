@@ -685,7 +685,7 @@ ggplot(data=sales_all,
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
 rm(sales_all)
 
 ### matche drinks sales, drive thru vs. others----
@@ -730,14 +730,18 @@ for (i in 2007:2015) {
                         sales <- aggregate(data=sales, qty~category+occasion+size, sum)
                         sales$year <- i
                         sales$quarter <- j
-                        sales$pct <- sales$qty / sum(sales$qty)
+                        #sales$pct <- sales$qty / sum(sales$qty)
+                        sales$pct[sales$occasion==1] <- sales$qty[sales$occasion==1] / sum(sales$qty[sales$occasion==1])
+                        sales$pct[sales$occasion==2] <- sales$qty[sales$occasion==2] / sum(sales$qty[sales$occasion==2])
+                        sales$pct[sales$occasion==3] <- sales$qty[sales$occasion==3] / sum(sales$qty[sales$occasion==3])
+                        
                         sales_all <- rbind(sales_all, sales)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
       }
 }
 rm(i, j, detail, sales)
-
+sum(sales_all$pct[sales_all$year==2015&sales_all$quarter==2])
 sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
 
 # visualization
@@ -748,15 +752,15 @@ ggplot(data=subset(sales_all, sales_all$occasion==2),
            col=as.factor(category))) +
       geom_point(size=0.5) +
       geom_line(size=0.5, aes(linetype=as.factor(size))) +
-      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.3)) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 1)) +
       labs(title="Drive-through drink sales, by category and size",
            x="Year", y="Sales percentage", col="Category", linetype="Size",
-           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
+           caption="Note: y-axis represents % of sales over all drive-through sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-drivethru_pct_size.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-drivethru_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
 ggplot(data=subset(sales_all, sales_all$occasion==1),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
@@ -764,15 +768,15 @@ ggplot(data=subset(sales_all, sales_all$occasion==1),
            col=as.factor(category))) +
       geom_point(size=0.5) +
       geom_line(size=0.5, aes(linetype=as.factor(size))) +
-      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.3)) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 1)) +
       labs(title="Eat-in drink sales, by category and size",
            x="Year", y="Sales percentage", col="Category", linetype="Size",
-           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
+           caption="Note: y-axis represents % of sales over all eati-in sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-eatin_pct_size.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-eatin_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
 ggplot(data=subset(sales_all, sales_all$occasion==3),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
@@ -780,15 +784,15 @@ ggplot(data=subset(sales_all, sales_all$occasion==3),
            col=as.factor(category))) +
       geom_point(size=0.5) +
       geom_line(size=0.5, aes(linetype=as.factor(size))) +
-      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.3)) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 1)) +
       labs(title="Takeout drink sales, by category and size",
            x="Year", y="Sales percentage", col="Category", linetype="Size",
-           caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
+           caption="Note: y-axis represents % of sales over all takeout sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=20, height=10, unit="cm")
+ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
 
 ### 
