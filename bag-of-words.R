@@ -14,6 +14,10 @@ library(tidyr)
 library(stringr)
 library(ggplot2)
 library(tm)
+library(SnowballC)
+#install.packages("textstem")
+library(textstem)
+library(fuzzyjoin)
 
 ### import taco bell data, product and group ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",
@@ -76,20 +80,20 @@ length(unique(product$product))
 product <- product[!duplicated(product$product), c(4, 9)]
 
 ### extract unique substrings, for non-drinks and non-smoothies ----
-strings <- as.data.frame(unlist(strsplit(product$product[product$group!="DRINKS"|product$group!="SMOOTHIES"], split=" ")))
-colnames(strings)[1] <- "original"
-class(strings$original)
-strings$original <- as.character(strings$original)
+#strings <- as.data.frame(unlist(strsplit(product$product[product$group!="DRINKS"|product$group!="SMOOTHIES"], split=" ")))
+#colnames(strings)[1] <- "original"
+#class(strings$original)
+#strings$original <- as.character(strings$original)
 
 # measure substring length
-strings$length <- nchar(strings$original)
+#strings$length <- nchar(strings$original)
 
 # frequency, how often does a substring show up in product name
-strings <- strings %>%
-      group_by(original) %>%
-      mutate(count=n())
-strings <- strings[!duplicated(strings), ]
-strings <- strings[order(strings$count, decreasing = TRUE), ]
+#strings <- strings %>%
+#      group_by(original) %>%
+#      mutate(count=n())
+#strings <- strings[!duplicated(strings), ]
+#strings <- strings[order(strings$count, decreasing = TRUE), ]
 #write.csv(strings, "data/menu-matching/product-names_unique_substrings_bow_nodrinks.csv",
 #          row.names = FALSE)
 
@@ -98,7 +102,17 @@ strings <- read.csv("data/menu-matching/product-names_unique_substrings_bow_nodr
                     stringsAsFactors = FALSE)
 sapply(strings, class)
 strings <- strings[, -c(2:3)]
+
+# fix numbers that excel automatically converted to dates
+strings$original[strings$original=="02-Jan"] <- "1/2"
+strings$original[strings$original=="03-Jan"] <- "1/3"
+strings$original[strings$original=="43834"] <- "1/4"
+strings$original[strings$original=="43983"] <- "1/6"
+strings$original[strings$original=="0.2"] <- ".2"
+strings$original[strings$original=="0.39"] <- ".39"
 strings <- strings[!duplicated(strings$original), ]
+strings$full[strings$original=="CAN"] <- "CANTINA"
+
 
 # replace abbreviations with full spelling
 # first, break product names into separate substrings in their own columns
@@ -130,31 +144,145 @@ product$full <- gsub("STEAK LOUIS", replacement = "ST LOUIS", product$full)
 product$full <- gsub("TEST", "", product$full)
 product$full <- gsub("\\(", "", product$full)
 product$full <- gsub("\\)", "", product$full)
-product$full <- gsub("TB ", "", product$full)
-product$full <- ifelse(grepl("DR", product$full) & !grepl("DR PEPPER", product$full),
+product$full <- ifelse(grepl(" DR|DR ", product$full)&!grepl("DR PEPPER|DRINK", product$full),
                        gsub("DR", "DR PEPPER", product$full),
                        product$full)
+product$full <- gsub("AT HALF O|AT HALF OFF", "", product$full)
 product <- product[product$full!="", ]
-length(unique(product$full)) #3494
+length(unique(product$full)) #3492
 
-### more cleaning ----
-# trim white space
-# remove punctuation
-# remove stop words
-# stemming
-product$full <- trimws(product$full, which="both")
+### trim white space, remove punctuation ----
+product$full <- stripWhitespace(product$full)
 product$full <- removePunctuation(product$full)
 
+### add numbers back ----
+# add numbers back
+product$full <- gsub("THREE AND HALF", "3.5", product$full)
+product$full <- gsub("TEN AND HALF", "10.5", product$full)
+product$full <- gsub("TWELVE", "12", product$full)
+product$full <- gsub("FOURTEEN", "14", product$full)
+product$full <- gsub("FIFTEEN", "15", product$full)
+product$full <- gsub("SIXTEEN", "16", product$full)
+product$full <- gsub("TWENTY FOUR", "24", product$full)
+product$full <- gsub("THIRTY TWO", "32", product$full)
+product$full <- gsub("TWENTY", "20", product$full)
+product$full <- gsub("FORTY FOUR", "44", product$full)
+product$full <- gsub("SIXTH", "1/6", product$full)
+product$full <- gsub("ONE AND HALF LITER", "1.5 LITER", product$full)
+product$full <- gsub("ONE AND HALF", "1.5", product$full)
+product$full <- gsub("HALF LB", "1/2 LB", product$full)
+product$full <- gsub("THIRD LB", "1/3 LB", product$full)
+product$full <- gsub("TEN", "10", product$full)
+product$full <- gsub("FIVE-LAYER", "5-LAYER", product$full)
+product$full <- gsub("SIX AND HALF", "6.5", product$full)
+product$full <- gsub("SIX HUNDRED", "600", product$full)
+product$full <- gsub("SIXTY FOUR", "64", product$full)
+product$full <- gsub("SEVEN-LAYER", "7-LAYER", product$full)
+product$full <- gsub("SEVEN UP", "7UP", product$full)
+product$full <- gsub("TEN | TEN", "10", product$full)
+product$full <- gsub("QUARTER", "1/4", product$full)
+product$full <- gsub("THIRD", "1/3", product$full)
+product$full <- gsub("TWO", "2", product$full)
+product$full <- gsub("THREE", "3", product$full)
+product$full <- gsub("FOUR", "4", product$full)
+product$full <- gsub("FIVE", "5", product$full)
+product$full <- gsub("SIX", "6", product$full)
+product$full <- gsub("SEVEN", "7", product$full)
+product$full <- gsub("EIGHT", "8", product$full)
+product$full <- gsub("NINE", "9", product$full)
+product$full <- gsub("HALF LB", "1/2 LB", product$full)
+product$full <- gsub("HALF GALLON", "1/2 GALLON", product$full)
+product$full <- gsub("IN TORTILLA", "INCH TORTILLA", product$full)
+product$full <- gsub("H AND AND", "HNN", product$full)
+product$full <- ifelse(grepl("ONE", product$full)&!grepl("CONE|ZONE|KONE", product$full),
+                       gsub("ONE", "1", product$full), product$full)
 
+### remove stop words ----
+# remove stop words
+# add custom stop words
+stop <- c("CENT", "CENTS", "FOR 2", "VERSION", "COUPON", "HNN", "DENVER",
+          "SANTA FE", "6 TO 1", "SOS", "FOR 4", "SMT", "SCHOOL LUNCH", "UPSELL",
+          "MADISON OKC", "OMA", "BUT", "IF", "BETWEEN", "INTO", "THROUGH",
+          "DURING", "BEFORE", "AFTER", "AT", "BY", "FOR", "WITH", "ABOUT",
+          "OR", "BECAUSE", "AS", "UNTIL", "WHILE", "OF", "AGAINST", "ABOVE",
+          "BELOW", "TO", "FROM", "UP", "DOWN", "IN", "OUT", "ON", "OFF", "OVER",
+          "UNDER", "AGAIN", "FURTHER", "THEN", "ONCE", "HERE", "THERE", "ALL",
+          "ANY", "BOTH", "EACH", "MORE", "OTHER", "SOME", "NOR", "NOT", "ONLY",
+          "OWN", "SAME", "SO", "THAN", "TOO", "VERY", "ADD", "TB")
+product$full <- removeWords(product$full, stop)
+rm(stop)
 
+### lemmatization ----
+product$rename <- toupper(lemmatize_strings(product$full))
 
+# fix numbers: 1/2, 1/3, etc
+product$rename <- gsub(" / ", "/", product$rename)
 
+# fix words lemmatization didnt address
+product$rename <- gsub("7LAYER", "7 LAYERO", product$full)
+product$rename <- gsub("5LAYER", "5 LAYERO", product$full)
+product$rename <- gsub("TACOS", "TACO", product$full)
+product$rename <- gsub("BURGERS", "BURGER", product$full)
+product$rename <- gsub("NACHOS", "NACHO", product$full)
 
+# remove white space
+product$rename <- stripWhitespace(product$rename)
 
+### read menu stat data ----
+menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
+menu$item_name <- toupper(menu$item_name)
+#menu <- menu[grepl("16", menu$item_name), ]
+menu <- menu[!duplicated(menu$item_name), c(1, 4:5)]
+length(unique(menu$item_name))
+#menu <- menu[menu$year<=2016, ]
 
+# remove signs
+menu$item_name <- gsub(", ", " ", menu$item_name)
 
+### jaccard distance ----
+# a default q=1
+start_time <- Sys.time()
+join_jaccard <- stringdist_join(product, menu, 
+                                by=c("rename"="item_name"),
+                                mode = "left",
+                                ignore_case = FALSE, 
+                                method = "jaccard", #q=1
+                                max_dist = 99, 
+                                distance_col = "dist.jc") %>%
+      group_by(rename) %>%
+      top_n(1, -dist.jc)
+end_time <- Sys.time()
+end_time - start_time # approx. 45 secs
+rm(start_time, end_time)
 
+names(join_jaccard)
+join_jaccard <- join_jaccard[!duplicated(join_jaccard$rename, join_jaccard$item_name), c(4, 6, 8)]
+join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$rename), ]
 
+# number of exact matches
+length(unique(join_jaccard$rename[join_jaccard$dist.jc==0])) #264
+
+### cosine distance ----
+start_time <- Sys.time()
+join_cosine <- stringdist_join(product, menu, 
+                                by=c("rename"="item_name"),
+                                mode = "left",
+                                ignore_case = FALSE, 
+                                method = "cosine",
+                                max_dist = 99, 
+                                distance_col = "dist.cs") %>%
+      group_by(rename) %>%
+      top_n(1, -dist.cs)
+end_time <- Sys.time()
+end_time - start_time # approx. 45 secs
+rm(start_time, end_time)
+
+names(join_cosine)
+join_cosine <- join_cosine[!duplicated(join_cosine$rename, join_cosine$item_name), c(4, 6, 8)]
+join_cosine <- join_cosine[order(join_cosine$dist.cs, join_cosine$rename), ]
+
+# number of exact matches
+length(unique(join_cosine$rename[join_cosine$dist.cs==0])) #144
 
 
 
