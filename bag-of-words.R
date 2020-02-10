@@ -71,7 +71,6 @@ product <- product[product$product!="TB I'M ALL EARS"&product$product!="SPECIAL"
                          product$product!="TB HELLO FRIEND", ]
 length(unique(product$product))
 
-
 # drop non-food items
 product <- product[product$group!="NON-FOOD SALES (PRE", ]
 length(unique(product$product))
@@ -79,7 +78,7 @@ length(unique(product$product))
 # extract only unique product names
 product <- product[!duplicated(product$product), c(4, 9)]
 
-### extract unique substrings, for non-drinks and non-smoothies ----
+### extract unique substrings in tb data, for non-drinks and non-smoothies ----
 #strings <- as.data.frame(unlist(strsplit(product$product[product$group!="DRINKS"|product$group!="SMOOTHIES"], split=" ")))
 #colnames(strings)[1] <- "original"
 #class(strings$original)
@@ -112,7 +111,7 @@ strings$original[strings$original=="0.2"] <- ".2"
 strings$original[strings$original=="0.39"] <- ".39"
 strings <- strings[!duplicated(strings$original), ]
 strings$full[strings$original=="CAN"] <- "CANTINA"
-
+strings$full[strings$original=="FRUITISTA"] <- "FRUTISTA"
 
 # replace abbreviations with full spelling
 # first, break product names into separate substrings in their own columns
@@ -213,76 +212,199 @@ product$full <- removeWords(product$full, stop)
 rm(stop)
 
 ### lemmatization ----
-product$rename <- toupper(lemmatize_strings(product$full))
+product$full <- lemmatize_strings(product$full)
+product$full <- toupper(product$full)
 
 # fix numbers: 1/2, 1/3, etc
-product$rename <- gsub(" / ", "/", product$rename)
+product$full <- gsub(" / ", "/", product$full)
 
 # fix words lemmatization didnt address
-product$rename <- gsub("7LAYER", "7 LAYERO", product$full)
-product$rename <- gsub("5LAYER", "5 LAYERO", product$full)
-product$rename <- gsub("TACOS", "TACO", product$full)
-product$rename <- gsub("BURGERS", "BURGER", product$full)
-product$rename <- gsub("NACHOS", "NACHO", product$full)
+product$full <- gsub("7LAYER", "7 LAYERO", product$full)
+product$full <- gsub("5LAYER", "5 LAYERO", product$full)
+product$full <- gsub("TACOS", "TACO", product$full)
+product$full <- gsub("BURGERS", "BURGER", product$full)
+product$full <- gsub("NACHOS", "NACHO", product$full)
 
 # remove white space
-product$rename <- stripWhitespace(product$rename)
+product$full <- stripWhitespace(product$full)
+
+length(unique(product$full)) #3374
+product <- product[!duplicated(product$full)&product$full!="", ]
 
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
+names(menu)
 menu$item_name <- toupper(menu$item_name)
-#menu <- menu[grepl("16", menu$item_name), ]
-menu <- menu[!duplicated(menu$item_name), c(1, 4:5)]
-length(unique(menu$item_name))
-#menu <- menu[menu$year<=2016, ]
+length(unique(menu$id)) #700
 
-# remove signs
-menu$item_name <- gsub(", ", " ", menu$item_name)
+# drop duplicates
+menu <- menu[!duplicated(menu$item_name, menu$id), c(4:5)] 
 
-### jaccard distance ----
+### extract unique substrings in menustat ----
+#strings <- as.data.frame(unlist(strsplit(menu$item_name, split=" ")))
+#colnames(strings)[1] <- "original"
+#class(strings$original)
+#strings$original <- as.character(strings$original)
+
+# measure substring length
+#strings$length <- nchar(strings$original)
+
+# frequency, how often does a substring show up in product name
+#strings <- strings %>%
+#      group_by(original) %>%
+#      mutate(count=n())
+#strings <- strings[!duplicated(strings), ]
+#strings <- strings[order(strings$count, decreasing = TRUE), ]
+#write.csv(strings, "data/menu-matching/product-names_unique_substrings_bow_menustat.csv",
+#          row.names = FALSE)
+
+### read corrected string file ----
+strings <- read.csv("data/menu-matching/product-names_unique_substrings_bow_menustat_corrected.csv",
+                    stringsAsFactors = FALSE)
+sapply(strings, class)
+strings <- strings[, -c(2:3)]
+
+# fix numbers that excel automatically converted to dates
+strings$original[strings$original=="02-Jan"] <- "1/2"
+
+# replace abbreviations with full spelling
+# first, break product names into separate substrings in their own columns
+# second, merge each column with the replacement strings
+menu <- menu %>%
+      separate(item_name, c("item_name1", "item_name2", "item_name3", "item_name4",
+                          "item_name5", "item_name6", "item_name7", "item_name8",
+                          "item_name9", "item_name10", "item_name11", "item_name12",
+                          "item_name13"), " ")
+
+for (i in c(1:13)) {
+      menu <- merge(menu, strings, by.x=paste0("item_name", i), by.y="original", sort=FALSE, all.x = TRUE)
+      colnames(menu)[i+14] <- paste0("full", i)
+}
+rm(i, strings)
+
+# paste all substrings, but leave out the NAs
+menu$item_name <- apply(cbind(menu$item_name1, menu$item_name2, menu$item_name3,
+                               menu$item_name4, menu$item_name5, menu$item_name6,
+                               menu$item_name7, menu$item_name8, menu$item_name9,
+                              menu$item_name10, menu$item_name11, menu$item_name12,
+                              menu$item_name13),
+                         1, function(x) paste(x[!is.na(x)], collapse = " "))
+menu$full <- apply(cbind(menu$full1, menu$full2, menu$full3, menu$full4,
+                            menu$full5, menu$full6, menu$full7, menu$full8,
+                            menu$full9, menu$full10, menu$full11, menu$full12, menu$full13),
+                      1, function(x) paste(x[!is.na(x)], collapse = " "))
+
+names(menu)
+menu <- menu[, c(28:29, 14)]
+
+
+### remove unnecessary text/stop words, punctuation, whites pace ----
+menu$full <- sapply(strsplit(menu$full, "FOR "), "[", 1)
+
+stop <- c("CENT", "CENTS", "FOR 2", "VERSION", "COUPON", "HNN", "DENVER",
+          "SANTA FE", "6 TO 1", "SOS", "FOR 4", "SMT", "SCHOOL LUNCH", "UPSELL",
+          "MADISON OKC", "OMA", "BUT", "IF", "BETWEEN", "INTO", "THROUGH",
+          "DURING", "BEFORE", "AFTER", "AT", "BY", "FOR", "WITH", "ABOUT",
+          "OR", "BECAUSE", "AS", "UNTIL", "WHILE", "OF", "AGAINST", "ABOVE",
+          "BELOW", "TO", "FROM", "UP", "DOWN", "IN", "OUT", "ON", "OFF", "OVER",
+          "UNDER", "AGAIN", "FURTHER", "THEN", "ONCE", "HERE", "THERE", "ALL",
+          "ANY", "BOTH", "EACH", "MORE", "OTHER", "SOME", "NOR", "NOT", "ONLY",
+          "OWN", "SAME", "SO", "THAN", "TOO", "VERY", "ADD", "TB", "CRAVINGS",
+          "WHY PAY MORE VALUE MENU", "STYLE", "REGIONAL", "CALLED", "ALSO",
+          "15 CALORIE", "BUCK BOX", "USDA", "SELECT", "LAS", "VEGAS")
+menu$full <- removeWords(menu$full, stop)
+rm(stop)
+
+menu$full <- removePunctuation(menu$full)
+menu$full <- stripWhitespace(menu$full)
+
+#lemmatization
+menu$full <- toupper(lemmatize_strings(menu$full))
+
+# fix numbers: 1/2, 1/3, etc
+menu$full <- gsub(" / ", "/", menu$full)
+
+# fix words lemmatization didnt address
+menu$full <- gsub("7LAYER", "7 LAYERO", menu$full)
+menu$full <- gsub("5LAYER", "5 LAYERO", menu$full)
+menu$full <- gsub("TACOS", "TACO", menu$full)
+menu$full <- gsub("BURGERS", "BURGER", menu$full)
+menu$full <- gsub("NACHOS", "NACHO", menu$full)
+
+length(unique(menu$full)) #759
+menu <- menu[!duplicated(menu$full), ]
+
+### jaccard distance, q=1 ----
 # a default q=1
 start_time <- Sys.time()
 join_jaccard <- stringdist_join(product, menu, 
-                                by=c("rename"="item_name"),
+                                by="full",
                                 mode = "left",
                                 ignore_case = FALSE, 
                                 method = "jaccard", #q=1
                                 max_dist = 99, 
                                 distance_col = "dist.jc") %>%
-      group_by(rename) %>%
+      group_by(full.x) %>%
       top_n(1, -dist.jc)
 end_time <- Sys.time()
-end_time - start_time # approx. 45 secs
+end_time - start_time #approx. 37 secs
 rm(start_time, end_time)
 
 names(join_jaccard)
-join_jaccard <- join_jaccard[!duplicated(join_jaccard$rename, join_jaccard$item_name), c(4, 6, 8)]
-join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$rename), ]
+colnames(join_jaccard)[c(2, 5)] <- c("full.tb", "full.menustat")
+join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb),
+                             c(2, 5, 7, 3, 1, 4, 6)]
 
 # number of exact matches
-length(unique(join_jaccard$rename[join_jaccard$dist.jc==0])) #264
+length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #282
+
+###
+### jaccard distance, q=2 ----
+start_time <- Sys.time()
+join_jaccard2 <- stringdist_join(product, menu, 
+                                by="full",
+                                mode = "left",
+                                ignore_case = FALSE, 
+                                method = "jaccard", q=2,
+                                max_dist = 99, 
+                                distance_col = "dist.jc") %>%
+      group_by(full.x) %>%
+      top_n(1, -dist.jc)
+end_time <- Sys.time()
+end_time - start_time #approx. 37 secs
+rm(start_time, end_time)
+
+names(join_jaccard2)
+colnames(join_jaccard2)[c(2, 5)] <- c("full.tb", "full.menustat")
+join_jaccard2 <- join_jaccard2[order(join_jaccard2$dist.jc, join_jaccard2$full.tb),
+                             c(2, 5, 7, 3, 1, 4, 6)]
+
+# number of exact matches
+length(unique(join_jaccard2$full.tb[join_jaccard2$dist.jc==0])) #176
 
 ### cosine distance ----
 start_time <- Sys.time()
 join_cosine <- stringdist_join(product, menu, 
-                                by=c("rename"="item_name"),
+                                by="full",
                                 mode = "left",
                                 ignore_case = FALSE, 
                                 method = "cosine",
                                 max_dist = 99, 
                                 distance_col = "dist.cs") %>%
-      group_by(rename) %>%
+      group_by(full.x) %>%
       top_n(1, -dist.cs)
 end_time <- Sys.time()
-end_time - start_time # approx. 45 secs
+end_time - start_time # approx. 36 secs
 rm(start_time, end_time)
 
 names(join_cosine)
-join_cosine <- join_cosine[!duplicated(join_cosine$rename, join_cosine$item_name), c(4, 6, 8)]
-join_cosine <- join_cosine[order(join_cosine$dist.cs, join_cosine$rename), ]
+colnames(join_cosine)[c(2, 5)] <- c("full.tb", "full.menustat")
+join_cosine <- join_cosine[!duplicated(join_cosine$dist.cs, join_cosine$full.tb),
+                           c(2, 5, 7, 3, 1, 4, 6)]
+join_cosine <- join_cosine[order(join_cosine$dist.cs, join_cosine$full.tb), ]
 
 # number of exact matches
-length(unique(join_cosine$rename[join_cosine$dist.cs==0])) #144
+length(unique(join_cosine$full.tb[join_cosine$dist.cs==0])) #
 
 
 
