@@ -8,6 +8,7 @@ options(warn = -1)
 
 ### install and load packages ----
 #install.packages(c("dplyr", "tidyr", "stringr", "ggplot2", "tidyverse", "textstem", "tm", "glmnet))
+#install.packages(c("SnowballC", "wordcloud", "RcolorBrewer"))
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -16,6 +17,11 @@ library(tidyverse)
 library(glmnet)
 library(textstem)
 library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+#install.packages("plotmo")
+library(plotmo)
 
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
@@ -184,7 +190,56 @@ training <- menu[c(1:as.integer(length(menu$full)*0.8)), -c(3:4, 62)]
 testing <- menu[c(1:(length(menu$full)-as.integer(length(menu$full)*0.8))), -c(3:4, 62)]
 
 ### make word cloud ----
-# could use most frequent words as predictors
+rquery.wordcloud <- function(x, type=c("text", "url", "file"), 
+                             lang="english", excludeWords=NULL, 
+                             textStemming=FALSE,  colorPalette="Dark2",
+                             min.freq=2, max.words=200) { 
+      if(type[1]=="file") text <- readLines(x)
+      else if(type[1]=="url") text <- html_to_text(x)
+      else if(type[1]=="text") text <- x
+      
+      # Load the text as a corpus
+      docs <- Corpus(VectorSource(text))
+      # Convert the text to lower case
+      docs <- tm_map(docs, content_transformer(tolower))
+      # Remove numbers
+      docs <- tm_map(docs, removeNumbers)
+      # Remove stopwords for the language 
+      docs <- tm_map(docs, removeWords, stopwords(lang))
+      # Remove punctuations
+      docs <- tm_map(docs, removePunctuation)
+      # Eliminate extra white spaces
+      docs <- tm_map(docs, stripWhitespace)
+      # Remove your own stopwords
+      if(!is.null(excludeWords)) 
+            docs <- tm_map(docs, removeWords, excludeWords) 
+      # Text stemming
+      if(textStemming) docs <- tm_map(docs, stemDocument)
+      # Create term-document matrix
+      tdm <- TermDocumentMatrix(docs)
+      m <- as.matrix(tdm)
+      v <- sort(rowSums(m),decreasing=TRUE)
+      d <- data.frame(word = names(v),freq=v)
+      # check the color palette name 
+      if(!colorPalette %in% rownames(brewer.pal.info)) colors = colorPalette
+      else colors = brewer.pal(8, colorPalette) 
+      # Plot the word cloud
+      set.seed(1234)
+      wordcloud(d$word,d$freq, min.freq=min.freq, max.words=max.words,
+                random.order=FALSE, rot.per=0.35, 
+                use.r.layout=FALSE, colors=colors)
+      
+      invisible(list(tdm=tdm, freqTable = d))
+}
+
+cloud_menustat <- rquery.wordcloud(x=menu$full, type="text", lang="english",
+                             min.freq = 2, max.words = 200)
+freq <- cloud_menustat$freqTable
+ggplot()
+
+
+rm(rquery.wordcloud, cloud_menustat, cloud_tb, freq)
+
 
 ### lasso regression ----
 x <- model.matrix(calories~., training)[, -1]
@@ -201,6 +256,12 @@ lasso.model <- glmnet(x, y, alpha = 1, lambda = cv.lasso$lambda.min, family="gau
 x.test <- model.matrix(calories~., testing)[, -1]
 pred.calorie <- lasso.model %>% predict(newx = x.test)
 obs.calorie <- testing$calories
-plot(x=pred.calorie, y=obs.calorie)
-abline(a=0, b=1)
+plot(x=pred.calorie, y=obs.calorie, main="Predicted calorie v. Observed in testing data (N=198)",
+     xlab="Fitted calories", ylab="Observed calories",
+     xlim=c(-200, 1200), ylim=c(-200, 1200))
+abline(a=0, b=1, color="red")
+plot(x=pred.calorie - obs.calorie, y=obs.calorie, main="Residaul plot of testing data (N=198)",
+     xlab="Residuals", ylab="Observed calories")
+
 print(lasso.model$dev.ratio)
+
