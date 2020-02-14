@@ -97,7 +97,7 @@ product <- product[!duplicated(product$product), c(4, 9)]
 #          row.names = FALSE)
 
 ### read corrected string file, fill abbreviation and fix typo, also remove meaningless numbers ----
-strings <- read.csv("data/menu-matching/product-names_unique_substrings_bow_nodrinks_corrected.csv",
+strings <- read.csv("data/menu-matching/product-names_unique_substrings_bow_corrected.csv",
                     stringsAsFactors = FALSE)
 sapply(strings, class)
 strings <- strings[, -c(2:3)]
@@ -408,3 +408,7 @@ length(unique(join_cosine$full.tb[join_cosine$dist.cs==0])) #
 
 
 
+
+
+length(unique(unlist(strsplit(menu$full, " "))))
+unlist(strsplit(product$product, " "))
