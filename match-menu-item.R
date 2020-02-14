@@ -376,6 +376,24 @@ detail <- read.csv("data/from-bigpurple/product_detail.csv",
                    stringsAsFactors = FALSE)
 sapply(detail, class)
 
+match1 <- read.csv("data/menu-matching/archive/matching-jaccard1.csv", stringsAsFactors = FALSE)
+match2 <- read.csv("data/menu-matching/archive/matching-jaccard2.csv", stringsAsFactors = FALSE)
+names(match1)
+names(match2)
+match1 <- match1[, c(1, 4:6)]
+match1 <- match1[!is.na(match1$match), ]
+match2 <- match2[, c(1, 3, 5:6)]
+match2$match <- ifelse(is.na(match2$match), 0, match2$match)
+match <- rbind(match1, match2)
+rm(match1, match2)
+match <- match %>%
+      group_by(full, match) %>%
+      mutate(match2=max(match))
+length(unique(match$product))
+match <- match[!duplicated(match$product), ]
+match <- match[, 4:5]
+colnames(match)[2] <- "match"
+
 for (i in 2007:2015) {
       for (j in 1:4) {
             tryCatch(
@@ -406,20 +424,17 @@ for (i in 2007:2015) {
                                  sales$detail_desc!="NEW ITEM"&
                                  !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
                         
-                  sales <- merge(sales, join_jaccard, by.x = "detail_desc", by.y = "product", all = TRUE)
-                  #print(paste0("2nd merge done: ", "year ", i, " Q", j))
-                  #names(sales)
-                  #detial$id <- NULL
+                  sales <- merge(sales, match, by.x = "detail_desc", by.y = "product", all = TRUE)
                   sales <- sales[!is.na(sales$p_detail), ]
                   
                   # delete duplicated rows
-                  sales <- sales[!duplicated(sales$detail_desc), c(1, 3:4, 7)]
+                  sales <- sales[!duplicated(sales$detail_desc), ]
 
                   # fill in summary stats
                   sales_all[j+4*(i-2007), 1] <- i
                   sales_all[j+4*(i-2007), 2] <- j
                   sales_all[j+4*(i-2007), 3] <- sum(sales$qty, na.rm = TRUE)
-                  sales_all[j+4*(i-2007), 4] <- sum(sales$qty[sales$dist.jc==0], na.rm = TRUE)    
+                  sales_all[j+4*(i-2007), 4] <- sum(sales$qty[sales$match==1], na.rm = TRUE)    
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
       }
@@ -432,15 +447,15 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
       geom_point() +
       geom_line(size=1) +
       scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      labs(title="Number of sold items represented by matched products",
+      labs(title="Percent of sales with matched items",
            x="Year", y="Percent",
-           caption="Data source: Taco Bell \nNote: 318 items (8.84%) with exact matches. The percentage is based on number of items sold.") +
-      #scale_color_brewer(palette="Set3") +
+           caption="Note: 604 items were matched (17%). The percentage is based on number of items sold.") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
-rm(sales_all)
+
+
 
 ### check sales volume of manually matched items ----
 # re-run lines 19-88
@@ -611,7 +626,7 @@ drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small
                       ifelse(grepl("MEDIUM|20 OZ|24 OZ|REGULAR|18 OZ", drinks$full), "medium",
                              ifelse(grepl("EXTRA LARGE|MEGA JUG|40 OZ|44 OZ|42 OZ|GALLON|2 LITER", drinks$full), "xl",
                                     ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large",
-                                           ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "medium")))))
+                                           ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "unclear")))))
 
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
@@ -688,7 +703,7 @@ ggplot(data=sales_all,
 ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
 rm(sales_all)
 
-### matche drinks sales, drive thru vs. others----
+### match drinks sales, drive thru vs. others----
 sales_all <- NULL
 detail <- read.csv("data/from-bigpurple/product_detail.csv",
                    stringsAsFactors = FALSE)
@@ -794,8 +809,206 @@ ggplot(data=subset(sales_all, sales_all$occasion==3),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
+### match drink sales, overall, drive thru vs. others ----
+sales_all <- NULL
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, ".csv"),
+                                          sep = ";", header = FALSE, quote = "\"'",
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "sales", "qty"))
+                        #sapply(sales, class)
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        #print(paste0("1st merge done: ", "year ", i, " Q", j))
+                        
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        
+                        sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
+                        sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail), ]
+                        #print(paste0("2nd merge done: ", "year ", i, " Q", j))
+                        #names(sales)
+                        #detial$id <- NULL
+                        
+                        # collapse all drink sales into 3 categories
+                        sales <- aggregate(data=sales, qty~size, sum)
+                        sales$year <- i
+                        sales$quarter <- j
+                        sales$pct <- sales$qty / sum(sales$qty)
+                        sales_all <- rbind(sales_all, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, sales)
+sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
 
-### 
+# visualization
+# sales, in percentage
+ggplot(data=sales_all,
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=as.factor(size), col=as.factor(size))) +
+      geom_point() +
+      geom_line() +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
+      labs(title="Drink sales, by size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all sales.") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+#ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
+rm(sales_all)
+
+# visualization
+# sales, in percentage, drive-thru, eat-in and takeout
+ggplot(data=subset(sales_all, sales_all$occasion==2),
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 1)) +
+      labs(title="Drive-through drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all drive-through sales. Sales of less than 1% were excluded.") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+#ggsave("tables/product-matching/drink-sales-drivethru_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+
+ggplot(data=subset(sales_all, sales_all$occasion==1),
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 1)) +
+      labs(title="Eat-in drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all eati-in sales. Sales of less than 1% were excluded.") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-eatin_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+
+ggplot(data=subset(sales_all, sales_all$occasion==3),
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=interaction(as.factor(size), as.factor(category)),
+           col=as.factor(category))) +
+      geom_point(size=0.5) +
+      geom_line(size=0.5, aes(linetype=as.factor(size))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0.01, 1)) +
+      labs(title="Takeout drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           caption="Note: y-axis represents % of sales over all takeout sales. Sales of less than 1% were excluded.") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+
+
+
+### looking at the sales by drive-thru vs. others ----
+sales_all <- NULL
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, "_drive-thru", ".csv"),
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "occasion", "sales", "qty"))
+                        #sapply(sales, class)
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        #print(paste0("1st merge done: ", "year ", i, " Q", j))
+                        
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        
+                        sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
+                        sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail) &
+                                             sales$occasion!=0, ]
+                        # collapse all drink sales into 3 categories
+                        sales <- aggregate(data=sales, qty~occasion+size, sum)
+                        sales$year <- i
+                        sales$quarter <- j
+                        sales$pct <- sales$qty / sum(sales$qty)
+                        #sales$pct[sales$occasion==1] <- sales$qty[sales$occasion==1] / sum(sales$qty[sales$occasion==1])
+                        #sales$pct[sales$occasion==2] <- sales$qty[sales$occasion==2] / sum(sales$qty[sales$occasion==2])
+                        #sales$pct[sales$occasion==3] <- sales$qty[sales$occasion==3] / sum(sales$qty[sales$occasion==3])
+                        
+                        sales_all <- rbind(sales_all, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales)
+sum(sales_all$pct[sales_all$year==2015&sales_all$quarter==2])
+sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
+sales_all$occasion <- ifelse(sales_all$occasion==2, "drive-through",
+                             ifelse(sales_all$occasion==1, "eat-in", "takeout"))
+
+# visualize, drink sales by size and occasion
+ggplot(data=sales_all,
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+           group=interaction(as.factor(size), as.factor(occasion)),
+           col=as.factor(size))) +
+      geom_point(size=0.5) +
+      geom_line(aes(linetype=as.factor(occasion))) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 0.5)) +
+      labs(title="Drive-through drink sales, by category and size",
+           x="Year", y="Sales percentage", col="Size", linetype="Occasion",
+           caption="Note: y-axis represents % of sales over all drink sales.") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
+
+
+
+
+
+
+
 
 
 
