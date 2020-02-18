@@ -21,7 +21,9 @@ library(SnowballC)
 library(wordcloud)
 library(RColorBrewer)
 #install.packages("plotmo")
-library(plotmo)
+library(plotmo) #visualize summary plot after lasso regression
+#install.packages("splitstackshape")
+library(splitstackshape) #transform strings into binary predictors
 
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
@@ -106,7 +108,7 @@ menu$full <- tolower(menu$full)
 #menu$full <- ifelse(grepl("AM|A.M.", menu$item_description),
 #                    gsub("be", "am", menu$full), menu$full)
 
-### re-categorize food ----
+### re-categorize food, add indicator for drinks ----
 menu$cat <- ifelse(grepl("salad", menu$full), "salad",
                    ifelse(grepl("sauce|dressing|salsa", menu$full), "sauce",
                           ifelse(grepl("taco|chalupa|gordita|tostada", menu$full), "taco",
@@ -117,68 +119,7 @@ menu$cat <- ifelse(grepl("salad", menu$full), "salad",
                                                              ifelse(menu$category=="Beverages"|grepl("beverages", menu$full), "drink",
                                                                     ifelse(grepl("bowl", menu$full), "bowl", "other")))))))))
 table(menu$cat)
-
-names(menu)
-menu <- menu[, c(3, 7, 23:24)]
-menu <- subset(menu, cat!="drink"&cat!="other"&cat!="dessert")
-
-menu$salad <- ifelse(grepl("salad", menu$full), 1, 0)
-menu$sauce <- ifelse(grepl("sauce", menu$full), 1, 0)
-menu$dressing <- ifelse(grepl("dressing", menu$full), 1, 0)
-menu$salsa <- ifelse(grepl("salsa", menu$full), 1, 0)
-menu$taco <- ifelse(grepl("taco", menu$full), 1, 0)
-menu$chalupa <- ifelse(grepl("chalupa", menu$full), 1, 0)
-menu$gordita <- ifelse(grepl("gordita", menu$full), 1, 0)
-menu$tostada <- ifelse(grepl("tostada", menu$full), 1, 0)
-menu$burrito <- ifelse(grepl("burrito", menu$full), 1, 0)
-menu$quesarito <- ifelse(grepl("quesarito", menu$full), 1, 0)
-menu$grill <- ifelse(grepl("grill", menu$full), 1, 0)
-menu$crunchwrap <- ifelse(grepl("crunchwrap", menu$full), 1, 0)
-menu$enchirito <- ifelse(grepl("enchirito", menu$full), 1, 0)
-menu$taquito <- ifelse(grepl("taquito", menu$full), 1, 0)
-menu$quesadilla <- ifelse(grepl("quesadilla", menu$full), 1, 0)
-menu$flatbread <- ifelse(grepl("flatbread", menu$full), 1, 0)
-menu$pizza <- ifelse(grepl("pizza", menu$full), 1, 0)
-menu$doubledilla <- ifelse(grepl("doubledilla", menu$full), 1, 0)
-menu$meximelt <- ifelse(grepl("meximelt", menu$full), 1, 0)
-menu$bowl <- ifelse(grepl("bowl", menu$full), 1, 0)
-menu$chicken <- ifelse(grepl("chicken", menu$full), 1, 0)
-menu$beef <- ifelse(grepl("beef", menu$full), 1, 0)
-menu$steak <- ifelse(grepl("steak", menu$full), 1, 0)
-menu$rice <- ifelse(grepl("rice", menu$full), 1, 0)
-menu$bean <- ifelse(grepl("bean", menu$full), 1, 0)
-menu$cheese <- ifelse(grepl("chees", menu$full), 1, 0)
-menu$large <- ifelse(grepl("large", menu$full), 1, 0)
-menu$extra <- ifelse(grepl("extra", menu$full), 1, 0)
-menu$nacho <- ifelse(grepl("nacho", menu$full), 1, 0)
-menu$shell <- ifelse(grepl("shell", menu$full), 1, 0)
-menu$bacon <- ifelse(grepl("bacon", menu$full), 1, 0)
-menu$egg <- ifelse(grepl("egg", menu$full), 1, 0)
-menu$veggie <- ifelse(grepl("veg", menu$full), 1, 0)
-menu$chili <- ifelse(grepl("chili", menu$full), 1, 0)
-menu$cantina <- ifelse(grepl("cantina", menu$full), 1, 0)
-menu$fresco <- ifelse(grepl("fresco", menu$full), 1, 0)
-menu$`3` <- ifelse(grepl("3", menu$full), 1, 0)
-menu$`5` <- ifelse(grepl("5", menu$full), 1, 0)
-menu$supreme <- ifelse(grepl("supreme", menu$full), 1, 0)
-menu$fiesta <- ifelse(grepl("fiesta", menu$full), 1, 0)
-menu$stuft <- ifelse(grepl("stuft", menu$full), 1, 0)
-menu$layer <- ifelse(grepl("layer", menu$full), 1, 0)
-menu$crunch <- ifelse(grepl("crunch", menu$full), 1, 0)
-menu$double <- ifelse(grepl("double", menu$full), 1, 0)
-menu$triple <- ifelse(grepl("triple", menu$full), 1, 0)
-menu$deck <- ifelse(grepl("deck", menu$full), 1, 0)
-menu$breakfast <- ifelse(grepl("breakfast", menu$full), 1, 0)
-menu$baja <- ifelse(grepl("baja", menu$full), 1, 0)
-menu$sausage <- ifelse(grepl("sausage", menu$full), 1, 0)
-menu$lb <- ifelse(grepl("1/2 lb", menu$full), 1, 0)
-menu$soft <- ifelse(grepl("soft", menu$full), 1, 0)
-menu$bellgrande <- ifelse(grepl("bellgrande", menu$full), 1, 0)
-menu$chip <- ifelse(grepl("chip", menu$full), 1, 0)
-menu$cream <- ifelse(grepl("cream", menu$full), 1, 0)
-menu$potato <- ifelse(grepl("potato", menu$full), 1, 0)
-menu$mini <- ifelse(grepl("mini", menu$full), 1, 0)
-menu$grande <- ifelse(grepl("grande", menu$full), 1, 0)
+menu$drink <- ifelse(menu$category=="Beverages", 1, 0)
 
 ### separate training and testing data ----
 # randomly selected 80% of the data as training
@@ -186,8 +127,17 @@ set.seed(5)
 menu$select <- sample.int(length(menu$full), length(menu$full))
 summary(menu$select)
 menu <- menu[order(menu$select), ]
-training <- menu[c(1:as.integer(length(menu$full)*0.8)), -c(3:4, 62)]
-testing <- menu[c(1:(length(menu$full)-as.integer(length(menu$full)*0.8))), -c(3:4, 62)]
+
+whole_set <- menu[, c(3, 23, 25, 7)]
+whole_set <- concat.split.expanded(data = whole_set, split.col = "full", sep = " ",
+                                   fill=0, type="character")
+
+training <- whole_set[whole_set$select <= length(whole_set$select)*0.8,]
+testing <- whole_set[whole_set$select > length(whole_set$select)*0.8,]
+
+# drop the full ite name itself from training and testing data
+training$full <- NULL
+testing$full <- NULL
 
 ### make word cloud ----
 rquery.wordcloud <- function(x, type=c("text", "url", "file"), 
@@ -235,13 +185,13 @@ rquery.wordcloud <- function(x, type=c("text", "url", "file"),
 cloud_menustat <- rquery.wordcloud(x=menu$full, type="text", lang="english",
                              min.freq = 2, max.words = 200)
 freq <- cloud_menustat$freqTable
-ggplot()
-
+#make bar plot of top 20 most frequent words
+#ggplot()
 
 rm(rquery.wordcloud, cloud_menustat, cloud_tb, freq)
 
-
 ### lasso regression ----
+# training
 x <- model.matrix(calories~., training)[, -1]
 y <- training$calories
 
@@ -252,16 +202,51 @@ coef(cv.lasso, cv.lasso$lambda.min)
 
 lasso.model <- glmnet(x, y, alpha = 1, lambda = cv.lasso$lambda.min, family="gaussian")
 
-### testing
+# testing
 x.test <- model.matrix(calories~., testing)[, -1]
 pred.calorie <- lasso.model %>% predict(newx = x.test)
 obs.calorie <- testing$calories
-plot(x=pred.calorie, y=obs.calorie, main="Predicted calorie v. Observed in testing data (N=198)",
+
+# summary stats
+plot(x=pred.calorie, y=obs.calorie, main="Predicted calorie v. Observed in testing data (N=366)",
      xlab="Fitted calories", ylab="Observed calories",
-     xlim=c(-200, 1200), ylim=c(-200, 1200))
+     xlim=c(-210, 1150), ylim=c(-200, 2020))
 abline(a=0, b=1, color="red")
-plot(x=pred.calorie - obs.calorie, y=obs.calorie, main="Residaul plot of testing data (N=198)",
+plot(x=pred.calorie - obs.calorie, y=obs.calorie, main="Residaul plot of testing data (N=366)",
      xlab="Residuals", ylab="Observed calories")
 
 print(lasso.model$dev.ratio)
+mean(abs(pred.calorie - obs.calorie)) / mean(obs.calorie) #16.72%
+
+# look at predicted calories by food category, visualize
+testing <- menu[menu$select > length(menu$select)*0.8, ]
+testing <- cbind(testing, pred.calorie)
+names(testing)
+colnames(testing)[26] <- "pred.calorie"
+
+# fitted v observed
+ggplot(data=testing, aes(x=pred.calorie, y=calories,
+           group=as.factor(cat), col=as.factor(cat))) +
+      geom_point(size=2) +
+      labs(title="Predicted calories v. observed",
+           x="Predicted", y="Observed", col="Category",
+           caption="Note: not yet") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+
+# residual plot
+ggplot(data=testing, aes(x=pred.calorie, y=pred.calorie - calories,
+                         group=as.factor(cat), col=as.factor(cat))) +
+      geom_point(size=2) +
+      labs(title="Predicted calories v. observed",
+           x="Predicted", y="Residuals", col="Category",
+           caption="Note: not yet") +
+      scale_color_brewer(palette="Set3") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"))
+
+
+# try AIC, BIC
+# try interactions with binary predictors
 
