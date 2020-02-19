@@ -128,7 +128,7 @@ menu$select <- sample.int(length(menu$full), length(menu$full))
 summary(menu$select)
 menu <- menu[order(menu$select), ]
 
-whole_set <- menu[, c(3, 23, 25, 7)]
+whole_set <- menu[, c(3, 23, 25:26, 7)]
 whole_set <- concat.split.expanded(data = whole_set, split.col = "full", sep = " ",
                                    fill=0, type="character")
 
@@ -216,13 +216,13 @@ plot(x=pred.calorie - obs.calorie, y=obs.calorie, main="Residaul plot of testing
      xlab="Residuals", ylab="Observed calories")
 
 print(lasso.model$dev.ratio)
-mean(abs(pred.calorie - obs.calorie)) / mean(obs.calorie) #16.72%
+mean(abs(pred.calorie - obs.calorie)) / mean(obs.calorie) #16.67%
 
 # look at predicted calories by food category, visualize
 testing <- menu[menu$select > length(menu$select)*0.8, ]
 testing <- cbind(testing, pred.calorie)
 names(testing)
-colnames(testing)[26] <- "pred.calorie"
+colnames(testing)[27] <- "pred.calorie"
 
 # fitted v observed
 ggplot(data=testing, aes(x=pred.calorie, y=calories,
@@ -245,6 +245,29 @@ ggplot(data=testing, aes(x=pred.calorie, y=pred.calorie - calories,
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"))
+
+# calculate mean residuals by category
+mean(abs(testing$calories[testing$cat=="bowl"] - testing$pred.calorie[testing$cat=="bowl"])) /
+      mean(testing$calories[testing$cat=="bowl"]) #0.1589
+mean(abs(testing$calories[testing$cat=="burrito"] - testing$pred.calorie[testing$cat=="burrito"])) /
+      mean(testing$calories[testing$cat=="burrito"]) #0.0853
+mean(abs(testing$calories[testing$cat=="dessert"] - testing$pred.calorie[testing$cat=="dessert"])) /
+      mean(testing$calories[testing$cat=="dessert"]) #0.2187
+mean(abs(testing$calories[testing$cat=="drink"] - testing$pred.calorie[testing$cat=="drink"])) /
+      mean(testing$calories[testing$cat=="drink"]) #0.1752
+mean(abs(testing$calories[testing$cat=="nacho"] - testing$pred.calorie[testing$cat=="nacho"])) /
+      mean(testing$calories[testing$cat=="nacho"]) #0.0818
+mean(abs(testing$calories[testing$cat=="other"] - testing$pred.calorie[testing$cat=="other"])) /
+      mean(testing$calories[testing$cat=="other"]) #0.4648
+mean(abs(testing$calories[testing$cat=="quesadilla"] - testing$pred.calorie[testing$cat=="quesadilla"])) /
+      mean(testing$calories[testing$cat=="quesadilla"])  #0.07828156
+mean(abs(testing$calories[testing$cat=="salad"] - testing$pred.calorie[testing$cat=="salad"])) /
+      mean(testing$calories[testing$cat=="salad"]) #0.1298
+mean(abs(testing$calories[testing$cat=="sauce"] - testing$pred.calorie[testing$cat=="sauce"])) /
+      mean(testing$calories[testing$cat=="sauce"]) #1.475421
+mean(abs(testing$calories[testing$cat=="taco"] - testing$pred.calorie[testing$cat=="taco"])) /
+      mean(testing$calories[testing$cat=="taco"]) #0.1675399
+
 
 
 # try AIC, BIC
