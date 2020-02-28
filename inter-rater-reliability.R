@@ -1,5 +1,14 @@
 ### assess human raters
 #install.packages("irr")
+
+getwd()
+setwd("C:/Users/wue04/OneDrive - NYU Langone Health/tacobell")
+
+current_warning <- getOption("warn")
+options(warn = -1)
+#options(warn = current_warning)
+
+### load libraries ----
 library(irr)
 
 ### compare turk inter-rater reliability ----
@@ -65,8 +74,6 @@ kappa2(ra[, c(5,8)], "squared")#0.85
 kappa2(ra[, c(6,7)], "squared")#0.66
 kappa2(ra[, c(6,8)], "squared")#0.86
 kappa2(ra[, c(7,8)], "squared")#0.83
-
-
 
 ## ICC
 icc(ra[, 4:8], model="twoway", type="agreement", unit="average")#0.935
