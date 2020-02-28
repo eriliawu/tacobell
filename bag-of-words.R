@@ -18,6 +18,9 @@ library(SnowballC)
 #install.packages("textstem")
 library(textstem)
 library(fuzzyjoin)
+#install.packages(c("stringdist", "fuzzyjoin"))
+#install.packages("reshape2")
+library(reshape2)
 
 ### import taco bell data, product and group ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",
@@ -68,7 +71,9 @@ product <- product[product$product!="TB I'M ALL EARS"&product$product!="SPECIAL"
                          product$product!="CFM DOWNLOAD 2"&
                          product$product!="TB I'M THINKING YOU ME DINNER"&
                          product$product!="CANADA BATMAN CUP W/PURCHASE"&
-                         product$product!="TB HELLO FRIEND", ]
+                         product$product!="TB HELLO FRIEND"&
+                         product$product!="GC REFUND"&
+                         product$product!="TB EAT IN CAR", ]
 length(unique(product$product))
 
 # drop non-food items
@@ -195,6 +200,13 @@ product$full <- gsub("IN TORTILLA", "INCH TORTILLA", product$full)
 product$full <- gsub("H AND AND", "HNN", product$full)
 product$full <- ifelse(grepl("ONE", product$full)&!grepl("CONE|ZONE|KONE", product$full),
                        gsub("ONE", "1", product$full), product$full)
+product$full <- gsub("FORTY 2", "42", product$full)
+product$full <- gsub("PINK LEMONAIDE", "PINK LEMONADE", product$full)
+product$full <- gsub("10DER", "TENDER", product$full)
+product$full <- gsub("SWEE10ED", "SWEETENED", product$full)
+product$full <- gsub("H1Y", "HONEY", product$full)
+product$full <- ifelse(grepl("2 BEAN", product$full)&!grepl("2 BEAN BURGER", product$full),
+                       gsub("2 BEAN", "TO BEAN", product$full), product$full)
 
 ### remove stop words ----
 # remove stop words
@@ -204,10 +216,10 @@ stop <- c("CENT", "CENTS", "FOR 2", "VERSION", "COUPON", "HNN", "DENVER",
           "MADISON OKC", "OMA", "BUT", "IF", "BETWEEN", "INTO", "THROUGH",
           "DURING", "BEFORE", "AFTER", "AT", "BY", "FOR", "WITH", "ABOUT",
           "OR", "BECAUSE", "AS", "UNTIL", "WHILE", "OF", "AGAINST", "ABOVE",
-          "BELOW", "TO", "FROM", "UP", "DOWN", "IN", "OUT", "ON", "OFF", "OVER",
+          "BELOW", "DOWN", "IN", "OUT", "ON", "OFF", "OVER",
           "UNDER", "AGAIN", "FURTHER", "THEN", "ONCE", "HERE", "THERE", "ALL",
           "ANY", "BOTH", "EACH", "MORE", "OTHER", "SOME", "NOR", "NOT", "ONLY",
-          "OWN", "SAME", "SO", "THAN", "TOO", "VERY", "ADD", "TB")
+          "OWN", "SAME", "SO", "THAN", "TOO", "VERY", "ADD", "TB", "HOT DEAL")
 product$full <- removeWords(product$full, stop)
 rm(stop)
 
@@ -238,7 +250,7 @@ menu$item_name <- toupper(menu$item_name)
 length(unique(menu$id)) #700
 
 # drop duplicates
-menu <- menu[!duplicated(menu$item_name, menu$id), c(4:5)] 
+menu <- menu[!duplicated(menu$item_name, menu$id), c(1, 4:5)] 
 
 ### extract unique substrings in menustat ----
 #strings <- as.data.frame(unlist(strsplit(menu$item_name, split=" ")))
@@ -278,7 +290,7 @@ menu <- menu %>%
 
 for (i in c(1:13)) {
       menu <- merge(menu, strings, by.x=paste0("item_name", i), by.y="original", sort=FALSE, all.x = TRUE)
-      colnames(menu)[i+14] <- paste0("full", i)
+      colnames(menu)[i+15] <- paste0("full", i)
 }
 rm(i, strings)
 
@@ -293,10 +305,8 @@ menu$full <- apply(cbind(menu$full1, menu$full2, menu$full3, menu$full4,
                             menu$full5, menu$full6, menu$full7, menu$full8,
                             menu$full9, menu$full10, menu$full11, menu$full12, menu$full13),
                       1, function(x) paste(x[!is.na(x)], collapse = " "))
-
 names(menu)
-menu <- menu[, c(28:29, 14)]
-
+menu <- menu[, c(29:30, 14:15)]
 
 ### remove unnecessary text/stop words, punctuation, whites pace ----
 menu$full <- sapply(strsplit(menu$full, "FOR "), "[", 1)
@@ -325,8 +335,8 @@ menu$full <- toupper(lemmatize_strings(menu$full))
 menu$full <- gsub(" / ", "/", menu$full)
 
 # fix words lemmatization didnt address
-menu$full <- gsub("7LAYER", "7 LAYERO", menu$full)
-menu$full <- gsub("5LAYER", "5 LAYERO", menu$full)
+menu$full <- gsub("7LAYER", "7 LAYER", menu$full)
+menu$full <- gsub("5LAYER", "5 LAYER", menu$full)
 menu$full <- gsub("TACOS", "TACO", menu$full)
 menu$full <- gsub("BURGERS", "BURGER", menu$full)
 menu$full <- gsub("NACHOS", "NACHO", menu$full)
@@ -353,7 +363,7 @@ rm(start_time, end_time)
 names(join_jaccard)
 colnames(join_jaccard)[c(2, 5)] <- c("full.tb", "full.menustat")
 join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb),
-                             c(2, 5, 7, 3, 1, 4, 6)]
+                             c(2, 5, 8, 1, 3:4, 6:7)]
 
 # number of exact matches
 length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #282
@@ -410,5 +420,49 @@ length(unique(join_cosine$full.tb[join_cosine$dist.cs==0])) #
 
 
 
-length(unique(unlist(strsplit(menu$full, " "))))
-unlist(strsplit(product$product, " "))
+### for mturk, pilot, 1:5 options
+pilot200 <- read.csv("data/menu-matching/manual-match/mturk/pilot/pilot200.csv", stringsAsFactors = FALSE)
+pilot200 <- pilot200[!duplicated(pilot200$full), ]
+pilot_join <- stringdist_join(pilot200, menu, 
+                                by="full",
+                                mode = "left",
+                                ignore_case = FALSE, 
+                                method = "jaccard", #q=1
+                                max_dist = 99, 
+                                distance_col = "dist.jc") %>%
+      group_by(full.x) %>%
+      top_n(4, -dist.jc)
+names(pilot_join)
+pilot_join <- pilot_join[, c(1, 4, 7)]
+colnames(pilot_join)[1:2] <- c("full_tb", "full.menustat")
+pilot_join <- pilot_join[order(pilot_join$full_tb, pilot_join$dist.jc), ]
+
+# tag num of matches per tacobell item, drop 5th item onward
+pilot_join <- pilot_join %>%
+      group_by(full_tb) %>%
+      mutate(count=n()) %>%
+      mutate(rank=seq(1, count[1], 1))
+table(pilot_join$count)
+pilot_join <- pilot_join[pilot_join$rank<=4, ]
+pilot_join$count <- NULL
+
+# reshape to wide
+pilot_join1 <- dcast(pilot_join, full_tb ~ rank, value.var ="full.menustat")
+colnames(pilot_join1)[2:5] <- c("item1", "item2", "item3", "item4")
+pilot_join2 <- dcast(pilot_join, full_tb ~ rank, value.var ="dist.jc")
+colnames(pilot_join2)[2:5] <- c("dist1", "dist2", "dist3", "dist4")
+pilot_join <- merge(pilot_join1, pilot_join2, by="full_tb")
+rm(pilot_join1, pilot_join2)
+write.csv(pilot_join, "data/menu-matching/manual-match/mturk/pilot/pilot200-1v5.csv", row.names = FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
