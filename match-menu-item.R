@@ -455,8 +455,6 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
 
-
-
 ### check sales volume of manually matched items ----
 # re-run lines 19-88
 product <- product[!duplicated(product$product), ]
@@ -609,7 +607,7 @@ unique_drinks <- drinks[!duplicated(drinks$rename), ]
 
 # merge back
 cat <- read.csv("data/menu-matching/unique-drinks.csv", stringsAsFactors = FALSE)
-cat <- cat[, c(4:5)]
+cat <- cat[, c(4:6)]
 drinks <- merge(drinks, cat, by="rename")
 drinks$category.x <- NULL
 colnames(drinks)[5] <- "category"
@@ -742,13 +740,13 @@ for (i in 2007:2015) {
                         sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail) &
                                              sales$occasion!=0, ]
                         # collapse all drink sales into 3 categories
-                        sales <- aggregate(data=sales, qty~category+occasion+size, sum)
+                        sales <- aggregate(data=sales, qty~category+occasion+fountain, sum)
                         sales$year <- i
                         sales$quarter <- j
                         #sales$pct <- sales$qty / sum(sales$qty)
-                        sales$pct[sales$occasion==1] <- sales$qty[sales$occasion==1] / sum(sales$qty[sales$occasion==1])
-                        sales$pct[sales$occasion==2] <- sales$qty[sales$occasion==2] / sum(sales$qty[sales$occasion==2])
-                        sales$pct[sales$occasion==3] <- sales$qty[sales$occasion==3] / sum(sales$qty[sales$occasion==3])
+                        #sales$pct[sales$occasion==1] <- sales$qty[sales$occasion==1] / sum(sales$qty[sales$occasion==1])
+                        #sales$pct[sales$occasion==2] <- sales$qty[sales$occasion==2] / sum(sales$qty[sales$occasion==2])
+                        #sales$pct[sales$occasion==3] <- sales$qty[sales$occasion==3] / sum(sales$qty[sales$occasion==3])
                         
                         sales_all <- rbind(sales_all, sales)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
@@ -808,6 +806,11 @@ ggplot(data=subset(sales_all, sales_all$occasion==3),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+
+# look at drinks sales in drive-thru only
+sales_all <- sales_all[sales_all$occasion==2&sales_all$year==2015&sales_all$quarter==1, ]
+sum(sales_all$qty[sales_all$fountain==1]) / sum(sales_all$qty)
+sum(sales_all$qty[sales_all$fountain==1&sales_all$category!="Diet soda"]) / sum(sales_all$qty[sales_all$fountain==1])
 
 ### match drink sales, overall, drive thru vs. others ----
 sales_all <- NULL
@@ -1003,10 +1006,13 @@ ggplot(data=sales_all,
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
 
-
-
-
-
+### look at fountain drinks ----
+temp$rename <- removePunctuation(temp$rename)
+temp$rename <- stripWhitespace(temp$rename)
+temp <- drinks[!duplicated(drinks$rename), ]
+temp <- temp[temp$category=="Other SSB"|temp$category=="Freeze"|temp$category=="Pepsi/Mt. Dew Baja Blast", ]
+table(temp$category, temp$fountain)
+temp[temp$category=="Other SSB"&temp$fountain==0, "rename"]
 
 
 
