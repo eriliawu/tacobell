@@ -419,8 +419,7 @@ length(unique(join_cosine$full.tb[join_cosine$dist.cs==0])) #
 
 
 
-
-### for mturk, pilot, 1:5 options
+### for mturk, pilot, 1:5 options ----
 pilot200 <- read.csv("data/menu-matching/manual-match/mturk/pilot/pilot200.csv", stringsAsFactors = FALSE)
 pilot200 <- pilot200[!duplicated(pilot200$full), ]
 pilot_join <- stringdist_join(pilot200, menu, 
