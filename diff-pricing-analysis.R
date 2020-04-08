@@ -137,6 +137,9 @@ price <- price %>%
       group_by(product, year, quarter) %>%
       mutate(price_pct = price_count/sum(unique(price_count))*100)
 
+# mean price, pepsi, 2015 Q1
+mean(price$price[price$year==2015&price$quarter==1&price$product=="MEDIUM PEPSI"], na.rm = TRUE)
+
 ### cross-time analysis, the same restaurant/area ----
 summary(price$count)
 
