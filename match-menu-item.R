@@ -679,8 +679,14 @@ for (i in 2007:2015) {
       }
 }
 rm(i, j, detail, sales)
-
 sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
+
+# % of SSB sales in 2015 Q1
+q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1, ]
+q1 <- aggregate(data=q1, pct~category, sum)
+sum(q1$pct[q1$category!="Diet soda"&q1$category!="Alcohol"&q1$category!="Water/coffee/tea"])
+sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"])
+rm(q1)
 
 # visualization
 # sales, in percentage
@@ -756,6 +762,15 @@ for (i in 2007:2015) {
 rm(i, j, detail, sales)
 sum(sales_all$pct[sales_all$year==2015&sales_all$quarter==2])
 sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
+
+# % of ssb sales in 2015 q1, drive-thru only
+q1 <- sales_all[sales_all$occasion==2&sales_all$year==2015&sales_all$quarter==1, ]
+q1 <- aggregate(data=q1, qty~category, sum)
+q1$pct <- q1$qty / sum(q1$qty)
+sum(q1$pct[q1$category!="Diet soda"&q1$category!="Alcohol"&q1$category!="Water/coffee/tea"]) #0.8225
+sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"]) #0.8195
+rm(q1)
+
 
 # visualization
 # sales, in percentage, drive-thru, eat-in and takeout
