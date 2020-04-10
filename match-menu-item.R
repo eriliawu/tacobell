@@ -771,7 +771,6 @@ sum(q1$pct[q1$category!="Diet soda"&q1$category!="Alcohol"&q1$category!="Water/c
 sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"]) #0.8195
 rm(q1)
 
-
 # visualization
 # sales, in percentage, drive-thru, eat-in and takeout
 ggplot(data=subset(sales_all, sales_all$occasion==2),
