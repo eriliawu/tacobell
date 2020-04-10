@@ -180,23 +180,24 @@ kappa2(ra[99:5666, c(3, 5)], "squared")#0.716
 
 ### check sales volume represented by matched items ----
 ## consolidate yes or no match for all items
-ra$match <- ifelse(ra$round1==1&ra$round2==1, 1,
-                  ifelse(ra$round1==0&ra$round2==0, 0, 2))
-table(ra$match)
+table(ra$ra_agreement)
+table(ra$wu)
 
 # run the match-menu-item.R file to get join_jaccard table
 names(ra)
-ra <- ra[, c(1:2, 7)]
-colnames(ra)[1:2] <- c("full", "item_name")
+ra <- ra[, c(1:2, 7:8)]
+colnames(ra)[c(1:2, 4)] <- c("full", "item_name", "match")
 ra <- ra[!duplicated(paste0(ra$full, ra$item_name)), ]
 ra <- merge(ra, join_jaccard, by=c("full", "item_name"))
-ra <- ra[ra$match!=0, c(3, 6)]
+names(ra)
+ra <- ra[ra$ra_agreement!="no", c(3:4, 7)]
 
 # match with tacobell sales data
-sales_all <- NULL
+sales_all_ra <- NULL
+sales_all_wu <- NULL
 detail <- read.csv("data/from-bigpurple/product_detail.csv",
                    stringsAsFactors = FALSE)
-sapply(detail, class)
+#sapply(detail, class)
 
 for (i in 2007:2015) {
       for (j in 1:4) {
@@ -228,15 +229,126 @@ for (i in 2007:2015) {
                         sales <- merge(sales, ra, by.x = "detail_desc", by.y = "product", all = TRUE)
                         sales <- sales[!is.na(sales$p_detail), ]
                         
-                        # delete duplicated rows
-                        sales <- sales[!duplicated(sales$detail_desc), ]
-                        sales$match[is.na(sales$match)] <- 0
+                        sales <- sales[!duplicated(sales$p_detail), ]
+                        sales$ra_agreement[is.na(sales$ra_agreement)] <- "no"
                         
+                        # fill in summary stats, aggregated by results from ra
+                        sales_ra <- aggregate(data=sales, qty~ra_agreement, sum)
+                        sales_ra$year <- i
+                        sales_ra$quarter <- j
+                        sales_ra$pct <- sales_ra$qty / sum(sales_ra$qty)
+                        sales_all_ra <- rbind(sales_all_ra, sales_ra)
+                        
+                        # fill in summary stats, aggregated by results from ra and me
+                        sales_wu <- aggregate(data=sales, qty~match, sum)
+                        sales_wu$year <- i
+                        sales_wu$quarter <- j
+                        sales_wu$pct <- sales_wu$qty / sum(sales_wu$qty)
+                        sales_all_wu <- rbind(sales_all_wu, sales_wu)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales_ra, sales_wu)
+
+# visualization, resutls from me
+ggplot(data=sales_all_wu, aes(x=paste0(year, "Q",quarter), y=pct,
+                           group=as.factor(sales_all_wu$match),
+                           color=as.factor(sales_all_wu$match))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
+      scale_color_manual(name="Match",
+                         values=c("red", "green"),
+                         labels=c("Not a match", "Match")) +
+      labs(title="Sales volume (# of items sold)",
+           x="Time", y="Percent",
+           caption="Note: 737 items are considered a match.") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/sales-vol-represented-by-matched-items-ra+wu.jpeg", width=20, height=10, unit="cm")
+
+# visualization, resutls from ra
+ggplot(data=sales_all_ra, aes(x=paste0(year, "Q",quarter), y=pct,
+                              group=as.factor(sales_all_ra$ra_agreement),
+                              color=as.factor(sales_all_ra$ra_agreement))) +
+      geom_point() +
+      geom_line(size=1) +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
+      scale_color_manual(name="RA agreement",
+                         values=c("blue", "red", "green"),
+                         labels=c("Maybe", "Not a match", "Match")) +
+      labs(title="Sales volume (# of items sold)",
+           x="Time", y="Percent",
+           caption="Note: 626 items - match, 360 items - maybe a match.") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            plot.caption=element_text(hjust=0, face="italic"),
+            axis.text.x = element_text(angle = 60, hjust = 1))
+ggsave("tables/product-matching/sales-vol-represented-by-matched-items-ra.jpeg", width=20, height=10, unit="cm")
+rm(ra, sales_all_ra, sales_all_wu)
+
+### list of unmatched items, in sales volume, descending order ----
+ra <- read.csv("data/menu-matching/manual-match/RA/manual-matching-best-match-2rounds.csv",
+               stringsAsFactors = FALSE)
+names(ra)
+ra$X <- NULL
+
+# run the match-menu-item.R file to get join_jaccard table
+names(ra)
+ra <- ra[, c(1:2, 7)]
+colnames(ra)[c(1:3)] <- c("full", "item_name", "match")
+table(ra$match)
+ra <- ra[!duplicated(paste0(ra$full, ra$item_name)), ]
+ra <- merge(ra, join_jaccard, by=c("full", "item_name"))
+names(ra)
+ra <- ra[ra$match=="no", c(1, 6)]
+ra <- ra[!duplicated(ra$product), ]
+
+# match with tacobell sales data
+sales_all <- NULL
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+#sapply(detail, class)
+
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, ".csv"),
+                                          sep = ";", header = FALSE, quote = "\"'",
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "sales", "qty"))
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        
+                        sales <- merge(sales, ra, by.x = "detail_desc", by.y = "product", all = TRUE)
+                        sales <- sales[!is.na(sales$p_detail), ]
+                        
+                        # keep only valid sales data
+                        sales <- sales[!duplicated(sales$p_detail), ]
+                        sales <- sales[!is.na(sales$full)&!is.na(sales$qty), ]
+
                         # fill in summary stats
-                        sales <- aggregate(data=sales, qty~match, sum)
+                        sales <- aggregate(data=sales, qty~full, sum)
                         sales$year <- i
                         sales$quarter <- j
-                        sales$pct <- sales$qty / sum(sales$qty)
                         sales_all <- rbind(sales_all, sales)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
@@ -244,22 +356,11 @@ for (i in 2007:2015) {
 }
 rm(i, j, detail, sales)
 
-# visualization
-ggplot(data=sales_all, aes(x=paste0(year, "Q",quarter), y=pct,
-                           group=as.factor(sales_all$match),
-                           color=as.factor(sales_all$match))) +
-      geom_point() +
-      geom_line(size=1) +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      scale_color_manual(name="RA agreement",
-                         values=c("red", "green", "blue"),
-                         labels=c("Not a match", "Match", "Maybe")) +
-      labs(title="Percent of sales, by RA agreement",
-           x="Time", y="Percent",
-           caption="Note: 626 items - both agree on a match; 360 items - one RA rated a match.") +
-      theme(plot.title=element_text(hjust=0.5, size=18),
-            plot.caption=element_text(hjust=0, face="italic"),
-            axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/sales-vol-represented-by-matched-items-ra.jpeg", width=20, height=10, unit="cm")
+sales_all <- aggregate(data=sales_all, qty~full, sum)
+#sales_all <-merge(sales_all, ra, by="full", all=TRUE) #many test items never had any sales
 
-
+# put sales in descending order and export
+sales_all <- sales_all[order(sales_all$qty, decreasing = TRUE), ]
+sales_all <- sales_all[sales_all$qty>=0, ]
+write.csv(sales_all, "data/menu-matching/manual-match/not-match-items-by-sales-vol.csv",
+          row.names = FALSE)
