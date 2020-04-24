@@ -288,7 +288,7 @@ ggplot(data=sales_all_ra, aes(x=paste0(year, "Q",quarter), y=pct,
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items-ra.jpeg", width=20, height=10, unit="cm")
 rm(ra, sales_all_ra, sales_all_wu)
 
-### list of unmatched items, in sales volume, descending order ----
+### list of items by matching category, in sales volume, descending order ----
 ra <- read.csv("data/menu-matching/manual-match/RA/manual-matching-best-match-2rounds.csv",
                stringsAsFactors = FALSE)
 names(ra)
@@ -302,7 +302,7 @@ table(ra$match)
 ra <- ra[!duplicated(paste0(ra$full, ra$item_name)), ]
 ra <- merge(ra, join_jaccard, by=c("full", "item_name"))
 names(ra)
-ra <- ra[ra$match=="no", c(1, 6)]
+ra <- ra[, c(1:3, 6)]
 ra <- ra[!duplicated(ra$product), ]
 
 # match with tacobell sales data
@@ -346,7 +346,7 @@ for (i in 2007:2015) {
                         sales <- sales[!is.na(sales$full)&!is.na(sales$qty), ]
 
                         # fill in summary stats
-                        sales <- aggregate(data=sales, qty~full, sum)
+                        sales <- aggregate(data=sales, qty~full+item_name+match, sum)
                         sales$year <- i
                         sales$quarter <- j
                         sales_all <- rbind(sales_all, sales)
@@ -356,11 +356,25 @@ for (i in 2007:2015) {
 }
 rm(i, j, detail, sales)
 
-sales_all <- aggregate(data=sales_all, qty~full, sum)
+sales_all <- aggregate(data=sales_all, qty~full+item_name+match, sum)
 #sales_all <-merge(sales_all, ra, by="full", all=TRUE) #many test items never had any sales
 
 # put sales in descending order and export
 sales_all <- sales_all[order(sales_all$qty, decreasing = TRUE), ]
 sales_all <- sales_all[sales_all$qty>=0, ]
-write.csv(sales_all, "data/menu-matching/manual-match/not-match-items-by-sales-vol.csv",
+
+# rank sales by %
+sales_all$pct <- sales_all$qty / sum(sales_all$qty)*100
+colnames(sales_all)[1:2] <- c("tacobell.name", "menustat.name")
+write.csv(sales_all, "data/menu-matching/manual-match/items-by-sales-vol-match-type.csv",
           row.names = FALSE)
+
+
+
+
+
+
+
+
+
+
