@@ -428,7 +428,7 @@ for (i in 2007:2015) {
                   sales <- sales[!is.na(sales$p_detail), ]
                   
                   # delete duplicated rows
-                  sales <- sales[!duplicated(sales$detail_desc), ]
+                  sales <- sales[!duplicated(sales$p_detail), ]
 
                   # fill in summary stats
                   sales_all[j+4*(i-2007), 1] <- i
@@ -471,7 +471,6 @@ names(match)
 match <- match[, c(1, 4, 6)]
 
 # merge back to product table
-
 match$match[match$match!=1|is.na(match$match)] <- 0
 match <- match[!duplicated(match), ]
 
@@ -626,6 +625,17 @@ drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small
                                     ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large",
                                            ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "unclear")))))
 
+# descriptives on types of drinks
+length(unique(drinks$rename)) #255
+length(unique(drinks$rename[drinks$category!="Additive"])) #244
+length(unique(drinks$rename[drinks$category=="Diet soda"|drinks$category=="Water/coffee/tea"])) #30, low-cal
+length(unique(drinks$rename[drinks$fountain==1])) #69, fountain drinks
+length(unique(drinks$rename[drinks$category=="Freeze"])) #60, freeze
+length(unique(drinks$rename[drinks$category=="Sweetened coffee/tea"])) #25
+length(unique(drinks$rename[drinks$category=="Other SSB"&drinks$fountain==0])) #58
+length(unique(drinks$rename[drinks$category=="Alcohol"])) #19
+length(unique(drinks$rename[grepl("Vague", drinks$category)])) #13
+
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
 detail <- read.csv("data/from-bigpurple/product_detail.csv",
@@ -664,9 +674,6 @@ for (i in 2007:2015) {
                         
                         sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
                         sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail), ]
-                        #print(paste0("2nd merge done: ", "year ", i, " Q", j))
-                        #names(sales)
-                        #detial$id <- NULL
 
                         # collapse all drink sales into 3 categories
                         sales <- aggregate(data=sales, qty~category+size, sum)
@@ -746,14 +753,11 @@ for (i in 2007:2015) {
                         sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail) &
                                              sales$occasion!=0, ]
                         # collapse all drink sales into 3 categories
-                        sales <- aggregate(data=sales, qty~category+occasion+fountain, sum)
+                        sales <- aggregate(data=sales, qty~category+occasion+fountain+size, sum)
                         sales$year <- i
                         sales$quarter <- j
-                        #sales$pct <- sales$qty / sum(sales$qty)
-                        #sales$pct[sales$occasion==1] <- sales$qty[sales$occasion==1] / sum(sales$qty[sales$occasion==1])
-                        #sales$pct[sales$occasion==2] <- sales$qty[sales$occasion==2] / sum(sales$qty[sales$occasion==2])
-                        #sales$pct[sales$occasion==3] <- sales$qty[sales$occasion==3] / sum(sales$qty[sales$occasion==3])
-                        
+                        sales$pct <- sales$qty / sum(sales$qty)
+
                         sales_all <- rbind(sales_all, sales)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
@@ -764,12 +768,26 @@ sum(sales_all$pct[sales_all$year==2015&sales_all$quarter==2])
 sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12)
 
 # % of ssb sales in 2015 q1, drive-thru only
-q1 <- sales_all[sales_all$occasion==2&sales_all$year==2015&sales_all$quarter==1, ]
-q1 <- aggregate(data=q1, qty~category, sum)
+q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1&sales_all$occasion==2, ]
 q1$pct <- q1$qty / sum(q1$qty)
-sum(q1$pct[q1$category!="Diet soda"&q1$category!="Alcohol"&q1$category!="Water/coffee/tea"]) #0.8225
-sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"]) #0.8195
+q1 <- aggregate(data=q1, pct~category, sum)
+sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"|q1$category=="Sweetened coffee/tea"])
 rm(q1)
+
+# % offountain drink sales in 2015 q1, ssb or otherwise
+q1 <- sales_all[sales_all$occasion==2&sales_all$year==2015&sales_all$quarter==1, ]
+q1 <- aggregate(data=q1, qty~category+fountain, sum)
+q1$pct <- q1$qty / sum(q1$qty)
+sum(q1$pct[q1$fountain==1]) #79%
+sum(q1$pct[q1$fountain==1&
+                 (q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Sweetened coffee/tea"|
+                        q1$category=="Pepsi/Mt. Dew Baja Blast")]) / sum(q1$pct[q1$fountain==1]) #88%
+rm(q1)
+
+# drink sales, size comparison, 2015 q1
+q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1&sales_all$occasion==2, ]
+q1 <- aggregate(data=q1, qty~size, sum)
+q1$pct <- q1$qty/sum(q1$qty)
 
 # visualization
 # sales, in percentage, drive-thru, eat-in and takeout
@@ -947,8 +965,6 @@ ggplot(data=subset(sales_all, sales_all$occasion==3),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
-
-
 ### looking at the sales by drive-thru vs. others ----
 sales_all <- NULL
 for (i in 2007:2015) {
@@ -988,10 +1004,7 @@ for (i in 2007:2015) {
                         sales$year <- i
                         sales$quarter <- j
                         sales$pct <- sales$qty / sum(sales$qty)
-                        #sales$pct[sales$occasion==1] <- sales$qty[sales$occasion==1] / sum(sales$qty[sales$occasion==1])
-                        #sales$pct[sales$occasion==2] <- sales$qty[sales$occasion==2] / sum(sales$qty[sales$occasion==2])
-                        #sales$pct[sales$occasion==3] <- sales$qty[sales$occasion==3] / sum(sales$qty[sales$occasion==3])
-                        
+
                         sales_all <- rbind(sales_all, sales)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
