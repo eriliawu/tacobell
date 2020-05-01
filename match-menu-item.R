@@ -1033,13 +1033,67 @@ ggplot(data=sales_all,
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
 
-### look at fountain drinks ----
-temp$rename <- removePunctuation(temp$rename)
-temp$rename <- stripWhitespace(temp$rename)
-temp <- drinks[!duplicated(drinks$rename), ]
-temp <- temp[temp$category=="Other SSB"|temp$category=="Freeze"|temp$category=="Pepsi/Mt. Dew Baja Blast", ]
-table(temp$category, temp$fountain)
-temp[temp$category=="Other SSB"&temp$fountain==0, "rename"]
+### descriptives for soda tax grant
+# mean number of items purchased per order, mean spending
+spending_all <- NULL
+detail <- read.csv("data/from-bigpurple/product_detail.csv",
+                   stringsAsFactors = FALSE)
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else {
+                        sales <- read.csv(paste0("data/from-bigpurple/sales-vol-by-product/sales_",
+                                                 i, "_Q0", j, ".csv"),
+                                          sep = ";", header = FALSE, quote = "\"'",
+                                          stringsAsFactors = FALSE,
+                                          col.names = c("p_detail", "sales", "qty"))
+                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        
+                        # clean house
+                        sales <- sales[!is.na(sales$sales), ]
+                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
+                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
+                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
+                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
+                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
+                        # aggregate mean spending
+                        sales <- sales[sales$p_detail>0, ]
+                        sales$year <- i
+                        sales$quarter <- j
+                        spending <- aggregate(data=sales, sales~year+quarter, sum)
+                        
+                        # more cleaning for mean num of items purchased per order
+                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
+                                             sales$detail_desc!=""&
+                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
+                                             !grepl("COMBO", sales$detail_desc)&
+                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
+                                             sales$detail_desc!="NEW ITEM"&
+                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
+                        sales <- sales[sales$detail_desc!="TB I'M ALL EARS"&sales$detail_desc!="SPECIAL"&
+                                             sales$detail_desc!="DO NOT ALTER THIS ITEM"&
+                                             sales$detail_desc!="BORDER SWEAT SHIRT"&
+                                             sales$detail_desc!="TB I'M THINKING YOU ME"&
+                                             sales$detail_desc!="CFM DOWNLOAD 1"&
+                                             sales$detail_desc!="TB HELLO FRIEND"&
+                                             sales$detail_desc!="CANADA BATMAN CUP INDIVIDUAL"&
+                                             sales$detail_desc!="DELETED ITEM, DO NOT USE"&
+                                             sales$detail_desc!="CLEV INDIANS/TB BANDANNA 1.4"&
+                                             sales$detail_desc!="CFM DOWNLOAD 2"&
+                                             sales$detail_desc!="TB I'M THINKING YOU ME DINNER"&
+                                             sales$detail_desc!="CANADA BATMAN CUP W/PURCHASE"&
+                                             sales$detail_desc!="TB HELLO FRIEND", ]
+                        
+                        # aggregate mean num of items purchased
+                        num <- aggregate(data=sales, qty~year+quarter, sum)
+                        spending <- merge(spending, num, by=c("year", "quarter"))
+                        spending_all <- rbind(spending_all, spending)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, detail, sales, num, spending)
+
 
 
 
