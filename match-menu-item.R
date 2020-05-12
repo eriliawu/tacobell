@@ -178,13 +178,14 @@ length(unique(product$full))
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 menu$item_name <- toupper(menu$item_name)
-#menu <- menu[grepl("16", menu$item_name), ]
-menu <- menu[!duplicated(menu$item_name), c(1, 4:5)]
+menu <- menu[!duplicated(menu$item_name), c(1, 4:5, 8)]
 length(unique(menu$item_name))
-#menu <- menu[menu$year<=2016, ]
 
 # remove signs
 menu$item_name <- gsub(", ", " ", menu$item_name)
+
+menu <- menu[order(menu$id), ]
+write.csv(menu, "data/menustat/menustat_items.csv", row.names = FALSE)
 
 ### generate word cloud, for both taco bell and menustat ----
 rquery.wordcloud <- function(x, type=c("text", "url", "file"), 
@@ -586,55 +587,44 @@ names(drinks)
 # strip drink names of size info
 # OZ, CENT, SMALL, MEDIUM, LARGE, EXTRA LARGE
 drinks$rename <- gsub("[0-9]+", "", drinks$full)
-drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|
-                      MEGA JUG|LITER|LARGE", "", drinks$rename)
+drinks$rename <- gsub("CENT| OZ|OZ |SMALL|MEDIUM|EXTRA LARGE|REGULAR|GALLON|MEGA JUG|
+                      LITER|LARGE", "", drinks$rename)
 drinks$rename <- trimws(drinks$rename, "both")
 drinks$rename <- gsub("UP", "7UP", drinks$rename)
 drinks$rename <- gsub("7UPSELL", "UPSELL", drinks$rename)
+drinks$rename <- gsub("UPSELL", "", drinks$rename)
 drinks <- drinks[!grepl("ONION|NACHOS", drinks$rename), ]
 length(unique(drinks$rename)) #266
 
-# 3 categories: diet, pepsi & mt dew, other sugary drinks
-drinks$category <- ifelse(grepl("DIET|WATER|COFFEE|UNSWEETENED|HOT TEA|BREWED TEA", drinks$rename)
-                          &!grepl("SWEET |MOCHA|VANILLA|CARAMEL", drinks$rename), "Low-calorie",
-                          ifelse(grepl("PEPSI|BAJA BLAST", drinks$rename),
-                                 "Pepsi/Mt. Dew Baja Blast", "Other SSB"))
-
 # export unique drink names and cateogrize
-unique_drinks <- drinks[!duplicated(drinks$rename), ]
+#unique_drinks <- drinks[!duplicated(drinks$rename), ]
 #write.csv(unique_drinks, "data/menu-matching/unique-drinks.csv", row.names = FALSE)
 
 # merge back
 cat <- read.csv("data/menu-matching/unique-drinks.csv", stringsAsFactors = FALSE)
 cat <- cat[, c(4:6)]
 drinks <- merge(drinks, cat, by="rename")
-drinks$category.x <- NULL
-colnames(drinks)[5] <- "category"
-rm(cat, unique_drinks)
-
+drinks <- drinks[!duplicated(drinks), ]
+rm(cat)
 table(drinks$category)
-#drinks[drinks$category=="Pepsi/Mt. Dew Baja Blast", ]
-length(unique(drinks$rename[drinks$category=="Pepsi/Mt. Dew Baja Blast"]))
-length(unique(drinks$rename[drinks$category=="Other SSB"]))
-#write.csv(drinks, "data/menu-matching/drinks.csv", row.names = FALSE)
 
 # identify drink sizes
 drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small",
-                      ifelse(grepl("MEDIUM|20 OZ|24 OZ|REGULAR|18 OZ", drinks$full), "medium",
-                             ifelse(grepl("EXTRA LARGE|MEGA JUG|40 OZ|44 OZ|42 OZ|GALLON|2 LITER", drinks$full), "xl",
-                                    ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large",
-                                           ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "unclear")))))
+                  ifelse(grepl("MEDIUM|20 OZ|24 OZ|REGULAR|18 OZ", drinks$full), "medium",
+                  ifelse(grepl("EXTRA LARGE|MEGA JUG|40 OZ|44 OZ|42 OZ|GALLON|2 LITER", drinks$full), "xl",
+                  ifelse(grepl("LARGE|30 OZ|32 OZ", drinks$full), "large",
+                  ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "unclear")))))
 
 # descriptives on types of drinks
-length(unique(drinks$rename)) #255
-length(unique(drinks$rename[drinks$category!="Additive"])) #244
-length(unique(drinks$rename[drinks$category=="Diet soda"|drinks$category=="Water/coffee/tea"])) #30, low-cal
-length(unique(drinks$rename[drinks$fountain==1])) #69, fountain drinks
-length(unique(drinks$rename[drinks$category=="Freeze"])) #60, freeze
-length(unique(drinks$rename[drinks$category=="Sweetened coffee/tea"])) #25
-length(unique(drinks$rename[drinks$category=="Other SSB"&drinks$fountain==0])) #58
-length(unique(drinks$rename[drinks$category=="Alcohol"])) #19
-length(unique(drinks$rename[grepl("Vague", drinks$category)])) #13
+length(unique(drinks$rename)) #212
+length(unique(drinks$rename[drinks$category!="Additive"])) #201
+length(unique(drinks$rename[drinks$category=="Diet soda"|drinks$category=="Water/coffee/tea"])) #25, low-cal
+length(unique(drinks$rename[drinks$fountain==1])) #50, fountain drinks
+length(unique(drinks$rename[drinks$category=="Freeze"])) #59, freeze
+length(unique(drinks$rename[drinks$category=="Sweetened coffee/tea"])) #21
+length(unique(drinks$rename[drinks$category=="Other SSB"&drinks$fountain==0])) #43
+length(unique(drinks$rename[drinks$category=="Alcohol"])) #17
+length(unique(drinks$rename[grepl("Vague", drinks$category)])) #10
 
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
