@@ -184,8 +184,8 @@ length(unique(menu$item_name))
 # remove signs
 menu$item_name <- gsub(", ", " ", menu$item_name)
 
-menu <- menu[order(menu$id), ]
-write.csv(menu, "data/menustat/menustat_items.csv", row.names = FALSE)
+#menu <- menu[order(menu$id), ]
+#write.csv(menu, "data/menustat/menustat_items.csv", row.names = FALSE)
 
 ### generate word cloud, for both taco bell and menustat ----
 rquery.wordcloud <- function(x, type=c("text", "url", "file"), 
@@ -456,38 +456,21 @@ ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=matched_pct, g
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/sales-vol-represented-by-matched-items.jpeg", width=20, height=10, unit="cm")
 
-### check sales volume of manually matched items ----
-# re-run lines 19-88
-product <- product[!duplicated(product$product), ]
-
-match1 <- read.csv("data/menu-matching/matching-jaccard1.csv", stringsAsFactors = FALSE)
-names(match1)
-match2 <- read.csv("data/menu-matching/matching-jaccard2.csv", stringsAsFactors = FALSE)
-names(match2)
-match2$id <- NULL
-
-match <- rbind(match1, match2)
-rm(match1, match2)
+### check sales volume of manually matched items, work by RAs ----
+# re-run sections: read product data, clean house sections, extract all substings
+# read match data
+match <- read.csv("data/menu-matching/manual-match/RA/manual-matching-manual-research_full.csv",
+                  stringsAsFactors = FALSE)
 names(match)
-match <- match[, c(1, 4, 6)]
+match$tacobell <- trimws(match$tacobell, "both")
+match$menustat <- trimws(match$menustat, "both")
+match <- match[!duplicated(match), ]
+match$match <- 1 #create match indicator
 
 # merge back to product table
-match$match[match$match!=1|is.na(match$match)] <- 0
-match <- match[!duplicated(match), ]
-
-# check if some items were match=0 in jaccard1 but match=1 in jaccard2
-# mutate data frame
-# create new column max_match
-# only keep match=max_match
-match <- match[order(match$full, match$match), ] # some items have both 1 and 0 matches
-temp <- aggregate(match$match, by=list(match$full), max)
-match <- merge(match, temp, by.x = "full", by.y = "Group.1")
-rm(temp)
+# to have actual product names to be merged to sales data
+match <- merge(match, product, by.x="tacobell", by.y="full")
 names(match)
-match$match <- NULL
-colnames(match)[3] <- "match"
-match <- match[!duplicated(match), ]
-match$match[match$match!=1|is.na(match$match)] <- 0
 
 # check sales volume by each item
 sales_all <- NULL
@@ -534,11 +517,13 @@ for (i in 2007:2015) {
                                                  sales$detail_desc!="CANADA BATMAN CUP W/PURCHASE"&
                                                  sales$detail_desc!="TB HELLO FRIEND", ]
                         sales <- merge(sales, match, by.x = "detail_desc", by.y = "product", all=TRUE)
-                        sales <- sales[, c(1, 4:6)]
+                        sales <- sales[, c(1, 4, 7)]
                         sales$qty[is.na(sales$qty)] <- 0
+                        sales$match[is.na(sales$match)] <- 0
+                        sales <- sales[!duplicated(sales), ]
 
                         # aggregate sales by match and full columns
-                        sales <- aggregate(data=sales, qty~detail_desc+match, sum)
+                        sales <- aggregate(data=sales, qty~match, sum)
                         sales$year <- i
                         sales$quarter <- j
                         sales$pct <- sales$qty / sum(sales$qty)
@@ -548,35 +533,23 @@ for (i in 2007:2015) {
       }
 }
 rm(i, j, detail, sales)
-length(unique(sales_all$detail_desc))
-sales_all <- sales_all[sales_all$qty>=0 , ]
-sales_all <- sales_all[order(sales_all$qty, decreasing = TRUE), ]
-#write.csv(sales_all, "data/menu-matching/sales-pct-nonmatched-items_by_quarter.csv", row.names = FALSE)
-
-# collapse year and quarter
-# calculate total num of sales per item
-sales_all <- aggregate(qty~detail_desc, data=sales_all, sum)
-sales_all <- sales_all[order(sales_all$qty, decreasing = TRUE), ]
-sales_all$pct <- sales_all$qty / sum(sales_all$qty)*100
-#write.csv(sales_all, "data/menu-matching/sales-pct-nonmatched-items_total.csv", row.names = FALSE)
-#sales_all <- read.csv("data/menu-matching/sales-pct-nonmatched-items.csv", stringsAsFactors = FALSE)
 
 # visualization, sales volume over time, match vs. non-match
-temp <- aggregate(data=sales_all, pct~year+quarter+match, sum)
-ggplot(data=temp, aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=pct,
                       color=as.factor(match), group=as.factor(match))) +
       geom_point() +
       geom_line(size=1) +
+      geom_hline(yintercept = 0.95, linetype="dashed", color="blue") +
+      geom_hline(yintercept = 0.9, linetype="dashed", color="red") +
       scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      labs(title="% of sales, matched items vs. non-matched",
+      labs(title="% of matched sales over time",
            x="Year", y="Percent", color="Match",
-           caption="Note: 619 (or 17%) of items were identified as having a match.") +
-      #scale_color_brewer(palette="Set3") +
+           caption="Red and Blue dashed lines represent 90% and 95%, respectively.") +
+      scale_color_discrete(name="Match", breaks=c(0, 1), labels=c("Not a match", "Match")) +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/sales-vol-represented-by-matched-items-with-jaccard2.jpeg", width=20, height=10, unit="cm")
-rm(temp)
+ggsave("tables/product-matching/sales-match-ra-manual-search.jpeg", width=20, height=10, unit="cm")
 
 ### clean up drink names, re-categorize and identify sizes ----
 # re-run product cleaning code, lines 19-166
@@ -594,19 +567,20 @@ drinks$rename <- gsub("UP", "7UP", drinks$rename)
 drinks$rename <- gsub("7UPSELL", "UPSELL", drinks$rename)
 drinks$rename <- gsub("UPSELL", "", drinks$rename)
 drinks <- drinks[!grepl("ONION|NACHOS", drinks$rename), ]
-length(unique(drinks$rename)) #266
+length(unique(drinks$rename)) #239
 
 # export unique drink names and cateogrize
 #unique_drinks <- drinks[!duplicated(drinks$rename), ]
-#write.csv(unique_drinks, "data/menu-matching/unique-drinks.csv", row.names = FALSE)
+#write.csv(unique_drinks, "data/menu-matching/unique-drinks2.csv", row.names = FALSE)
 
 # merge back
 cat <- read.csv("data/menu-matching/unique-drinks.csv", stringsAsFactors = FALSE)
-cat <- cat[, c(4:6)]
+cat <- cat[, c(4:8)]
 drinks <- merge(drinks, cat, by="rename")
-drinks <- drinks[!duplicated(drinks), ]
 rm(cat)
-table(drinks$category)
+drinks$rename <- NULL
+colnames(drinks)[4] <- "rename"
+table(drinks$category2)
 
 # identify drink sizes
 drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small",
@@ -616,15 +590,15 @@ drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small
                   ifelse(grepl("ADD |ADDITIVE", drinks$full), "additive", "unclear")))))
 
 # descriptives on types of drinks
-length(unique(drinks$rename)) #212
-length(unique(drinks$rename[drinks$category!="Additive"])) #201
-length(unique(drinks$rename[drinks$category=="Diet soda"|drinks$category=="Water/coffee/tea"])) #25, low-cal
-length(unique(drinks$rename[drinks$fountain==1])) #50, fountain drinks
-length(unique(drinks$rename[drinks$category=="Freeze"])) #59, freeze
-length(unique(drinks$rename[drinks$category=="Sweetened coffee/tea"])) #21
-length(unique(drinks$rename[drinks$category=="Other SSB"&drinks$fountain==0])) #43
-length(unique(drinks$rename[drinks$category=="Alcohol"])) #17
-length(unique(drinks$rename[grepl("Vague", drinks$category)])) #10
+length(unique(drinks$rename)) #226
+length(unique(drinks$rename[drinks$category2=="Additive"])) #14
+length(unique(drinks$rename[drinks$category2=="Alcohol"])) #17
+length(unique(drinks$rename[drinks$category2=="Vague"])) #8
+length(unique(drinks$rename[drinks$category2=="Diet"])) #7
+length(unique(drinks$rename[drinks$category2=="Low-cal"])) #19
+length(unique(drinks$rename[drinks$category2=="Freeze"])) #77
+length(unique(drinks$rename[drinks$category2=="SSB fountain"])) #50
+length(unique(drinks$rename[drinks$category2=="Other SSB"])) #39
 
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
@@ -774,8 +748,10 @@ sum(q1$pct[q1$fountain==1&
                         q1$category=="Pepsi/Mt. Dew Baja Blast")]) / sum(q1$pct[q1$fountain==1]) #88%
 rm(q1)
 
-# drink sales, size comparison, 2015 q1
-q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1&sales_all$occasion==2, ]
+# sugary fountain drink sales, size comparison, 2015 q1
+# re-run the for loop with category2 in the aggregate formula
+q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1&sales_all$occasion==2&
+                      sales_all$fountain==1&(sales_all$category2!="Diet"&sales_all$category2!="Low-cal"), ]
 q1 <- aggregate(data=q1, qty~size, sum)
 q1$pct <- q1$qty/sum(q1$qty)
 
@@ -1023,7 +999,7 @@ ggplot(data=sales_all,
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
 
-### descriptives for soda tax grant
+### descriptives for soda tax grant ----
 # mean number of items purchased per order, mean spending
 spending_all <- NULL
 detail <- read.csv("data/from-bigpurple/product_detail.csv",
@@ -1089,3 +1065,14 @@ rm(i, j, detail, sales, num, spending)
 
 
 
+
+### mean calories in medium and large drinks ----
+# re-read menustat data
+menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
+menu$item_name <- toupper(menu$item_name)
+names(menu)
+table(menu$category)
+menu <- menu[menu$category=="Beverages"&menu$year==2015, ]
+table(menu$serving_size)
+mean(menu$calories[menu$calories!=0 & menu$serving_size==20]) #235
+mean(menu$calories[menu$calories!=0 & menu$serving_size==30]) #350
