@@ -50,6 +50,7 @@ table(product$group)
 
 # drop commas and other punctuations
 product$product <- gsub(pattern = ",", replacement = "", x=product$product)
+length(unique(product$product)) #9006
 
 # based on product group and product description
 # drop other YUM brand products
@@ -464,19 +465,18 @@ match <- read.csv("data/menu-matching/manual-match/RA/manual-matching-manual-res
 names(match)
 match$tacobell <- trimws(match$tacobell, "both")
 match$menustat <- trimws(match$menustat, "both")
-match <- match[!duplicated(match), ]
-match$match <- 1 #create match indicator
+match <- match[!duplicated(match$tacobell), ]
 
 # merge back to product table
 # to have actual product names to be merged to sales data
 match <- merge(match, product, by.x="tacobell", by.y="full")
 names(match)
+match$match[match$match=="proxy ms"] <- "proxy"
 
 # check sales volume by each item
 sales_all <- NULL
 detail <- read.csv("data/from-bigpurple/product_detail.csv",
                    stringsAsFactors = FALSE)
-
 for (i in 2007:2015) {
       for (j in 1:4) {
             tryCatch(
@@ -519,7 +519,7 @@ for (i in 2007:2015) {
                         sales <- merge(sales, match, by.x = "detail_desc", by.y = "product", all=TRUE)
                         sales <- sales[, c(1, 4, 7)]
                         sales$qty[is.na(sales$qty)] <- 0
-                        sales$match[is.na(sales$match)] <- 0
+                        sales$match[is.na(sales$match)] <- "no match"
                         sales <- sales[!duplicated(sales), ]
 
                         # aggregate sales by match and full columns
@@ -534,18 +534,21 @@ for (i in 2007:2015) {
 }
 rm(i, j, detail, sales)
 
+table(sales_all$match)
 # visualization, sales volume over time, match vs. non-match
 ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=pct,
                       color=as.factor(match), group=as.factor(match))) +
       geom_point() +
       geom_line(size=1) +
-      geom_hline(yintercept = 0.95, linetype="dashed", color="blue") +
-      geom_hline(yintercept = 0.9, linetype="dashed", color="red") +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 1)) +
-      labs(title="% of matched sales over time",
-           x="Year", y="Percent", color="Match",
-           caption="Red and Blue dashed lines represent 90% and 95%, respectively.") +
-      scale_color_discrete(name="Match", breaks=c(0, 1), labels=c("Not a match", "Match")) +
+      #geom_hline(yintercept = 0.95, linetype="dashed", color="blue") +
+      #geom_hline(yintercept = 0.9, linetype="dashed", color="red") +
+      scale_y_continuous(labels = scales::percent, limits=c(0, 0.75)) +
+      labs(title="Percent of sales matched over time",
+           x="Year", y="Percent", caption="") +
+      scale_color_discrete(name="Match", labels=c("Best match, MenuStat", "Internet",
+                                    "Best match, MenuStat, correct mistake",
+                                    "Non-best match, MenuStat", "No match", "Proxy")) +
+      #scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
@@ -591,14 +594,14 @@ drinks$size <- ifelse(grepl("SMALL|12 OZ|16 OZ|9 OZ|14 OZ", drinks$full), "small
 
 # descriptives on types of drinks
 length(unique(drinks$rename)) #226
-length(unique(drinks$rename[drinks$category2=="Additive"])) #14
-length(unique(drinks$rename[drinks$category2=="Alcohol"])) #17
+length(unique(drinks$rename[drinks$category2=="Additive"])) #11
+length(unique(drinks$rename[drinks$category2=="Alcohol"])) #15
 length(unique(drinks$rename[drinks$category2=="Vague"])) #8
 length(unique(drinks$rename[drinks$category2=="Diet"])) #7
 length(unique(drinks$rename[drinks$category2=="Low-cal"])) #19
-length(unique(drinks$rename[drinks$category2=="Freeze"])) #77
+length(unique(drinks$rename[drinks$category2=="Freeze"])) #90
 length(unique(drinks$rename[drinks$category2=="SSB fountain"])) #50
-length(unique(drinks$rename[drinks$category2=="Other SSB"])) #39
+length(unique(drinks$rename[drinks$category2=="Other SSB"])) #26
 
 ### match drinks names to sales volume, sugary and otherwise ----
 sales_all <- NULL
@@ -656,7 +659,8 @@ sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12
 q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1, ]
 q1 <- aggregate(data=q1, pct~category, sum)
 sum(q1$pct[q1$category!="Diet soda"&q1$category!="Alcohol"&q1$category!="Water/coffee/tea"])
-sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"])
+sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|
+                 q1$category=="Pepsi/MDBB"|q1$category=="0.022332915"]) #0.57
 rm(q1)
 
 # visualization
@@ -717,7 +721,7 @@ for (i in 2007:2015) {
                         sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail) &
                                              sales$occasion!=0, ]
                         # collapse all drink sales into 3 categories
-                        sales <- aggregate(data=sales, qty~category+occasion+fountain+size, sum)
+                        sales <- aggregate(data=sales, qty~category2+occasion+fountain+size, sum)
                         sales$year <- i
                         sales$quarter <- j
                         sales$pct <- sales$qty / sum(sales$qty)
@@ -734,8 +738,9 @@ sales_all$qty <- ifelse(sales_all$quarter==4, sales_all$qty/16, sales_all$qty/12
 # % of ssb sales in 2015 q1, drive-thru only
 q1 <- sales_all[sales_all$year==2015&sales_all$quarter==1&sales_all$occasion==2, ]
 q1$pct <- q1$qty / sum(q1$qty)
-q1 <- aggregate(data=q1, pct~category, sum)
-sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|q1$category=="Pepsi/Mt. Dew Baja Blast"|q1$category=="Sweetened coffee/tea"])
+q1 <- aggregate(data=q1, pct~category2, sum)
+sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|
+                 q1$category=="SSB fountain"]) #0.82
 rm(q1)
 
 # % offountain drink sales in 2015 q1, ssb or otherwise
@@ -930,7 +935,6 @@ ggplot(data=subset(sales_all, sales_all$occasion==3),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
-
 ### looking at the sales by drive-thru vs. others ----
 sales_all <- NULL
 for (i in 2007:2015) {
@@ -1059,12 +1063,6 @@ for (i in 2007:2015) {
       }
 }
 rm(i, j, detail, sales, num, spending)
-
-
-
-
-
-
 
 ### mean calories in medium and large drinks ----
 # re-read menustat data
