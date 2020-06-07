@@ -14,7 +14,9 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 #install.packages("stringr")
-library(stringr) 
+library(stringr)
+library(tidyverse)
+library(maps)
 
 ### read data ----
 sample <- read.csv("data/from-bigpurple/restaurants.csv",
@@ -29,7 +31,7 @@ restaurants <- read.csv("data/from-bigpurple/restaurants.csv",
                                 "tbc_ownership", "phi_ownership", "ljs_onwership",
                                 "awr_ownership", "address1", "address2", "address3",
                                 "city", "county", "state", "zip", "open", "temp_close",
-                                "reopen", "close", "lat", "lon", "cencept",
+                                "reopen", "close", "lat", "lon", "concept",
                                 "concept_begin", "concept_end", "drive_thru",
                                 "drive_thru_type"))
 sapply(restaurants, class)
@@ -274,7 +276,7 @@ ggsave("tables/by-restaurant-transaction/num-restaurants-by-region.jpeg", width=
 
 rm(region)
 
-# export lon/lat coordinates for geocode census county and tract numbers ----
+### export lon/lat coordinates for geocode census county and tract numbers ----
 # in ArcGIS
 # county
 geocode <- restaurants[, c(1:2, 7:8)]
@@ -429,6 +431,151 @@ ggplot(data=income, aes(x=paste0(year, "Q", quarter),
             axis.text.x = element_text(angle = 60, hjust = 1))
 ggsave("tables/by-restaurant-transaction/mean-spending-by-tract.jpeg", width=20, height=10, unit="cm")
 rm(income)
+
+
+
+
+
+
+
+
+
+
+
+
+### examine co-branded restaurants ----
+# re-run lines thru 142
+restaurants <- restaurants %>%
+      filter(open<=as.Date("2015-03-31")&(is.na(close)|close>as.Date("2015-03-31")))
+table(restaurants$concept)
+restaurants$concept <- trimws(restaurants$concept, "both")
+restaurants <- restaurants %>%
+      filter(grepl("TBC", concept))
+restaurants <- restaurants[order(restaurants$state, restaurants$address, restaurants$open), ]
+
+# examine restaurants with other yum brands
+other <- restaurants %>%
+      filter(concept!="TBC")
+table(other$ownership)
+table(other$concept[other$ownership=="COMPANY"])
+
+# clean up lon/lat data for mapping
+summary(other$lon)
+summary(other$lon[other$lon>0])
+other[other$lon>0, c("address", "state", "lon", "lat")]
+other$lon[other$lon==39.3409] <- -105.0659
+other$lat[other$lat==-105.0659] <- 39.3409
+
+# map co-branded restaurants
+ggplot() +
+      coord_fixed() +
+      geom_polygon(data=map_data("state"),
+                   aes(x=long, y=lat, group=group),
+                   color="grey", fill="lightblue", size=0.1) +
+      geom_point(data=subset(other, state!="AK"), 
+                 aes(x=lon, y=lat, color=as.character(concept)), size=0.5) +
+      scale_color_manual(labels=c("Taco Bell & KFC (n=779)", "Taco Bell & KFC & Pizza Hut (n=11)",
+                                  "Taco Bell & AWR (n=1)", "Taco Bell & Long John Silver (n=98)",
+                                  "Taco Bell & Pizza Hut (n=358)"),
+                         values=c("blue", "yellow", "grey", "green", "red")) +
+      labs(title="Locations of co-branded restaurants, 2015Q1", x="", y="", col="Brands",
+           caption="Note: there were 1,248 co-branded restaurants, 18% of all restaurants. 1 restaurant in Alaska was excluded.") +
+      theme(plot.title=element_text(hjust=0.5, size=18),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(), 
+            panel.background = element_rect(fill = 'white', colour = 'white'), 
+            axis.line = element_line(colour = "white"),
+            axis.ticks=element_blank(), axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.caption=element_text(hjust=0, face="italic"))
+#ggsave("tables/tb-maps/cobrand-restaurants_2015q1.jpeg")
+
+# look at co-branded restaurants, sales
+sales_all <- NULL
+restaurants_all <- restaurants #re-run lines thru 142 to get master restaurant table
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if(i==2015 & j==4) {stop("file doesn't exist")} else
+                  {
+                        sales <- read.csv(paste0("data/from-bigpurple/transaction-by-restaurant/by_restaurant_transaction_",
+                                                 i, "q", j, ".csv"),
+                                          stringsAsFactors = FALSE, sep = ";",
+                                          header = FALSE, quote = "\"'",
+                                          col.names = c("restid", "qty", "dollar"))
+                        sales <- merge(restaurants_all, sales, by="restid") #merge restaurant type with sales
+                        sales <- sales %>% #aggregate by multiple columns for multiple functions
+                              group_by(concept) %>%
+                              summarise_at(c("qty", "dollar"), funs(sum, mean))
+                        sales$qty_pct <- sales$qty_sum/sum(sales$qty_sum)
+                        sales$dollar_pct <- sales$dollar_sum/sum(sales$dollar_sum)
+                        sales$quarter <- j
+                        sales$year <- i
+                        sales_all <- rbind(sales_all, sales)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+rm(i, j, sales, restaurants_all)
+
+#standardize sales by week
+sales_all$qty_sum <- ifelse(sales_all$quarter==4, sales_all$qty_sum/16, sales_all$qty_sum/12)
+sales_all$dollar_sum <- ifelse(sales_all$quarter==4, sales_all$dollar_sum/16, sales_all$dollar_sum/12)
+sales_all$qty_mean <- ifelse(sales_all$quarter==4,  sales_all$qty_mean/16, sales_all$qty_mean/12)
+sales_all$dollar_mean <- ifelse(sales_all$quarter==4, sales_all$dollar_mean/16, sales_all$dollar_mean/12)
+
+# plot mean sales by restaurants type, over time
+ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE), y=qty_mean,
+                           color=as.factor(concept), group=as.factor(concept))) +
+      geom_point(size=0.75) +
+      geom_line(size=0.5) +
+      ggplot2::annotate(geom="text", x=1:35, y=-200, label=c(rep(c(1:4),8), c(1:3)), size = 2) +
+      ggplot2::annotate(geom="text", x=2.5+4*(0:8), y=-600, label=unique(sales_all$year), size=3) +
+      coord_cartesian(ylim = c(0, 6000), expand = FALSE, clip = "off") +
+      labs(title="Mean number of transactions, by restaurant brands",
+           x="Time", y="Number of transactions",
+           caption="The dip in 2012 Q3 is likely due to a data anomoly, need to discuss with Taco Bell data team. \n Number of transactions are standardized to weekly average.") +
+      scale_color_manual(name="Brand(s)",
+                           labels=c("Taco Bell & KFC", "Taco Bell & KFC & Pizza Hut",
+                                    "Taco Bell", "Taco Bell & Long John Silver",
+                                    "Taco Bell & Pizza Hut"),
+                           values=c("dodgerblue1", "hotpink", "red1", "yellow3", "green4")) +
+      theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+            plot.title = element_text(hjust = 0.5, size = 18),
+            axis.title.x = element_text(vjust = -8, size = 12),
+            axis.text.x = element_blank(),
+            axis.title.y = element_text(size = 12),
+            plot.caption=element_text(hjust=0, vjust = -13, face="italic"))
+#ggsave("tables/by-restaurant-transaction/mean-num-transactions-by-concept.jpeg", width=20, height=10, unit="cm")
+
+# % of sales from cobranded restaurants, over time
+ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE),
+                           y=qty_pct, color=concept, group=concept)) +
+      geom_point(size=0.75) +
+      geom_line(size=0.5) +
+      ggplot2::annotate(geom="text", x=1:35, y=-0.04, label=c(rep(c(1:4),8), c(1:3)), size = 2) +
+      ggplot2::annotate(geom="text", x=2.5+4*(0:8), y=-0.1, label=unique(sales_all$year), size=3) +
+      scale_y_continuous(labels = scales::percent) +
+      coord_cartesian(ylim = c(0, 1), expand = FALSE, clip = "off") +
+      labs(title="Percent of sales, by brands", x="Time", y="% of sales",
+           caption="Note: sales is measured as number of transactions.") +
+      scale_color_manual(name="Brand(s)",
+                         labels=c("Taco Bell & KFC", "Taco Bell & KFC & Pizza Hut",
+                                  "Taco Bell", "Taco Bell & Long John Silver",
+                                  "Taco Bell & Pizza Hut"),
+                         values=c("dodgerblue1", "hotpink", "red1", "yellow3", "green4")) +
+      theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+            plot.title = element_text(hjust = 0.5, size = 18),
+            axis.title.x = element_text(vjust = -8, size = 12),
+            axis.text.x = element_blank(),
+            axis.title.y = element_text(size = 12),
+            plot.caption=element_text(hjust=0, vjust = -13, face="italic"))
+#ggsave("tables/by-restaurant-transaction/pct-transactions-by-concept.jpeg", width=20, height=10, unit="cm")
+
+# histogram, by type, 2015Q1
+
+
+
 
 
 
