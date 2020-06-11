@@ -86,11 +86,11 @@ product <- product[product$product!="TB I'M ALL EARS"&product$product!="SPECIAL"
                          product$product!="TB I'M THINKING YOU ME DINNER"&
                          product$product!="CANADA BATMAN CUP W/PURCHASE"&
                          product$product!="TB HELLO FRIEND", ]
-length(unique(product$product))
+length(unique(product$product)) #3658
 
 # drop non-food items
 product <- product[product$group!="NON-FOOD SALES (PRE", ]
-length(unique(product$product))
+length(unique(product$product)) #3599
 
 #length(unique(product$product))
 names(product)
@@ -536,23 +536,26 @@ rm(i, j, detail, sales)
 
 table(sales_all$match)
 # visualization, sales volume over time, match vs. non-match
-ggplot(data=sales_all, aes(x=paste(year, "Q", quarter, sep=""), y=pct,
+ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE), y=pct,
                       color=as.factor(match), group=as.factor(match))) +
       geom_point() +
       geom_line(size=1) +
-      #geom_hline(yintercept = 0.95, linetype="dashed", color="blue") +
-      #geom_hline(yintercept = 0.9, linetype="dashed", color="red") +
-      scale_y_continuous(labels = scales::percent, limits=c(0, 0.75)) +
+      ggplot2::annotate(geom="text", x=1:35, y=-0.01, label=c(rep(c(1:4),8), c(1:3)), size = 4) +
+      ggplot2::annotate(geom="text", x=2.5+4*(0:8), y=-0.03, label=unique(sales_all$year), size=5) +
+      coord_cartesian(ylim = c(0, 0.7), expand = FALSE, clip = "off") +
+      scale_y_continuous(labels = scales::percent) +
       labs(title="Percent of sales matched over time",
            x="Year", y="Percent", caption="") +
-      scale_color_discrete(name="Match", labels=c("Best match, MenuStat", "Internet",
-                                    "Best match, MenuStat, correct mistake",
-                                    "Non-best match, MenuStat", "No match", "Proxy")) +
-      #scale_color_brewer(palette="Set3") +
-      theme(plot.title=element_text(hjust=0.5, size=18),
-            plot.caption=element_text(hjust=0, face="italic"),
-            axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/sales-match-ra-manual-search.jpeg", width=20, height=10, unit="cm")
+      scale_color_discrete(name="Match", labels=c("Best match, MenuStat, from yes list (n=492)", "Internet (n=36)",
+                                    "Best match, MenuStat, correct mistake by RA, maybe list (n=97)",
+                                    "Non-best match, MenuStat (n=110)", "No match (n=25)", "Proxy (n=35)")) +
+      theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+            plot.title = element_text(hjust = 0.5, size = 20),
+            axis.title.x = element_text(vjust = -15, size = 12),
+            axis.text.x = element_blank(),
+            axis.title.y = element_text(size = 12),
+            legend.text=element_text(size=14))
+ggsave("tables/product-matching/sales-match-ra-manual-search.jpeg", width=20, height=10)
 
 ### clean up drink names, re-categorize and identify sizes ----
 # re-run product cleaning code, lines 19-166
