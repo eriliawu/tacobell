@@ -61,7 +61,7 @@ product <- product[!grepl("AW", product$group)&!grepl("BYB", product$group)&
                          product$group!="TCBY (YOGURT)", ]
 product <- product[!grepl("AWR", product$product)&!grepl("AW ", product$product)&
                          !grepl("BYB", product$product)&!grepl("KFC", product$product)&
-                         !grepl("LJS", product$product)&!grepl("PH", product$product)&
+                         !grepl("LJS", product$product)&!grepl("PH ", product$product)&
                          !grepl("PIZZA HUT", product$product)&!grepl("TCBY", product$product)&
                          !grepl("ICBIY", product$product)&!grepl("KRYSTAL", product$product), ]
 length(unique(product$product)) #4800
@@ -125,14 +125,17 @@ strings <- strings[order(strings$count, decreasing = TRUE), ]
 # incorporate full names
 strings <- read.csv("data/menu-matching/product-names_unique_substrings_w_correction.csv",
                     stringsAsFactors = FALSE)
-#strings$X <- NULL
 sapply(strings, class)
-#strings$check <- as.integer(strings$check)
 
 # replace all unchanged strings with its original value
 strings$full[strings$full==""] <- strings$original[strings$full==""]
-#strings$check <- NULL
 strings$length <- NULL
+
+strings$original[strings$original=="02-Jan"] <- "1/2"
+strings$original[strings$original=="03-Jan"] <- "1/3"
+strings$original[strings$original=="04-Jan"] <- "1/4"
+strings$original[strings$original=="06-Jan"] <- "1/6"
+strings <- strings[!duplicated(strings$original), ]
 
 # replace abbreviations with full spelling
 # first, break product names into separate substrings in their own columns
@@ -146,12 +149,6 @@ for (i in c(1:8)) {
       colnames(product)[i+9] <- paste0("full", i)
 }
 rm(i, strings)
-#product$product <- paste(product$product1, product$product2, product$product3,
- #                        product$product4, product$product5, product$product6,
-  #                       product$product7, product$product8, sep=" ")
-#product$full <- paste(product$full1, product$full2, product$full3, product$full4,
- #                     product$full5, product$full6, product$full7, product$full8,
-  #                    sep=" ")
 
 # paste all substrings, but leave out the NAs
 product$product <- apply(cbind(product$product1, product$product2, product$product3,
@@ -475,8 +472,9 @@ match$match[match$match=="proxy ms"] <- "proxy"
 
 # check sales volume by each item
 sales_all <- NULL
-detail <- read.csv("data/from-bigpurple/product_detail.csv",
-                   stringsAsFactors = FALSE)
+detail <- product[, c(1:2, 4)] #rerun lines thru 92
+colnames(detail)[3] <- "p_detail"
+
 for (i in 2007:2015) {
       for (j in 1:4) {
             tryCatch(
@@ -487,37 +485,10 @@ for (i in 2007:2015) {
                                           sep = ";", header = FALSE, quote = "\"'",
                                           stringsAsFactors = FALSE,
                                           col.names = c("p_detail", "sales", "qty"))
-                        sales <- merge(detail, sales, by="p_detail", all=TRUE)
+                        sales <- merge(detail, sales, by="p_detail")
 
                         # clean house
-                        sales <- sales[!is.na(sales$sales), ]
-                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
-                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
-                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
-                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
-                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
-                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
-                                             sales$detail_desc!=""&
-                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
-                                             !grepl("COMBO", sales$detail_desc)&
-                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
-                                             sales$detail_desc!="NEW ITEM"&
-                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
-                        sales <- sales[sales$detail_desc!="TB I'M ALL EARS"&sales$detail_desc!="SPECIAL"&
-                                                 sales$detail_desc!="DO NOT ALTER THIS ITEM"&
-                                                 sales$detail_desc!="BORDER SWEAT SHIRT"&
-                                                 sales$detail_desc!="TB I'M THINKING YOU ME"&
-                                                 sales$detail_desc!="CFM DOWNLOAD 1"&
-                                                 sales$detail_desc!="TB HELLO FRIEND"&
-                                                 sales$detail_desc!="CANADA BATMAN CUP INDIVIDUAL"&
-                                                 sales$detail_desc!="DELETED ITEM, DO NOT USE"&
-                                                 sales$detail_desc!="CLEV INDIANS/TB BANDANNA 1.4"&
-                                                 sales$detail_desc!="CFM DOWNLOAD 2"&
-                                                 sales$detail_desc!="TB I'M THINKING YOU ME DINNER"&
-                                                 sales$detail_desc!="CANADA BATMAN CUP W/PURCHASE"&
-                                                 sales$detail_desc!="TB HELLO FRIEND", ]
-                        sales <- merge(sales, match, by.x = "detail_desc", by.y = "product", all=TRUE)
-                        sales <- sales[, c(1, 4, 7)]
+                        sales <- merge(sales, match, by="product", all=TRUE)
                         sales$qty[is.na(sales$qty)] <- 0
                         sales$match[is.na(sales$match)] <- "no match"
                         sales <- sales[!duplicated(sales), ]
@@ -540,22 +511,22 @@ ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE), y=pct
                       color=as.factor(match), group=as.factor(match))) +
       geom_point() +
       geom_line(size=1) +
-      ggplot2::annotate(geom="text", x=1:35, y=-0.01, label=c(rep(c(1:4),8), c(1:3)), size = 4) +
+      ggplot2::annotate(geom="text", x=1:35, y=-0.01, label=c(rep(c(1:4),8), c(1:3)), size = 4) + #create 2-layer x axis label
       ggplot2::annotate(geom="text", x=2.5+4*(0:8), y=-0.03, label=unique(sales_all$year), size=5) +
-      coord_cartesian(ylim = c(0, 0.7), expand = FALSE, clip = "off") +
-      scale_y_continuous(labels = scales::percent) +
-      labs(title="Percent of sales matched over time",
-           x="Year", y="Percent", caption="") +
-      scale_color_discrete(name="Match", labels=c("Best match, MenuStat, from yes list (n=492)", "Internet (n=36)",
+      coord_cartesian(ylim = c(0, 0.7), expand = FALSE, clip = "off") + 
+      scale_y_continuous(labels = scales::percent, breaks=seq(0.1, 0.7, 0.1)) +
+      labs(title="Percent of sales matched over time", x="Year", y="Percent") +
+      scale_color_discrete(name="Match",
+                           labels=c("Best match, MenuStat, from yes list (n=492)", "Internet (n=36)",
                                     "Best match, MenuStat, correct mistake by RA, maybe list (n=97)",
                                     "Non-best match, MenuStat (n=110)", "No match (n=25)", "Proxy (n=35)")) +
       theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
             plot.title = element_text(hjust = 0.5, size = 20),
             axis.title.x = element_text(vjust = -15, size = 12),
-            axis.text.x = element_blank(),
+            axis.text.x = element_blank(), #turn off default x axis label
             axis.title.y = element_text(size = 12),
             legend.text=element_text(size=14))
-ggsave("tables/product-matching/sales-match-ra-manual-search.jpeg", width=20, height=10)
+#ggsave("tables/product-matching/sales-match-ra-manual-search.jpeg", width=20, height=10)
 
 ### clean up drink names, re-categorize and identify sizes ----
 # re-run product cleaning code, lines 19-166
@@ -622,31 +593,14 @@ for (i in 2007:2015) {
                                           sep = ";", header = FALSE, quote = "\"'",
                                           stringsAsFactors = FALSE,
                                           col.names = c("p_detail", "sales", "qty"))
-                        #sapply(sales, class)
                         sales <- merge(detail, sales, by="p_detail", all=TRUE)
                         #print(paste0("1st merge done: ", "year ", i, " Q", j))
                         
-                        # clean house
-                        sales <- sales[!is.na(sales$sales), ]
-                        sales <- sales[!grepl("AWR", sales$detail_desc)&!grepl("AW ", sales$detail_desc)&
-                                             !grepl("BYB", sales$detail_desc)&!grepl("KFC", sales$detail_desc)&
-                                             !grepl("LJS", sales$detail_desc)&!grepl("PH", sales$detail_desc)&
-                                             !grepl("PIZZA HUT", sales$detail_desc)&!grepl("TCBY", sales$detail_desc)&
-                                             !grepl("ICBIY", sales$detail_desc)&!grepl("KRYSTAL", sales$detail_desc), ]
-                        
-                        sales <- sales[sales$detail_desc!="CFM MANAGER SPECIALS"&
-                                             sales$detail_desc!=""&
-                                             !grepl("* NEW PRODCT ADDED BY", sales$detail_desc)&
-                                             !grepl("COMBO", sales$detail_desc)&
-                                             !grepl("FRANCHISE LOCAL MENU", sales$detail_desc)&
-                                             sales$detail_desc!="NEW ITEM"&
-                                             !grepl("SPECIAL PROMOTION", sales$detail_desc), ]
-                        
-                        sales <- merge(sales, drinks, by.x = "detail_desc", by.y = "product", all = TRUE)
+                        sales <- merge(sales, drinks, by="product", all = TRUE)
                         sales <- sales[!is.na(sales$category) & !is.na(sales$p_detail), ]
 
                         # collapse all drink sales into 3 categories
-                        sales <- aggregate(data=sales, qty~category+size, sum)
+                        sales <- aggregate(data=sales, qty~category, sum)
                         sales$year <- i
                         sales$quarter <- j
                         sales$pct <- sales$qty / sum(sales$qty)
@@ -669,20 +623,18 @@ rm(q1)
 # visualization
 # sales, in percentage
 ggplot(data=sales_all,
-       aes(x=paste(year, "Q", quarter, sep=""), y=pct,
-           group=interaction(as.factor(size), as.factor(category)),
-           col=as.factor(category))) +
-      geom_point(size=0.5) +
-      geom_line(size=0.5, aes(linetype=as.factor(size))) +
-      scale_y_continuous(labels = scales::percent, limits=c(0.01, 0.5)) +
+       aes(x=paste(year, "Q", quarter, sep=""), y=pct, group=category, col=category)) +
+      geom_point() +
+      geom_line() +
+      scale_y_continuous(labels = scales::percent, limits=c(0,1)) +
       labs(title="Drink sales, by category and size",
-           x="Year", y="Sales percentage", col="Category", linetype="Size",
+           x="Year", y="Sales percentage", col="Category",
            caption="Note: y-axis represents % of sales over all sales. Sales of less than 1% were excluded.") +
       scale_color_brewer(palette="Set3") +
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
+#ggsave("tables/product-matching/drink-sales-pct-size.jpeg", width=10, height=6, unit="in", dpi=600)
 rm(sales_all)
 
 ### match drinks sales, drive thru vs. others----
