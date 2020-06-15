@@ -490,7 +490,7 @@ ggplot() +
             plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/tb-maps/cobrand-restaurants_2015q1.jpeg")
 
-# look at co-branded restaurants, sales
+# look at co-branded restaurants, total sales
 sales_all <- NULL
 restaurants_all <- restaurants #re-run lines thru 142 to get master restaurant table
 for (i in 2007:2015) {
@@ -548,7 +548,7 @@ ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE), y=qty
             plot.caption=element_text(hjust=0, vjust = -13, face="italic"))
 #ggsave("tables/by-restaurant-transaction/mean-num-transactions-by-concept.jpeg", width=20, height=10, unit="cm")
 
-# % of sales from cobranded restaurants, over time
+# % of sales from cobranded restaurants total sales, over time
 ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE),
                            y=qty_pct, color=concept, group=concept)) +
       geom_point(size=0.75) +
@@ -571,6 +571,29 @@ ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE),
             axis.title.y = element_text(size = 12),
             plot.caption=element_text(hjust=0, vjust = -13, face="italic"))
 #ggsave("tables/by-restaurant-transaction/pct-transactions-by-concept.jpeg", width=20, height=10, unit="cm")
+
+# % of sales from other brand items, over time
+sales <- read.csv("data/from-bigpurple/cobrand-sales-pct.csv", stringsAsFactors = FALSE)
+sales$pct <- sales$qty/sales$total_qty
+
+ggplot(data=sales, aes(x=interaction(year, quarter, lex.order = TRUE),
+                           y=pct)) +
+      geom_line(size=1, group=1) +
+      ggplot2::annotate(geom="text", x=1:35, y=-0.015, label=c(rep(c(1:4),8), c(1:3)), size = 2) +
+      ggplot2::annotate(geom="text", x=2.5+4*(0:8), y=-0.04, label=unique(sales$year), size=3) +
+      scale_y_continuous(labels = scales::percent) +
+      coord_cartesian(ylim = c(0, 0.25), expand = FALSE, clip = "off") +
+      labs(title="Percent of sales with other brands items", x="Time", y="% of sales",
+           caption="Note: sales includes transactions with at least one non-Taco Bell brand item.") +
+      theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+            plot.title = element_text(hjust = 0.5, size = 18),
+            axis.title.x = element_text(vjust = -8, size = 12),
+            axis.text.x = element_blank(),
+            axis.title.y = element_text(size = 12),
+            plot.caption=element_text(hjust=0, vjust = -13, face="italic"))
+ggsave("tables/by-restaurant-transaction/pct-transactions-other-brands.jpeg", width=20, height=8, unit="cm")
+
+
 
 # histogram, by type, 2015Q1
 
