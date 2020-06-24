@@ -591,9 +591,7 @@ ggplot(data=sales, aes(x=interaction(year, quarter, lex.order = TRUE),
             axis.text.x = element_blank(),
             axis.title.y = element_text(size = 12),
             plot.caption=element_text(hjust=0, vjust = -13, face="italic"))
-ggsave("tables/by-restaurant-transaction/pct-transactions-other-brands.jpeg", width=20, height=8, unit="cm")
-
-
+#ggsave("tables/by-restaurant-transaction/pct-transactions-other-brands.jpeg", width=20, height=8, unit="cm")
 
 # histogram, by type, 2015Q1
 

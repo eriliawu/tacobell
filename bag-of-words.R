@@ -50,7 +50,7 @@ table(product$group)
 # drop other YUM brand products
 product <- product[!grepl("AW|BYB|KFC|LJS|PH |PIZZA HUT|KRYSTAL|ICBIY (YOGURT)|TCBY (YOGURT)",
                           product$group) &
-                         !grepl("AWR| AW|AW,|AW |BYB|KFC|LJS|PH|PIZZA HUT|TCBY|ICBIY|KRYSTAL",
+                         !grepl("AWR| AW|AW,|AW |BYB|KFC|LJS|PH |PIZZA HUT|TCBY|ICBIY|KRYSTAL",
                                 product$product), ]
 length(unique(product$product)) 
 
@@ -368,7 +368,6 @@ join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full.tb),
 # number of exact matches
 length(unique(join_jaccard$full.tb[join_jaccard$dist.jc==0])) #282
 
-###
 ### jaccard distance, q=2 ----
 start_time <- Sys.time()
 join_jaccard2 <- stringdist_join(product, menu, 
@@ -415,9 +414,6 @@ join_cosine <- join_cosine[order(join_cosine$dist.cs, join_cosine$full.tb), ]
 
 # number of exact matches
 length(unique(join_cosine$full.tb[join_cosine$dist.cs==0])) #
-
-
-
 
 ### for mturk, pilot, 1:5 options ----
 pilot200 <- read.csv("data/menu-matching/manual-match/mturk/pilot/pilot200.csv", stringsAsFactors = FALSE)

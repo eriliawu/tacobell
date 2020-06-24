@@ -8,21 +8,11 @@ options(warn = -1)
 
 ### install and load packages ----
 #install.packages("fuzzyjoin")
-library(fuzzyjoin)
 library(dplyr)
-#install.packages("stringdist")
-library(stringdist)
 library(tidyr)
 library(stringr)
 library(ggplot2)
-#install.packages("tm") #text mining
-#install.packages("SnowballC") #text stemming
-#install.packages("wordcloud") #generate word cloud
-#install.packages("RColorBrewer")
-library(tm)
-library(SnowballC)
 library(RColorBrewer)
-library(wordcloud)
 
 ### read product data ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",
@@ -239,11 +229,49 @@ other[, 11:20] <- lapply(other[, 11:20], convert_to_num)
 match <- rbind(match, other) #merge other sourced items to match master data
 rm(other, convert_to_num, menu)
 
-#configure multiple item products
+#configure multiple item products ----
 #e.g. convert 2-pack taco to its correct calories, b/c they're likely matched to one taco's calorie
+names(match)
+match$tacobell.name <- trimws(match$tacobell.name, "both")
+match <- match[order(match$tacobell.name, match$year), ]
 
+# extract size information for non-beverage items
+table(match$category)
 
+multiple <- match %>% #only work on items with numbers in the name
+      filter(category!="Beverages" & grepl("[[:digit:]]", tacobell.name))
+multiple$tb.rename <- gsub("99|39|49|@1.99|35|69|0.99|79", "", multiple$tacobell.name) #take out price numbers
+multiple <- multiple[, c(1,25,2:24)]
 
+multiple$tb.rename <- gsub("1/2 LB", "HALF LB", multiple$tb.rename) #shield some numbers from being extratced
+multiple$tb.rename <- gsub("5 LAYER", "FIVE LAYER", multiple$tb.rename)
+multiple$tb.rename <- gsub("5-LAYER", "FIVE-LAYER", multiple$tb.rename)
+multiple$tb.rename <- gsub("7 LAYER", "SEVEN LAYER", multiple$tb.rename)
+multiple$tb.rename <- gsub("7-LAYER", "SEVEN-LAYER", multiple$tb.rename)
+multiple$tb.rename <- gsub("3 CHEESE", "THREE CHEESE", multiple$tb.rename)
+multiple$tb.qty <- as.integer(gsub("[[:alpha:]]|[[:punct:]]", "", multiple$tb.rename))
+
+multiple$ms.rename <- gsub("1/2 LB", "HALF LB", multiple$menustat.name) #clean up quantity info in menustat names
+multiple$ms.rename <- gsub("5 LAYER", "FIVE LAYER", multiple$ms.rename)
+multiple$ms.rename <- gsub("5-LAYER", "FIVE-LAYER", multiple$ms.rename)
+multiple$ms.rename <- gsub("7 LAYER", "SEVEN LAYER", multiple$ms.rename)
+multiple$ms.rename <- gsub("7-LAYER", "SEVEN-LAYER", multiple$ms.rename)
+multiple$ms.rename <- gsub("3 CHEESE", "THREE CHEESE", multiple$ms.rename)
+multiple$ms.qty <- as.integer(gsub("[[:alpha:]]|[[:punct:]]", "", multiple$ms.rename))
+multiple <- multiple[, c(2, 26:28, 1, 3:25)]
+
+multiple[, c("tb.qty", "ms.qty")][is.na(multiple[, c("tb.qty", "ms.qty")])] <- 1
+multiple[, c(14:24)] <- lapply(multiple[, c(14:24)], function(x) x/multiple$ms.qty*multiple$tb.qty) #convert all nutritional infor
+names(multiple)
+names(match)
+multiple <- multiple[, -c(1:4)]
+
+match <- match %>%
+      filter(category=="Beverages"|!grepl("[[:digit:]]", tacobell.name))
+match <- rbind(match, multiple)
+
+### merge back to product table ----
+# rank sales in descending order for not matched items
 
 
 
