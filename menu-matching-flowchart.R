@@ -8,99 +8,168 @@ options(warn = -1)
 
 ### install and load packages ----
 #install.packages("DiagrammeR")
+#install.packages("DiagrammeRsvg")
+#install.packages("rsvg")
+#install.packages("magrittr")
+library(magrittr)
+library(rsvg)
+library(DiagrammeRsvg)
 library(DiagrammeR)
 library(ggplot2)
 library(tidyverse)
 
 ### create diagram ----
-DiagrammeR::grViz("digraph {
-graph [layout = dot, rankdir = LR]
+flow <- "digraph {
+graph [layout=dot, rankdir = LR]
 
 # define the global styles of the nodes. We can override these in box if we wish
-node [shape = rectangle, style = filled, fillcolor = Linen]
+node [shape = rectangle, style = filled]
+      
+      subgraph cluster_input {
+      color='#625a5a'
+      style=dashed
+      label='Input'
+      fontname = 'helvetica-bold'
+      node[fillcolor=Beige];
+      a0[label = 'Taco Bell \n data']
+      a1[label = 'MenuStat Data']
+      }
 
-tb [label = 'Taco Bell \n data', shape = circle, fillcolor = Beige]
-ms [label = 'MenuStat Data', shape = circle, fillcolor = Beige]
-clean [label = 'Data cleaning']
-jc [label = 'Jaccard distance']
-match1 [label= 'Manual matching, round 1']
-yes [label= 'Yes list', shape = circle, fillcolor = Beige]
-maybe [label='Maybe list', shape = circle, fillcolor = Beige]
-no [label='No list', shape = circle, fillcolor = Beige]
-aggregate [label='Aggregate all nutritional information \n into one table']
-add [label='Add table to database']
+      subgraph cluster_clean {
+      label = 'Data cleaning'
+      style=dashed
+      color= '#625a5a'
+      fontname = 'helvetica-bold'
+      node[fillcolor=Linen]
+      b0[label='Remove punctuations']
+      b1[label='Drop non-TB items']
+      b2[label='Drop vague items']
+      b3[label='Drop non-food items']
+      b4[label='Fill out \n abbreviations']
+      b5[label='Correct misspellings']
+      b6[label='De-dup']
+      b0 -> b1 -> b2 -> b3
+      b3:e -> b4 
+      b4 -> b5 -> b6
+      {rank=same; b1; b2; b3;}
+      {rank=same; b4; b5; b6;}
+      }
 
-# edge definitions with the node IDs
-{tb ms} -> clean -> jc -> match1 -> {yes maybe -> no} ->aggregate -> add
-}")
-
-DiagrammeR::grViz('digraph {
-rankdir=LR
-graph[bgcolor = "#FDFDFD"]
-#edge[style=invis]
-node[fontname = "helvetica", width = 1.5, height = 0.5, fontsize=12]
-
-subgraph input {
-      node [shape=circle,style=filled, fillcolor = red];
-      label = "Input";
-      style=dashed;
-      color= "#625a5a";
-      fontname = "helvetica-bold";
-      node [shape=box, style=filled, color=black, fillcolor = "#91cf60"];
-      a0[label = "Taco Bell data"]
-      a1[label = "MenuStat"]
-      a2[style=invis]
-      a3[style=invis]
+      subgraph cluster_match1 {
+      color='#625a5a'
+      style=dashed
+      label='Matching, computer'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#DAF7A6']
+      c0[label='Jaccard distance \n - q=1 \n - multiple best matches']
       }
       
-subgraph clean {
-      node [shape=box,style=filled, fillcolor = red];
-      label = "Data cleaning";
-      style=dashed;
-      color= "#625a5a";
-      fontname = "helvetica-bold";
-      node [shape=box, style=filled, color=black, fillcolor = "#91cf60"];
-      b0[label = "Drop other brands"] #2
-      b1[label = "Drop vague items"] #3
-      b2[label = "Drop non-food"] #4
-      b3[label = "Remove punctuations"] #1
-      b4[label = "De-duplicate items"] #7
-      b5[label = "Fill out abbreviations"] #5
-      b6[label = "Correct misspellings"] #6
-      b3 -> b5
-      b0 -> b6
-      b1 -> b4
-      #b2 -> 
+      subgraph cluster_match2 {
+      color='#625a5a'
+      style=dashed
+      label='Manual matching, round 1'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#FFC300']
+      d0[label='5 RAs, training']
+      d1[label='100-pair pilot']
+      d2[label='Full launch \n - 1:1 match \n - 1000-pair list \n - assign diff list']
+      d3[label='Sort pairs']
+      d0 -> d1 -> d2 -> d3
+      {rank=same; d0; d1; }
+      {rank=same; d2; d3;}
       }
-      
-subgraph jc {
-      node [shape=box, style = filled, color=black, fillcolor = "#fee08b"];
-      label = "Jaccard distance matching";
-      style=dashed;
-      color= "#625a5a";
-      fontname = "helvetica-bold";
-            
-      c0[label = "q=1"]
-      c1[label = "Multiple \n best matches"]
-      c3[style=invis]
-      c4[style=invis]
-      }
-      
-subgraph match1 {
-      node [shape=box, style = filled, color=black, fillcolor = "#fc8d59"];
-      label = "Manual match, round 1";
-      style=dashed;
-      fontname = "helvetica-bold";
-      color="#625a5a"
-            
-      d0[label = "1:1 matching"]
-      d1[label = "100-item pilot"]
-      d2[label = "5 RAs"]
-      d3[label = "Full launch"];
-}
 
-{a0 a1} -> b5 -> c0 -> d0
-}')
+      subgraph cluster_yes {
+      color='#625a5a'
+      style=dashed
+      label='Yes list'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#FF5733']
+      e0[label='Both RAs \n rated yes']
+      }
+
+      subgraph cluster_maybe {
+      color='#625a5a'
+      style=dashed
+      label='Maybe list'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#40d8ce']
+      f0[label='1 RA rated yes, 1 RA rated no']
+      f1[label='3rd RA rates every pair']
+      f2[label='Sort pairs']
+      f1 -> f2
+      {rank=same; f0; f1;}
+      }
+
+      subgraph cluster_no {
+      color='#625a5a'
+      style=dashed
+      label='No list'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#e9a1df']
+      g0[label='Filter top 95% \n sales items']
+      g1[label='Train RAs']
+      g2[label='Find match, \n MenuStat']
+      g3[label='Find match, \n internet']
+      g4[label='Find proxy, \n MenuStat/internet']
+      g5[label='Cannot find match']
+      g0 -> g1 -> g2 -> g3 -> g4 -> g5
+      {rank=same; g0; g1;}
+      {rank=same; g2; g3;}
+      {rank=same; g4; g5;}
+      }
+
+      subgraph cluster_record {
+      color='#625a5a'
+      style=dashed
+      label='Record nutritional info'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#add7ec']
+      h0[label='Record match \n source']
+      h1[label='Record match \n item name']
+      h2[label='Record \n nutritional info']
+      h0 -> h1 -> h2
+      {rank=same; h0; h1;}
+      #{rank=same; h2;}
+      }
+
+      subgraph cluster_add {
+      color='#625a5a'
+      style=dashed
+      label='Add to database'
+      fontname = 'helvetica-bold'
+      node[fillcolor='']
+      i0[label='Build master \n nutritional table']
+      i1[label='Link item names \n to product code']
+      i2[label='Add table \n to database']
+      i0 -> i1 -> i2
+      {rank=same; i0; i1;}
+      }
+
+{a0 a1} -> b0
+b6 -> c0 -> d0
+d3:e -> {e0 f1 g0}
+f2 -> g2
+{e0 g2 g3 g4} -> h0
+h2 -> i0
+
+#ranking
+#{rank=same; e0; f0; f1; f2;}
+
+#invisible edges
+{a0 a1} -> b1 [style=invis]
+b0 -> c0 [style=invis]
+b0 -> d0 [style=invis]
+d0 -> f1 [style=invis]
+h0 -> i0 [style=invis]
+h2 -> i1 [style=invis]
+f0 -> h0 [style=invis]
+d2 -> e0 [style=invis]
+c0 -> a1 [style=invis]
+b6 -> c0 [style=invis]
+}"
+grViz(flow) %>%
+      export_svg %>% charToRaw %>% rsvg_png("tables/flowchart.png")
 
 ### use ggplot2 ----
 # create grid and work space
