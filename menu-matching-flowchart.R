@@ -20,7 +20,7 @@ library(tidyverse)
 
 ### create diagram ----
 flow <- "digraph {
-graph [layout=dot, rankdir = LR]
+graph [layout=dot, rankdir = LR, concentrate=true,splines=ortho]
 
 # define the global styles of the nodes. We can override these in box if we wish
 node [shape = rectangle, style = filled]
@@ -42,17 +42,13 @@ node [shape = rectangle, style = filled]
       fontname = 'helvetica-bold'
       node[fillcolor=Linen]
       b0[label='Remove punctuations']
-      b1[label='Drop non-TB items']
-      b2[label='Drop vague items']
-      b3[label='Drop non-food items']
-      b4[label='Fill out \n abbreviations']
-      b5[label='Correct misspellings']
-      b6[label='De-dup']
-      b0 -> b1 -> b2 -> b3
-      b3:e -> b4 
-      b4 -> b5 -> b6
-      {rank=same; b1; b2; b3;}
-      {rank=same; b4; b5; b6;}
+      b1[label='Drop items \n - non-TB items \n - vague items \n - non-food items']
+      b2[label='Fill out \n abbreviations']
+      b3[label='Correct misspellings']
+      b4[label='De-dup (N=3,517)']
+      b0 -> b1 -> b2 -> b3 -> b4
+      {rank=same; b0; b1;}
+      {rank=same; b2; b3; b4;}
       }
 
       subgraph cluster_match1 {
@@ -67,12 +63,12 @@ node [shape = rectangle, style = filled]
       subgraph cluster_match2 {
       color='#625a5a'
       style=dashed
-      label='Manual matching, round 1'
+      label='Initial manual matching'
       fontname = 'helvetica-bold'
       node[fillcolor='#FFC300']
       d0[label='5 RAs, training']
       d1[label='100-pair pilot']
-      d2[label='Full launch \n - 1:1 match \n - 1000-pair list \n - assign diff list']
+      d2[label='Full launch \n - 1:1 match \n - 1000-pair list \n - assign diff list \n - kappa=0.716']
       d3[label='Sort pairs']
       d0 -> d1 -> d2 -> d3
       {rank=same; d0; d1; }
@@ -82,7 +78,7 @@ node [shape = rectangle, style = filled]
       subgraph cluster_yes {
       color='#625a5a'
       style=dashed
-      label='Yes list'
+      label='Yes list (N=496)'
       fontname = 'helvetica-bold'
       node[fillcolor='#FF5733']
       e0[label='Both RAs \n rated yes']
@@ -91,85 +87,77 @@ node [shape = rectangle, style = filled]
       subgraph cluster_maybe {
       color='#625a5a'
       style=dashed
-      label='Maybe list'
+      label='Maybe list (N=322)'
       fontname = 'helvetica-bold'
       node[fillcolor='#40d8ce']
-      f0[label='1 RA rated yes, 1 RA rated no']
-      f1[label='3rd RA rates every pair']
-      f2[label='Sort pairs']
-      f1 -> f2
+      f0[label='1 RA rated yes \n 1 RA rated no']
+      f1[label='Filter top 95% \n sales items (n=153)']
+      f2[label='Train RA']
+      f3[label='3rd RA rates every pair, \n corrects mistake (n=96)']
+      f4[label='Sort pairs']
+      f1 -> f2 -> f3 -> f4
       {rank=same; f0; f1;}
+      {rank=same; f2; f3; f4;}
       }
 
       subgraph cluster_no {
       color='#625a5a'
       style=dashed
-      label='No list'
+      label='No list (N=2,899)'
       fontname = 'helvetica-bold'
       node[fillcolor='#e9a1df']
-      g0[label='Filter top 95% \n sales items']
+      g0[label='Filter top 95% \n sales items \n (n=149)']
       g1[label='Train RAs']
-      g2[label='Find match, \n MenuStat']
-      g3[label='Find match, \n internet']
-      g4[label='Find proxy, \n MenuStat/internet']
-      g5[label='Cannot find match']
+      g2[label='Find match, \n MenuStat \n (n=110)']
+      g3[label='Find match, \n internet \n (n=36)']
+      g4[label='Find proxy, \n MenuStat/internet \n (n=35)']
+      g5[label='Cannot find \n match (n=25)']
       g0 -> g1 -> g2 -> g3 -> g4 -> g5
       {rank=same; g0; g1;}
-      {rank=same; g2; g3;}
-      {rank=same; g4; g5;}
+      {rank=same; g3; g4}
       }
 
       subgraph cluster_record {
       color='#625a5a'
       style=dashed
-      label='Record nutritional info'
+      label='Record results'
       fontname = 'helvetica-bold'
       node[fillcolor='#add7ec']
       h0[label='Record match \n source']
       h1[label='Record match \n item name']
       h2[label='Record \n nutritional info']
-      h0 -> h1 -> h2
-      {rank=same; h0; h1;}
-      #{rank=same; h2;}
+      h3[label='Build master \n nutritional table']
+      h4[label='Link item names \n to product code']
+      h5[label='Add table \n to database']
+      h0 -> h1 -> h2 
+      h2:e -> h3 -> h4 -> h5
+      {rank=same; h0; h1; h2;}
+      {rank=same; h3; h4; h5;}
       }
 
-      subgraph cluster_add {
-      color='#625a5a'
-      style=dashed
-      label='Add to database'
-      fontname = 'helvetica-bold'
-      node[fillcolor='']
-      i0[label='Build master \n nutritional table']
-      i1[label='Link item names \n to product code']
-      i2[label='Add table \n to database']
-      i0 -> i1 -> i2
-      {rank=same; i0; i1;}
-      }
-
-{a0 a1} -> b0
-b6 -> c0 -> d0
+a0 -> b0
+a1 -> b0
+b4:e -> c0
+c0:e -> d0
 d3:e -> {e0 f1 g0}
-f2 -> g2
-{e0 g2 g3 g4} -> h0
-h2 -> i0
-
-#ranking
-#{rank=same; e0; f0; f1; f2;}
+f4:e -> {g2 h0}
+e0  -> h0
+g2 -> h0
+g3 -> h0
+g4 -> h0
 
 #invisible edges
 {a0 a1} -> b1 [style=invis]
-b0 -> c0 [style=invis]
-b0 -> d0 [style=invis]
-d0 -> f1 [style=invis]
-h0 -> i0 [style=invis]
-h2 -> i1 [style=invis]
-f0 -> h0 [style=invis]
+d2 -> e0 [style=invis]
+e0 -> g0 [style=invis]
+g4 -> h0 [style=invis]
 d2 -> e0 [style=invis]
 c0 -> a1 [style=invis]
-b6 -> c0 [style=invis]
+g3 -> h0 [style=invis]
+d3 -> h0 [style=invis]
 }"
 grViz(flow) %>%
-      export_svg %>% charToRaw %>% rsvg_png("tables/flowchart.png")
+     export_svg %>% charToRaw %>% rsvg_png("tables/product-matching/flowchart.png")
 
 ### use ggplot2 ----
 # create grid and work space
