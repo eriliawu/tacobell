@@ -534,7 +534,7 @@ ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE), y=qty
       coord_cartesian(ylim = c(0, 6000), expand = FALSE, clip = "off") +
       labs(title="Mean number of transactions, by restaurant brands",
            x="Time", y="Number of transactions",
-           caption="The dip in 2012 Q3 is likely due to a data anomoly, need to discuss with Taco Bell data team. \n Number of transactions are standardized to weekly average.") +
+           caption="- The dip in 2012 Q3 is likely due to a data anomoly, need to discuss with Taco Bell data team. \n- Number of transactions are standardized to weekly average.") +
       scale_color_manual(name="Brand(s)",
                            labels=c("Taco Bell & KFC", "Taco Bell & KFC & Pizza Hut",
                                     "Taco Bell", "Taco Bell & Long John Silver",
