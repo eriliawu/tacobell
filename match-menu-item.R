@@ -473,7 +473,7 @@ match$match[match$match=="proxy ms"] <- "proxy"
 # check sales volume by each item
 sales_all <- NULL
 detail <- product[, c(1:2, 4)] #rerun lines thru 92
-colnames(detail)[3] <- "p_detail"
+colnames(detail)[2] <- "p_detail"
 
 for (i in 2007:2015) {
       for (j in 1:4) {
@@ -514,12 +514,12 @@ ggplot(data=sales_all, aes(x=interaction(year, quarter, lex.order = TRUE), y=pct
       ggplot2::annotate(geom="text", x=1:35, y=-0.01, label=c(rep(c(1:4),8), c(1:3)), size = 4) + #create 2-layer x axis label
       ggplot2::annotate(geom="text", x=2.5+4*(0:8), y=-0.03, label=unique(sales_all$year), size=5) +
       coord_cartesian(ylim = c(0, 0.7), expand = FALSE, clip = "off") + 
-      scale_y_continuous(labels = scales::percent, breaks=seq(0.1, 0.7, 0.1)) +
+      scale_y_continuous(labels = scales::percent, breaks=seq(0.1, 0.7, 0.05)) +
       labs(title="Percent of sales matched over time", x="Year", y="Percent") +
       scale_color_discrete(name="Match",
-                           labels=c("Best match, MenuStat, from yes list (n=492)", "Internet (n=36)",
-                                    "Best match, MenuStat, correct mistake by RA, maybe list (n=97)",
-                                    "Non-best match, MenuStat (n=110)", "No match (n=25)", "Proxy (n=35)")) +
+                           labels=c("Best match, MenuStat, from yes list (n=496)", "Internet (n=36)",
+                                    "Best match, MenuStat, correct mistake by RA, maybe list (n=96)",
+                                    "Non-best match, MenuStat (n=110)", "No match (n=2,744)", "Proxy (n=35)")) +
       theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
             plot.title = element_text(hjust = 0.5, size = 20),
             axis.title.x = element_text(vjust = -15, size = 12),
