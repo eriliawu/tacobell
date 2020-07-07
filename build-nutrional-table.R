@@ -7,7 +7,6 @@ options(warn = -1)
 #options(warn = current_warning)
 
 ### install and load packages ----
-#install.packages("fuzzyjoin")
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -163,7 +162,6 @@ product <- product[product$full!="", ]
 
 length(unique(product$full))
 
-
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
 menu$item_name <- toupper(menu$item_name)
@@ -229,7 +227,7 @@ other[, 11:20] <- lapply(other[, 11:20], convert_to_num)
 match <- rbind(match, other) #merge other sourced items to match master data
 rm(other, convert_to_num, menu)
 
-#configure multiple item products ----
+### configure multiple item products ----
 #e.g. convert 2-pack taco to its correct calories, b/c they're likely matched to one taco's calorie
 names(match)
 match$tacobell.name <- trimws(match$tacobell.name, "both")
@@ -269,11 +267,22 @@ multiple <- multiple[, -c(1:4)]
 match <- match %>%
       filter(category=="Beverages"|!grepl("[[:digit:]]", tacobell.name))
 match <- rbind(match, multiple)
+match <- match[, -c(21:24)]
+rm(multiple)
+#write.csv(match, "data/menu-matching/matched-results/matched-items-by-year.csv", row.names = FALSE)
 
-### merge back to product table ----
-# rank sales in descending order for not matched items
+# collapse table to unique item level
+# take mean of calorie of multi-year items
+length(unique(match$tacobell.name)) == length(unique(match$tacobell.name, match$menustat.name)) #false
+names(match)
+match <- match[, -c(2:9)]
+sapply(match, class)
+match <- match %>%
+      group_by(tacobell.name) %>%
+      summarise_all(list(mean))
+#write.csv(match, "data/menu-matching/matched-results/matched-items-unique.csv", row.names = FALSE)
 
-
+### link unique item level table to DW_PRODUCT
 
 
 
