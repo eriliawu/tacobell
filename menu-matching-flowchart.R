@@ -20,7 +20,7 @@ library(tidyverse)
 
 ### create diagram ----
 flow <- "digraph {
-graph [layout=dot, rankdir = LR, concentrate=true,splines=ortho]
+graph [layout=dot, rankdir = LR, concentrate=true, splines=ortho]
 
 # define the global styles of the nodes. We can override these in box if we wish
 node [shape = rectangle, style = filled]
@@ -30,7 +30,7 @@ node [shape = rectangle, style = filled]
       style=dashed
       label='Input'
       fontname = 'helvetica-bold'
-      node[fillcolor=Beige];
+      node[fillcolor='#00FFFF'];
       a0[label = 'Taco Bell \n data']
       a1[label = 'MenuStat Data']
       }
@@ -45,10 +45,10 @@ node [shape = rectangle, style = filled]
       b1[label='Drop items \n - non-TB items \n - vague items \n - non-food items']
       b2[label='Fill out \n abbreviations']
       b3[label='Correct misspellings']
-      b4[label='De-dup (N=3,517)']
+      b4[label='De-dup \n Taco Bell, N=3,517 \n MenuStat, N=941']
       b0 -> b1 -> b2 -> b3 -> b4
-      {rank=same; b0; b1;}
-      {rank=same; b2; b3; b4;}
+      {rank=same; b0; b1; b2}
+      {rank=same; b3; b4;}
       }
 
       subgraph cluster_match1 {
@@ -135,16 +135,11 @@ node [shape = rectangle, style = filled]
       {rank=same; h3; h4; h5;}
       }
 
-a0 -> b0
-a1 -> b0
-b4:e -> c0
-c0:e -> d0
-d3:e -> {e0 f1 g0}
-f4:e -> {g2 h0}
-e0  -> h0
-g2 -> h0
-g3 -> h0
-g4 -> h0
+{a0 a1} -> b0
+b4 -> c0 -> d0
+d3 -> {e0 f1 g0}
+f4 -> {g2 h0}
+{e0 g2 g3 g4}  -> h0
 
 #invisible edges
 {a0 a1} -> b1 [style=invis]
