@@ -11,6 +11,8 @@ options(warn = -1)
 #install.packages("DiagrammeRsvg")
 #install.packages("rsvg")
 #install.packages("magrittr")
+#install.packages("ggplot2")
+#install.packages("tidyverse")
 library(magrittr)
 library(rsvg)
 library(DiagrammeRsvg)
@@ -169,3 +171,49 @@ start +
       geom_rect(xmin = 36, xmax=64, ymin=94, ymax=100, color='black',
                 fill='white', size=0.25, size=0.25) +
       ggplot2::annotate('text', x= 50, y=97,label= '446 Patients assessed for eligibility', size=2.5)
+
+### flowchart, taco bell data matching ----
+matching <- "digraph {
+graph [layout=dot, rankdir = TB, concentrate=true, splines=ortho]
+node [shape = rectangle, style = filled]
+
+      subgraph cluster_data {
+      color='#625a5a'
+      style=dashed
+      label='Analytical data'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#00FFFF'];
+      a0[label = 'Sales aggregated \n to calendar month']
+      }
+
+      subgraph cluster_match {
+      label = 'Matching process'
+      style=dashed
+      color= '#625a5a'
+      fontname = 'helvetica-bold'
+      node[fillcolor=Linen]
+      b0[label='Identify city/state \n labeling implementation']
+      b1[label='Match treatment \n restaurants to comparison']
+      b2[label='Repeat for every \n treatment restaurant']
+      b3[label='Weighting?']
+      b4[label='Rolling entry \n matching', fillcolor='#FFC300']
+      b0 -> b1 -> b2 -> b3
+      {rank=same; b0; b1; b2; b3;}
+      }
+
+      subgraph cluster_matched {
+      color='#625a5a'
+      style=dashed
+      label='Matched data'
+      fontname = 'helvetica-bold'
+      node[fillcolor='#DAF7A6']
+      c0[label='Merge back to \n analytical data']
+      }
+
+a0 -> {b0 b4}
+{b3 b4} -> c0
+b0 -> c0 [style=invis]
+b1 -> c0 [style=invis]
+}"
+grViz(matching) %>%
+      export_svg %>% charToRaw %>% rsvg_png("tables/analytic-model/matching-strategy.png")
