@@ -47,7 +47,7 @@ node [shape = rectangle, style = filled]
       b3[label='Correct misspellings']
       b4[label='De-dup \n Taco Bell, N=3,517 \n MenuStat, N=941']
       b0 -> b1 -> b2 -> b3 -> b4
-      {rank=same; b0; b1; b2}
+      {rank=same; b0; b1; b2;}
       {rank=same; b3; b4;}
       }
 
@@ -139,7 +139,7 @@ node [shape = rectangle, style = filled]
 b4 -> c0 -> d0
 d3 -> {e0 f1 g0}
 f4 -> {g2 h0}
-{e0 g2 g3 g4}  -> h0
+{e0 g2 g3 g4} -> h0
 
 #invisible edges
 {a0 a1} -> b1 [style=invis]
@@ -155,6 +155,7 @@ grViz(flow) %>%
      export_svg %>% charToRaw %>% rsvg_png("tables/product-matching/flowchart.png")
 
 ### use ggplot2 ----
+#https://rstudio-pubs-static.s3.amazonaws.com/461686_e1fba6bd54864c18a292ac4fc90028ec.html
 # create grid and work space
 data <- tibble(x= 1:100, y= 1:100)
 data %>% 
