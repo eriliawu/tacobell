@@ -36,6 +36,7 @@ rm(group)
 
 ### clean house ----
 table(product$group)
+product$original_name <- product$product
 
 # drop commas and other punctuations
 product$product <- gsub(pattern = ",", replacement = "", x=product$product)
@@ -83,34 +84,12 @@ length(unique(product$product)) #3599
 
 #length(unique(product$product))
 names(product)
-product <- product[, c(4, 9, 1:2, 3, 5:8, 10:12)]
 
 # extract only unique product names
-product <- product[!duplicated(product$product), c(1:2)]
+product <- product[, c(2, 4, 13)]
 #write.csv(product, "data/menu-matching/full_product_names.csv", row.names = FALSE)
 
 ### extract all substrings in product names to fill out abbreviations ----
-# extract all substrings
-strings <- as.data.frame(unlist(strsplit(product$product, split=" ")))
-colnames(strings)[1] <- "original"
-class(strings$original)
-strings$original <- as.character(strings$original)
-
-# measure substring length
-strings$length <- nchar(strings$original)
-strings <- strings[order(strings$original, strings$length),]
-
-# frequency, how often does a substring show up in product name
-strings <- strings %>%
-      group_by(original) %>%
-      mutate(count=n())
-#mutate(rank <- seq(1, count[1], 1))
-strings <- strings[!duplicated(strings), ]
-strings <- strings[order(strings$count, decreasing = TRUE), ]
-
-# export to fill out abbreviations
-#write.csv(strings, "data/menu-matching/product-names_unique_substrings.csv", row.names = FALSE)
-
 # incorporate full names
 strings <- read.csv("data/menu-matching/product-names_unique_substrings_w_correction.csv",
                     stringsAsFactors = FALSE)
@@ -135,7 +114,7 @@ product <- product %>%
 for (i in c(1:8)) {
       product <- merge(product, strings, by.x=paste0("product", i), by.y="original", sort=FALSE, all.x = TRUE)
       product$count <- NULL
-      colnames(product)[i+9] <- paste0("full", i)
+      colnames(product)[i+10] <- paste0("full", i)
 }
 rm(i, strings)
 
@@ -149,8 +128,7 @@ product$full <- apply(cbind(product$full1, product$full2, product$full3, product
                       1, function(x) paste(x[!is.na(x)], collapse = " "))
 
 names(product)
-product <- product[, c(18:19, 9)]
-product <- product[!duplicated(product), ]
+product <- product[, c(9:10, 19:20)]
 
 # drop key words from product names: TEST, (), DO NOT ALTER THIS ITEM
 product$full <- gsub("STEAK LOUIS", replacement = "ST LOUIS", product$full)
@@ -159,8 +137,6 @@ product$full <- gsub("\\(", "", product$full)
 product$full <- gsub("\\)", "", product$full)
 product$full <- gsub("TB ", "", product$full)
 product <- product[product$full!="", ]
-
-length(unique(product$full))
 
 ### read menu stat data ----
 menu <- read.csv("data/menustat/nutrition_info_all.csv", stringsAsFactors = FALSE)
@@ -280,9 +256,41 @@ sapply(match, class)
 match <- match %>%
       group_by(tacobell.name) %>%
       summarise_all(list(mean))
+match$calories[match$calories==24000] <- 2000
+match <- match[!is.na(match$tacobell.name), ]
 #write.csv(match, "data/menu-matching/matched-results/matched-items-unique.csv", row.names = FALSE)
 
 ### link unique item level table to DW_PRODUCT ----
+match <- read.csv("data/menu-matching/matched-results/matched-items-unique.csv",
+                  stringsAsFactors = FALSE)
+names(match)
+names(product)
+match <- match[order(match$calories), ]
+length(unique(match$tacobell.name))
+match <- merge(product, match, by.x = "full", by.y = "tacobell.name", all=TRUE)
+match <- match[order(match$original_name), ]
+match$dw_product[match$full=="EXTRA SIDE OF DINNER BEANS"] <- 2013
+match$original_name[match$full=="EXTRA SIDE OF DINNER BEANS"] <- "TEST EX SIDE OF DINNER BEANS"
+match$dw_product[match$full=="NE STEAK BURRITO SUPREME"] <- 4344
+match$original_name[match$full=="NE STEAK BURRITO SUPREME"] <- "TEST NE STEAK BURRITO SUPREME"
+match$dw_product[match$full=="BREAKFAST GRILLED STUFFED BURRITO"] <- 25166
+match$original_name[match$full=="BREAKFAST GRILLED STUFFED BURRITO"] <- "BREAKFAST GSB"
+length(unique(match$dw_product))
+temp <- match %>%
+      filter(dw_product==2013|dw_product==4344|dw_product==25166)
+rm(temp)
+match <- match[!((match$dw_product==2013|match$dw_product==4344|match$dw_product==25166)&is.na(match$calories)), ]
+length(unique(match$dw_product))
+
+# adding other dropped items to the table
+product <- read.csv("data/from-bigpurple/product_detail.csv", stringsAsFactors = FALSE)
+product <- merge(product, match, by.x="p_detail", by.y="dw_product", all=TRUE)
+names(product)
+product <- product[, -c(4:5)]
+colnames(product)[1:3] <- c("DW_PRODUCT", "PRODUCTDESC", "FULLPRODUCT")
+sum(is.na(product$DW_PRODUCT))
+#write.csv(product, "data/menu-matching/matched-results/full-product-table.csv",
+          row.names = FALSE)
 
 
 
