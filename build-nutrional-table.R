@@ -289,8 +289,23 @@ names(product)
 product <- product[, -c(4:5)]
 colnames(product)[1:3] <- c("DW_PRODUCT", "PRODUCTDESC", "FULLPRODUCT")
 sum(is.na(product$DW_PRODUCT))
-#write.csv(product, "data/menu-matching/matched-results/full-product-table.csv",
-          row.names = FALSE)
+
+# add product group to table
+product <- read.csv("data/menu-matching/matched-results/PRODUCT_CALORIE_DIM.csv", stringsAsFactors = FALSE)
+detail <- read.csv("data/from-bigpurple/product_dim.csv",
+         sep = ";", header = FALSE, quote = "\"'",
+         stringsAsFactors = FALSE,
+         col.names = c("dw_product", "dw_productgroup", "productcd",
+                       "product", "product_statuscd",
+                       "product_statusdt", "product_lastupdt", "lastupdtuserid"))
+detail <- detail[, c(1:2)]
+product <- merge(product, detail, by.x = "DW_PRODUCT", by.y = "dw_product")
+names(product)
+colnames(product)[3:15] <- c("FULLDESC", "CALORIES", "TOTAL_FAT", "SAT_FAT", "TRANS_FAT",
+                             "CHOLESTEROL", "SODIUM", "POTASSIUM", "CARB", "FIBER",
+                             "SUGAR", "PROTEIN", "DW_PRODUCTGROUP")
+product <- product[, c(1, 15, 2:14)]
+write.csv(product, "data/menu-matching/matched-results/PRODUCT_CALORIE_DIM.csv", row.names = FALSE)
 
 
 
