@@ -796,4 +796,60 @@ select DW_GC_HEADER, DW_PRODUCT, p.PRODUCTDESC, DW_PRODUCTDETAIL, d.PRODUCTDESC,
 	left join PRODUCT_MODIFICATION_DIM_V1 m using(DW_PRODUCTMOD)
 	where DW_GC_HEADER=4253668892
 	order by DW_LINEITEM;
-	
+
+--- create new table for calorie info
+--- make sure every cell value is enclosed by "", incl numeric values
+create table calorietest (
+	DW_PRODUCT int not null,
+	DW_PRODUCTGROUP int not null,
+	PRODUCTDESC varchar(255) not null,
+	FULLDESC varchar(255) null,
+	CALORIES decimal(10, 2) null,
+	TOTAL_FAT decimal(10, 2) null,
+	SAT_FAT decimal(10, 2) null,
+	TRANS_FAT decimal(10, 2) null,	
+	CHOLESTEROL decimal(10, 2) null,
+	SODIUM decimal(10, 2) null,
+	POTASSIUM decimal(10, 2) null,
+	CARB decimal(10, 2) null,
+	FIBER decimal(10, 2) null,
+	SUGAR decimal(10, 2) null,
+	PROTEIN decimal(10, 2) null,
+	primary key (DW_PRODUCT)
+);
+
+load data infile '/gpfs/home/wue04/tb-data/menu-matching-to-bigpurple/PRODUCT_CALORIE_DIM.csv'
+into table calorietest
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS
+(DW_PRODUCT,DW_PRODUCTGROUP,PRODUCTDESC,@vFULLDESC,@vCALORIES,@vTOTAL_FAT,@vSAT_FAT,@vTRANS_FAT,@vCHOLESTEROL,@vSODIUM,@vPOTASSIUM,@vCARB,@vFIBER,@vSUGAR,@vPROTEIN) 
+set
+FULLDESC=NULLIF(@vFULLDESC, ''),
+CALORIES=NULLIF(@vCALORIES, ''),
+TOTAL_FAT=NULLIF(@vTOTAL_FAT, ''),
+SAT_FAT=NULLIF(@vSAT_FAT, ''),
+TRANS_FAT=NULLIF(@vTRANS_FAT, ''),
+CHOLESTEROL=NULLIF(@vCHOLESTEROL, ''),
+SODIUM=NULLIF(@vSODIUM, ''),
+POTASSIUM=NULLIF(@vPOTASSIUM, ''),
+CARB=NULLIF(@vCARB, ''),
+FIBER=NULLIF(@vFIBER, ''),
+SUGAR=NULLIF(@vSUGAR, ''),
+PROTEIN=NULLIF(@vPROTEIN, '')
+;
+--- test
+select * from calorietest limit 10;
+
+select sum(c.CALORIES), avg(c.CALORIES), avg(c.TOTAL_FAT) from TLD_FACT_2007_Q01 t
+left join calorietest c using(DW_PRODUCT)
+group by DW_OCCASION 
+order by  DW_OCCASION;
+
+
+
+
+
+
+
