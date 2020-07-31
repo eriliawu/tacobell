@@ -19,7 +19,6 @@ sample07q1 <- read.csv("data/from-bigpurple/mean-calorie/by-restid-calorie_2007_
 sapply(sample07q1, class)
 sample07q1$calorie <- sample07q1$calorie/2
 
-
 calorie <- NULL
 for (i in 2007:2015) {
       for (j in 1:4) {
@@ -101,11 +100,11 @@ ggplot(data=fig1, aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
                            group=1)) +
       geom_point() +
       geom_line(size=0.5) +
-      ggplot2::annotate(geom="text", x=1:106, y=740, label=c(12, rep(c(1:12),8), c(1:9)), size = 2) + #month
-      ggplot2::annotate(geom="text", x=c(1, seq(7.5, 7.5+12*7, 12), 102), y=720, label=unique(fig1$year), size=4) + #year
+      ggplot2::annotate(geom="text", x=1:106, y=720, label=c(12, rep(c(1:12),8), c(1:9)), size = 2) + #month
+      ggplot2::annotate(geom="text", x=c(1, seq(7.5, 7.5+12*7, 12), 102), y=680, label=unique(fig1$year), size=4) + #year
       coord_cartesian(ylim=c(750, 1750), expand = FALSE, clip = "off") + 
       scale_y_continuous(breaks=seq(750, 1750, 250)) +
-      labs(title="Mean calories per order", x="Time", y="Calories") +
+      labs(title="Mean calories per order", x="Time", y="Calories", caption=) +
       #scale_color_discrete(name="Match",
       #                     labels=c("Best match, MenuStat, from yes list (n=496)", "Internet (n=36)",
       #                              "Best match, MenuStat, correct mistake by RA, maybe list (n=96)",
@@ -116,4 +115,5 @@ ggplot(data=fig1, aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
             axis.text.x = element_blank(), #turn off default x axis label
             axis.title.y = element_text(size = 12),
             legend.text=element_text(size=14))
-#ggsave("tables/product-matching/sales-match-ra-manual-search.jpeg", width=20, height=10)
+ggsave("tables/analytic-model/mean-calorie-per-order/mean-calorie-overall.jpeg", dpi="retina")
+
