@@ -305,7 +305,7 @@ colnames(product)[3:15] <- c("FULLDESC", "CALORIES", "TOTAL_FAT", "SAT_FAT", "TR
                              "CHOLESTEROL", "SODIUM", "POTASSIUM", "CARB", "FIBER",
                              "SUGAR", "PROTEIN", "DW_PRODUCTGROUP")
 product <- product[, c(1, 15, 2:14)]
-write.csv(product, "data/menu-matching/matched-results/PRODUCT_CALORIE_DIM.csv", row.names = FALSE)
+#write.csv(product, "data/menu-matching/matched-results/PRODUCT_CALORIE_DIM.csv", row.names = FALSE)
 
 
 
