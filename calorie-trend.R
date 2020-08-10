@@ -37,7 +37,7 @@ for (i in 2007:2015) {
 calorie <- rbind(calorie, sample07q1)
 rm(sample, sample07q1, i, j)
 
-### merge time and restaurant information ----
+### merge time information ----
 # time information: month, year
 time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
 names(time)
@@ -162,7 +162,72 @@ mod1 <- lm(data=calorie, calorie~year+month+as.character(occasion))
 summary(mod1) #no significance on year or month
 rm(mod1)
 
+tapply(calorie$calorie, calorie$occasion, summary)
 tapply(calorie$calorie, calorie$occasion, sd)
+
+### by daypart ----
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie/by-month-overall-daypart/mean-calorie-daypart_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("year", "month", "time", "calorie", "sat_fat", "carb", "protein"))
+sapply(sample07q1, class)
+sample07q1$calorie <- sample07q1$calorie/2
+
+calorie <- NULL
+for (i in 2007:2015) {
+      for (j in 1:4) {
+            tryCatch(
+                  if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+                  {
+                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie/by-month-overall-daypart/mean-calorie-daypart_",
+                                                  i,"_Q",j,".csv"),
+                                           stringsAsFactors = FALSE,
+                                           col.names=c("year", "month", "time", "calorie", "sat_fat", "carb", "protein"))
+                        calorie <- rbind(calorie, sample)
+                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+            )
+      }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+
+calorie <- merge(calorie, time, by=c("year", "month"))
+calorie <- calorie[, -c(1:2)]
+colnames(calorie)[6:7] <- c("year", "month")
+calorie <- aggregate(data=calorie, .~year+month+time, mean) #fiscal month doesnt align with calendar month
+calorie <- calorie[order(calorie$year, calorie$month), ]
+#write.csv(calorie, "data/calorie-descriptive-data/mean-calorie-by-month-daypart.csv", row.names = FALSE)
+summary(calorie$calorie)
+
+ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
+                         group=as.character(time), color=as.character(time))) +
+      geom_point() +
+      geom_line(size=0.5) +
+      ggplot2::annotate(geom="text", x=1:106, y=860, label=c(12, rep(c(1:12),8), c(1:9)), size = 2) + #month
+      ggplot2::annotate(geom="text", x=c(1, seq(7.5, 7.5+12*7, 12), 102), y=800, label=unique(calorie$year), size=4) + #year
+      coord_cartesian(ylim=c(900, 1900), expand = FALSE, clip = "off") + 
+      scale_y_continuous(breaks=seq(900, 1900, 100)) +
+      labs(title="Mean calories per order, by meal time", x="Time", y="Calories",
+           caption="Note: calories are not adjusted for modifications to individual items.") +
+      scale_color_manual(name="Meal time",
+                           labels=c("Late night", "Breakfast", "Lunch",
+                                    "Afternoon", "Dinner", "Evening"),
+                           values=c("orange", "blueviolet", "red", "aquamarine3", "deepskyblue", "hot pink")) +
+      theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+            plot.title = element_text(hjust = 0.5, size = 20),
+            axis.title.x = element_text(vjust=-7, size = 12), #vjust to adjust position of x-axis
+            axis.text.x = element_blank(), #turn off default x axis label
+            axis.title.y = element_text(size = 12),
+            legend.text=element_text(size=14),
+            plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+ggsave("tables/analytic-model/mean-calorie-per-order/mean-calorie-overall-by-daypart.jpeg", dpi="retina")
+
+mod1 <- lm(data=calorie, calorie~year+month+as.character(time))
+summary(mod1) #no significance on year or month
+rm(mod1)
+
+tapply(calorie$calorie, calorie$time, summary)
+tapply(calorie$calorie, calorie$time, sd)
+
 
 
 
