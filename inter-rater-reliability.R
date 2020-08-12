@@ -20,7 +20,7 @@ turk$worker <- rep(c(1:2), 200)
 turk <- reshape(turk, direction="wide", idvar = c("task", "case"), timevar = "worker")
 names(turk)
 
-# re-contruct character answers to mueric
+# re-construct character answers to numeric
 turk$answer.1 <- as.numeric(substr(turk$answer.1, 1, 1))
 turk$answer.2 <- as.numeric(substr(turk$answer.2, 1, 1))
 table(turk$answer.1, turk$answer.2)
@@ -30,7 +30,7 @@ table(turk$answer.1, turk$answer.2)
 kappa2(turk[1:98, 3:4], "unweighted") #0.53
 kappa2(turk[, 3:4], "unweighted") #0.70 
 
-# sqaured and linear weights
+# squared and linear weights
 kappa2(turk[, 3:4], "squared")#0.82
 kappa2(turk[, 3:4], "equal")#0.77
 
