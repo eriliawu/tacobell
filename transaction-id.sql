@@ -1,7 +1,8 @@
 /* -- access tacobell database
-srun --time=23:00:00 --pty bash
+srun  --time=5-00:01:00 --pty --mem-per-cpu=64G bash 
 module load mariadb/5.5.64
-mysql -p -h db -P 33061 tacobell
+mysql -p -h db -P 33061 -u wue04 tacobell
+
 
 -- run SQL squirrel on HPC
 -- launch Xming first
@@ -697,48 +698,6 @@ DRIVETHRUIND, DRVTHU_TYPE from ALIGN_DIM into outfile '/gpfs/home/wue04/restaura
 -- plot transaction volumn/dollar by restaurant/state and time
 -- for restaurants with identical addresses, create new restaurant id
 -- merge results based on DW_RESTID, but aggregate by new restaurant id
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2007_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2007q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2008_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2008q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2009_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2009q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2010_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2010q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2011_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2011q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2012_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2012q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2013_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2013q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2014_Q04 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2014q4.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q01 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q1.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
-select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q02 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q2.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 select DW_RESTID, count(DW_GC_HEADER), sum(TOTGROSSSALES) from GC_HEADER_DIM_2015_Q03 group by DW_RESTID into outfile '/gpfs/home/wue04/tb-data/by_restaurant_transaction_2015q3.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';
 
 --- sample query, create index
@@ -847,9 +806,143 @@ left join calorietest c using(DW_PRODUCT)
 group by DW_OCCASION 
 order by  DW_OCCASION;
 
+--- mean calorie per order
+select t.DW_RESTID, y.DW_YEAR, y.DW_MONTH, sum(c.CALORIES*t.ACTQTYSOLD)/count(distinct t.DW_GC_HEADER) from TLD_FACT_2007_Q02 t
+left join calorietest c using(DW_PRODUCT)
+left join TIME_DAY_DIM y using(DW_DAY)
+group by DW_RESTID, DW_YEAR, DW_MONTH
+limit 10;
+
+---- add total calories of each order to GC_HEADER_DIM_2007_Q01 table
+alter table GC_HEADER_DIM_2007_Q01
+add column CALORIES decimal(10,2) after DW_CHECK_IN_LOCATION_IDENTIFIER;
+
+insert into GC_HEADER_DIM_2007_Q01(CALORIES) 
+select sum(n.CALORIES*t.ACTQTYSOLD)/2 from TLD_FACT_2007_Q01 t
+left join nutrition n using(DW_PRODUCT) 
+group by DW_GC_HEADER;
+
+--- create smaller test table
+create table GC_HEADER_CALORIE_2007_Q04 (
+	DW_GC_HEADER bigint(20) not null primary key,
+	CALORIES decimal(10,2)
+);
+insert into GC_HEADER_CALORIE_2007_Q04(DW_GC_HEADER, CALORIES) 
+select DW_GC_HEADER, sum(n.CALORIES*t.ACTQTYSOLD) as CALORIES from TLD_FACT_2007_Q04 t
+left join nutrition n on n.DW_PRODUCT=t.DW_PRODUCTDETAIL 
+group by DW_GC_HEADER;
+----select * from GC_HEADER_CALORIE_2007_Q04 limit 20;
+
+
++--------------+--------------------------------+
+| DW_GC_HEADER | sum(n.CALORIES*t.ACTQTYSOLD)/2 |
++--------------+--------------------------------+
+|   2193837493 |                  1610.45000000 |
+|   2193837494 |                   781.11000000 |
+|   2193837495 |                  1038.00000000 |
+|   2193837496 |                  1700.00000000 |
+|   2193837497 |                   196.00000000 |
+|   2193837498 |                   540.00000000 |
+|   2193837499 |                   772.22000000 |
+|   2193837500 |                  1053.34000000 |
+|   2193837501 |                   764.44000000 |
+|   2193837502 |                  1011.67000000 |
+|   2193837503 |                   690.00000000 |
+|   2193837504 |                   552.50000000 |
+|   2193837505 |                   302.50000000 |
+|   2193837506 |                   572.00000000 |
+|   2193837507 |                  1153.35000000 | 
+|   2193837508 |                   742.84000000 |
+|   2193837509 |                   537.78000000 |
+|   2193837510 |                   392.00000000 |
+|   2193837511 |                           NULL |
+|   2193837512 |                   925.84000000 |
++--------------+--------------------------------+
+SELECT t.DW_GC_HEADER, t.DW_PRODUCT, p.PRODUCTDESC, t.DW_PRODUCTDETAIL, d.PRODUCTDESC, t.ACTQTYSOLD, n.CALORIES
+from TLD_FACT_2007_Q02 t
+left join PRODUCT_DIM p using(DW_PRODUCT)
+left join PRODUCT_DETAIL_DIM_V1 d USING(DW_PRODUCTDETAIL)
+left join nutrition n on n.DW_PRODUCT=t.DW_PRODUCTDETAIL
+where DW_GC_HEADER=2267915563;
+
+
+create table GC_HEADER_CALORIE_2015_Q01 (
+	DW_GC_HEADER bigint(20) not null primary key,
+	CALORIES decimal(10,2)
+);
+insert into GC_HEADER_CALORIE_2015_Q01(DW_GC_HEADER, CALORIES) 
+select DW_GC_HEADER, sum(n.CALORIES*t.ACTQTYSOLD) as CALORIES from TLD_FACT_2015_Q01 t
+left join nutrition n on n.DW_PRODUCT=t.DW_PRODUCTDETAIL 
+group by DW_GC_HEADER;
 
 
 
+--- add order modifications to calorie count
+select y.DW_YEAR, y.DW_MONTH, 
+    sum(n1.CALORIES*t.ACTQTYSOLD*l.ITEMMOD + n2.CALORIES*t.ACTMODQTY*l.ITEMMOD)/count(distinct t.DW_GC_HEADER) as mean_cal,
+    sum(n1.SAT_FAT*t.ACTQTYSOLD*l.ITEMMOD + n2.SAT_FAT*t.ACTMODQTY*l.ITEMMOD)/count(distinct t.DW_GC_HEADER) as mean_satfat,
+    sum(n1.CARB*t.ACTQTYSOLD*l.ITEMMOD + n2.CARB*t.ACTMODQTY*l.ITEMMOD)/count(distinct t.DW_GC_HEADER) as mean_carb,
+    sum(n1.PROTEIN*t.ACTQTYSOLD*l.ITEMMOD + n2.PROTEIN*t.ACTMODQTY*l.ITEMMOD)/count(distinct t.DW_GC_HEADER) as mean_protein,
+    sum(n1.SODIUM*t.ACTQTYSOLD*l.ITEMMOD + n2.SODIUM*t.ACTMODQTY*l.ITEMMOD)/count(distinct t.DW_GC_HEADER) as mean_sodium
+    from TLD_FACT_2007_Q01 t
+	left join LINEITEM_DIM l using(DW_LINEITEM)
+	left join TIME_DAY_DIM y using(DW_DAY)
+    left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+    left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+    group by DW_YEAR, DW_MONTH
++-------------+--------------------------+
+| DW_LINEITEM | LINEITEMDESC             |
++-------------+--------------------------+
+|          -1 | N/A                      |0
+|           1 | COMBO-ITEM               |1
+|           2 | NON-COMBO-ITEM           |1
+|           3 | COMBO-DETAIL             |1
+|           4 | COMBO-DETAIL-REPLS-PLUS  |1
+|           5 | COMBO-DETAIL-REPLS-MINUS |1
+|           6 | COMBO-DETAIL-REPLS-EQL   |1
+|           7 | COMBO-MOD-INGRD-ADD      |1
+|           8 | COMBO-MOD-INGRD-MINUS    |-1
+|           9 | COMBO-MOD-INGRD-EASY     |0.5
+|          10 | NON-COMBO-M-INGRD-ADD    |1
+|          11 | NON-COMBO-M-INGRD-MINUS  |-1
+|          12 | NON-COMBO-M-INGRD-EASY   |0.5
+|          13 | DISCOUNT-LINE            |1
+|          14 | TAX-LINE                 |0
+|          15 | COMBO-MOD-INGRD-ONLY     |1
+|          16 | NON-COMBO-M-INGRD-ONLY   |1
++-------------+--------------------------+
+    left join TIME_MINUTE_DIM m using(DW_MINUTE)
+    left join TIME_DAYPART_DET p using(DW_DAYPART)
+
+insert into LINEITEM_DIM(DW_LINEITEM, ITEMMOD) values (-1,0),(1,1),(2,1),(3,1),(4,1),(5,1),(6,1),(7,1),(8,-1),(9,0.5),(10,1),(11,-1),(12,0.5),(13,1),(14,0),(15,1),(16,1)
+on duplicate key update DW_LINEITEM=VALUES(DW_LINEITEM), ITEMMOD=VALUES(ITEMMOD);
+select * from LINEITEM_DIM order by DW_LINEITEM;
 
 
+select t.DW_GC_HEADER, t.DW_LINEITEM, l.LINEITEMDESC, l.ITEMMOD,
+	t.ACTPRODPRICE, t.ACTQTYSOLD, t.ACTMODQTY,
+	t.DW_PRODUCT, p.PRODUCTDESC as product,
+	t.DW_PRODUCTDETAIL, d.PRODUCTDESC as detail, n1.CALORIES,
+	t.DW_PRODUCTMOD, m.PRODUCTDESC as modif, n2.CALORIES,
+	sum(COALESCE(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + COALESCE(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal
+from TLD_FACT_2007_Q02 t
+left join PRODUCT_DIM p using(DW_PRODUCT)
+left join PRODUCT_DETAIL_DIM_V1 d using(DW_PRODUCTDETAIL)
+left join PRODUCT_MODIFICATION_DIM_V1 m using(DW_PRODUCTMOD)
+left join LINEITEM_DIM l using(DW_LINEITEM)
+left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+where DW_GC_HEADER=2267915567
+order by DW_GC_HEADER
+limit 25;
++--------------+-------------+-------------------------+---------+--------------+------------+-----------+------------+----------------------------+------------------+----------------------------+----------+---------------+------------------------+----------+
+| DW_GC_HEADER | DW_LINEITEM | LINEITEMDESC            | ITEMMOD | ACTPRODPRICE | ACTQTYSOLD | ACTMODQTY | DW_PRODUCT | product                    | DW_PRODUCTDETAIL | detail                     | CALORIES | DW_PRODUCTMOD | modif                  | CALORIES |
++--------------+-------------+-------------------------+---------+--------------+------------+-----------+------------+----------------------------+------------------+----------------------------+----------+---------------+------------------------+----------+
+|   2267915567 |          14 | TAX-LINE                |     0.0 |         0.00 |       0.00 |       0.0 |         -1 | N/A                        |               -1 | N/A                        |     NULL |            -1 | N/A                    |     NULL |
+|   2267915567 |           1 | COMBO-ITEM              |     1.0 |         2.60 |       1.00 |       0.0 |       1692 | COMBO 7                    |             1692 | COMBO 7                    |     NULL |            -1 | N/A                    |     NULL |
+|   2267915567 |           7 | COMBO-MOD-INGRD-ADD     |     1.0 |         0.00 |       0.00 |       1.0 |       1692 | COMBO 7                    |             4450 | CRUNCHY TACO BEEF          |   170.00 |          4160 | SUB SOFT FOR HARD TACO |     NULL |
+|   2267915567 |           3 | COMBO-DETAIL            |     1.0 |         0.00 |       1.00 |       0.0 |       1692 | COMBO 7                    |             3844 | QUESADILLA CHICKEN         |   515.56 |            -1 | N/A                    |     NULL |
+|   2267915567 |           3 | COMBO-DETAIL            |     1.0 |         0.00 |       1.00 |       0.0 |       1692 | COMBO 7                    |             4450 | CRUNCHY TACO BEEF          |   170.00 |            -1 | N/A                    |     NULL |
+|   2267915567 |           2 | NON-COMBO-ITEM          |     1.0 |         1.49 |       1.00 |       0.0 |       3649 | LARGE PEPSI                |             3649 | LARGE PEPSI                |   375.00 |            -1 | N/A                    |     NULL |
++--------------+-------------+-------------------------+---------+--------------+------------+-----------+------------+----------------------------+------------------+----------------------------+----------+---------------+------------------------+----------+
 
