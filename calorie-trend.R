@@ -13,11 +13,12 @@ library(ggplot2)
 library(tidyverse)
 
 ### read data ----
-sample07q1 <- read.csv("data/from-bigpurple/mean-calorie/by-month-overall/mean-calorie_2007_Q1.csv",
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-month-overall/mean-calorie_2007_Q1.csv",
                    stringsAsFactors = FALSE,
-                   col.names = c("year", "month", "calorie", "sat_fat", "carb", "protein"))
+                   col.names = c("year", "month", "calorie","fat", "sat_fat", 
+                                 "carb", "protein", "sodium", "count"))
 sapply(sample07q1, class)
-sample07q1$calorie <- sample07q1$calorie/2
+sample07q1[, c(3:8)] <- sample07q1[, c(3:8)]/2
 
 calorie <- NULL
 for (i in 2007:2015) {
@@ -25,10 +26,11 @@ for (i in 2007:2015) {
             tryCatch(
                   if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
                   {
-                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie/by-month-overall/mean-calorie_",
+                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-month-overall/mean-calorie_",
                                                   i,"_Q",j,".csv"),
                                            stringsAsFactors = FALSE,
-                                           col.names=c("year", "month", "calorie", "sat_fat", "carb", "protein"))
+                                           col.names=c("year", "month", "calorie","fat", "sat_fat", 
+                                                       "carb", "protein", "sodium", "count"))
                         calorie <- rbind(calorie, sample)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
@@ -50,12 +52,14 @@ time <- time[!duplicated(time) & time$yearno>=2006, ]
 
 calorie <- merge(calorie, time, by=c("year", "month"))
 calorie <- calorie[, -c(1:2)]
-colnames(calorie)[5:6] <- c("year", "month")
+colnames(calorie)[8:9] <- c("year", "month")
 #rm(time)
-calorie <- aggregate(data=calorie, .~year+month, mean) #fiscal month doesnt align with calendar month
+calorie <- aggregate(data=calorie, .~year+month, sum) #fiscal month doesn't align with calendar month
 calorie <- calorie[order(calorie$year, calorie$month), ]
+calorie[, c(3:8)] <- calorie[, c(3:8)]/calorie$count
 #write.csv(calorie, "data/calorie-descriptive-data/mean-calorie-by-month.csv", row.names = FALSE)
 summary(calorie$calorie)
+sd(calorie$calorie)
 
 ### visualization, change in mean calorie per order ----
 ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
@@ -68,11 +72,7 @@ ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie
       coord_cartesian(ylim=c(1000, 2000), expand = FALSE, clip = "off") + 
       scale_y_continuous(breaks=seq(1000, 2000, 100)) +
       labs(title="Mean calories per order", x="Time", y="Calories",
-           caption="Note: calories are not adjusted for modifications to individual items.") +
-      #scale_color_discrete(name="Match",
-      #                     labels=c("Best match, MenuStat, from yes list (n=496)", "Internet (n=36)",
-      #                              "Best match, MenuStat, correct mistake by RA, maybe list (n=96)",
-      #                              "Non-best match, MenuStat (n=110)", "No match (n=2,744)", "Proxy (n=35)")) +
+           caption="Note: items without calorie information are consider 0 calories.") +
       theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
             plot.title = element_text(hjust = 0.5, size = 20),
             axis.title.x = element_text(vjust=-7, size = 12), #vjust to adjust position of x-axis
@@ -80,7 +80,7 @@ ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie
             axis.title.y = element_text(size = 12),
             legend.text=element_text(size=14),
             plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/mean-calorie-per-order/mean-calorie-overall.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/mean-calorie-per-order/w-mod/mean-calorie-overall.jpeg", dpi="retina")
 
 mod1 <- lm(data=calorie, calorie~year+month)
 summary(mod1) #no significance on year or month
@@ -222,7 +222,7 @@ tapply(calorie$calorie, calorie$time, sd)
 
 
 
-### changes in new york specifically ----
+### changes in california specifically ----
 # read restaurant data
 restaurant <- read.csv("data/restaurants/analytic_restaurants.csv", stringsAsFactors = FALSE)
 names(restaurant)
