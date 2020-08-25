@@ -91,11 +91,12 @@ hist(calorie$calorie, breaks=50,
      xlab="Calories", main="Histogram of mean calories per order, 2007-2015")
 
 ### by occasion ----
-sample07q1 <- read.csv("data/from-bigpurple/mean-calorie/by-month-overall-occassion/mean-calorie-occasion_2007_Q1.csv",
-                       stringsAsFactors = FALSE,
-                       col.names = c("year", "month", "occasion", "calorie", "sat_fat", "carb", "protein"))
-sapply(sample07q1, class)
-sample07q1$calorie <- sample07q1$calorie/2
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-occasion/mean-calorie_occasion_2007_Q1.csv",
+                       stringsAsFactors = FALSE, 
+                       col.names = c("year", "month", "occasion", "calorie", "fat",
+                                     "sat_fat", "carb", "protein", "sodium", "count"))
+#sapply(sample07q1, class)
+sample07q1[, c(4:9)] <- sample07q1[, c(4:9)]/2
 
 calorie <- NULL
 for (i in 2007:2015) {
@@ -103,12 +104,13 @@ for (i in 2007:2015) {
             tryCatch(
                   if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
                   {
-                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie/by-month-overall-occassion/mean-calorie-occasion_",
+                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-occasion/mean-calorie_occasion_",
                                                   i,"_Q",j,".csv"),
                                            stringsAsFactors = FALSE,
-                                           col.names=c("year", "month", "occasion", "calorie", "sat_fat", "carb", "protein"))
+                                           col.names=c("year", "month", "occasion", "calorie", "fat",
+                                                       "sat_fat", "carb", "protein", "sodium", "count"))
                         calorie <- rbind(calorie, sample)
-                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+                  }, error=function(e){cat(paste0("ERROR :", i, "Q", j),conditionMessage(e), "\n")}
             )
       }
 }
@@ -118,9 +120,10 @@ rm(sample, sample07q1, i, j)
 calorie <- calorie[!is.na(calorie$occasion), ]
 calorie <- merge(calorie, time, by=c("year", "month"))
 calorie <- calorie[, -c(1:2)]
-colnames(calorie)[6:7] <- c("year", "month")
-calorie <- aggregate(data=calorie, .~year+month+occasion, mean) #fiscal month doesnt align with calendar month
+colnames(calorie)[9:10] <- c("year", "month")
+calorie <- aggregate(data=calorie, .~year+month+occasion, sum) 
 calorie <- calorie[order(calorie$year, calorie$month), ]
+calorie[, c(4:9)] <- calorie[, c(4:9)]/calorie$count
 #write.csv(calorie, "data/calorie-descriptive-data/mean-calorie-by-month-occasion.csv", row.names = FALSE)
 summary(calorie$calorie)
 
@@ -134,7 +137,7 @@ ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie
       coord_cartesian(ylim=c(1000, 2000), expand = FALSE, clip = "off") + 
       scale_y_continuous(breaks=seq(1000, 2000, 100)) +
       labs(title="Mean calories per order, by order type", x="Time", y="Calories",
-           caption="Note: calories are not adjusted for modifications to individual items.") +
+           caption="Note: items without calorie information are consider 0 calories.") +
       scale_color_discrete(name="Order type",
                            labels=c("Eat-in", "Drive-through", "Takeout")) +
       theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -144,7 +147,7 @@ ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie
             axis.title.y = element_text(size = 12),
             legend.text=element_text(size=14),
             plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/mean-calorie-per-order/mean-calorie-overall-by-occasion.jpeg", dpi="retina")
+ggsave("tables/analytic-model/mean-calorie-per-order/w-mod/mean-calorie-overall-by-occasion.jpeg", dpi="retina")
 
 mod1 <- lm(data=calorie, calorie~year+month+as.character(occasion))
 summary(mod1) #no significance on year or month
@@ -154,10 +157,11 @@ tapply(calorie$calorie, calorie$occasion, summary)
 tapply(calorie$calorie, calorie$occasion, sd)
 
 ### by daypart ----
-sample07q1 <- read.csv("data/from-bigpurple/mean-calorie/by-month-overall-daypart/mean-calorie-daypart_2007_Q1.csv",
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-daypart/mean-calorie-daypart_2007_Q1.csv",
                        stringsAsFactors = FALSE,
-                       col.names = c("year", "month", "time", "calorie", "sat_fat", "carb", "protein"))
-sapply(sample07q1, class)
+                       col.names = c("year", "month", "time", "calorie","fat", 
+                                     "sat_fat", "carb", "protein", "sodium", "count"))
+#sapply(sample07q1, class)
 sample07q1$calorie <- sample07q1$calorie/2
 
 calorie <- NULL
@@ -169,7 +173,8 @@ for (i in 2007:2015) {
                         sample <- read.csv(paste0("data/from-bigpurple/mean-calorie/by-month-overall-daypart/mean-calorie-daypart_",
                                                   i,"_Q",j,".csv"),
                                            stringsAsFactors = FALSE,
-                                           col.names=c("year", "month", "time", "calorie", "sat_fat", "carb", "protein"))
+                                           col.names=c("year", "month", "time", "calorie","fat", 
+                                                       "sat_fat", "carb", "protein", "sodium", "count"))
                         calorie <- rbind(calorie, sample)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
@@ -181,7 +186,7 @@ rm(sample, sample07q1, i, j)
 calorie <- merge(calorie, time, by=c("year", "month"))
 calorie <- calorie[, -c(1:2)]
 colnames(calorie)[6:7] <- c("year", "month")
-calorie <- aggregate(data=calorie, .~year+month+time, mean) #fiscal month doesnt align with calendar month
+calorie <- aggregate(data=calorie, .~year+month+time, sum) #fiscal month doesnt align with calendar month
 calorie <- calorie[order(calorie$year, calorie$month), ]
 #write.csv(calorie, "data/calorie-descriptive-data/mean-calorie-by-month-daypart.csv", row.names = FALSE)
 summary(calorie$calorie)
@@ -208,7 +213,7 @@ ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie
             axis.title.y = element_text(size = 12),
             legend.text=element_text(size=14),
             plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/mean-calorie-per-order/mean-calorie-overall-by-daypart.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/mean-calorie-per-order/w-mod/mean-calorie-overall-by-daypart.jpeg", dpi="retina")
 
 mod1 <- lm(data=calorie, calorie~year+month+as.character(time))
 summary(mod1) #no significance on year or month
