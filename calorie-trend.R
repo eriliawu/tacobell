@@ -239,11 +239,12 @@ area <- restaurant %>%
                    (state=="PA"&city=="Philadelphia")|
                    state=="CA")
 
-sample07q1 <- read.csv("data/from-bigpurple/mean-calorie/restaurant-level-overall/by-restid-calorie_complete_2007_Q1.csv",
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_2007_Q1.csv",
                        stringsAsFactors = FALSE,
-                       col.names = c("restid", "year", "month", "calorie", "sat_fat", "carb", "protein"))
+                       col.names = c("restid", "year", "month", "calorie", "fat",
+                                     "sat_fat", "carb", "protein", "sodium", "count", "dollar"))
 sapply(sample07q1, class)
-sample07q1$calorie <- sample07q1$calorie/2
+sample07q1[, c(4:9, 11)] <- sample07q1[, c(4:9, 11)]/2
 
 calorie <- NULL
 for (i in 2007:2015) {
@@ -251,10 +252,13 @@ for (i in 2007:2015) {
             tryCatch(
                   if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
                   {
-                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie/restaurant-level-overall/by-restid-calorie_complete_",
+                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_",
                                                   i,"_Q",j,".csv"),
                                            stringsAsFactors = FALSE,
-                                           col.names=c("restid", "year", "month", "calorie", "sat_fat", "carb", "protein"))
+                                           col.names=c("restid", "year", "month",
+                                                       "calorie", "fat", "sat_fat",
+                                                       "carb", "protein", "sodium",
+                                                       "count", "dollar"))
                         calorie <- rbind(calorie, sample)
                   }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
             )
@@ -266,11 +270,14 @@ rm(sample, sample07q1, i, j)
 # merge with restaurant data
 area <- merge(calorie, area, by="restid")
 area <- merge(area, time, by=c("year", "month"))
-colnames(area)[c(1:2, 16:17)] <- c("yearno", "monthno", "year", "month")
+colnames(area)[c(1:2, 20:21)] <- c("yearno", "monthno", "year", "month")
 area <- area %>% #aggregate by address, year, month
       group_by(address, year, month, state, open, close, city, county, yearno, monthno) %>%
-      summarise_at(vars(calorie, sat_fat, carb, protein), .funs=mean)
+      summarise_at(vars(calorie, fat, sat_fat, carb, protein, sodium, dollar, count), .funs=sum)
 area <- area[order(area$state, area$county, area$year, area$month), ]
+area <- area[!(area$calorie==0&area$count<10), ] #remove implausible entries
+area[, 11:17] <- area[, 11:17]/area$count
+
 area$ml <- ifelse(area$state=="NY"&(area$county=="New York"|area$county=="Kings"|area$county=="Bronx"|area$county=="Queens"|area$county=="Richmond")&
                         ((area$year>=2008&area$month>=5)|area$year>=2009), 1,
                   ifelse(area$state=="WA"&area$county=="King"&area$year>=2009, 1,
@@ -285,18 +292,18 @@ area$ml2 <- ifelse(area$state=="CA"&((area$year==2011&area$month>=3)|area$year>=
 ggplot(data=subset(area, state=="CA"), aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
                          group=as.character(ml2), color=as.character(ml2))) +
       geom_point(size=2, color="#F4EDCA") + #make calorie points bigger so it's not ugly
-      stat_summary(aes(y=calorie,group=1), fun.y=mean, colour="orange", geom="point",group=1) + #insert mean for each month
-      geom_vline(xintercept = 47.5, color="grey", linetype="dashed", size=1) + #1 month before ML
+      stat_summary(aes(y=calorie,group=1), fun.y=mean, colour="orange", geom="point",group=1) + #insert monthly mean as scatter plots
+      geom_vline(xintercept = 47.5, color="grey", linetype="dashed", size=1) + #2 month before ML
       geom_vline(xintercept = 51.5, color="grey", linetype="dashed", size=1) + #2 months after ML
       geom_smooth(method='lm') + #add best fitted lines
-      ggplot2::annotate(geom="label", x=22, y=1750, label="Monthly decrease \n of 0.07 kcal", size=3) + #add pre-ML trend label
+      ggplot2::annotate(geom="label", x=22, y=1750, label="Monthly decrease \n of 0.13 kcal", size=3) + #add pre-ML trend label
       ggplot2::annotate(geom="label", x=82, y=1750, label="Monthly decrease \n of 1.21 kcal***", size=3) + #add post-ML trend label
       ggplot2::annotate(geom="text", x=1:106, y=-50, label=c(12, rep(c(1:12),8), c(1:9)), size = 2) + #month
       ggplot2::annotate(geom="text", x=c(1, seq(7.5, 7.5+12*7, 12), 102), y=-150, label=unique(area$year), size=4) + #year
       coord_cartesian(ylim=c(0, 2500), expand = FALSE, clip = "off") + 
       scale_y_continuous(breaks=seq(0, 2500, 250)) +
       labs(title="Calories per order trend, California", x="Time", y="Calories",
-           caption="Note: calories are not adjusted for modifications to individual items.") +
+           caption="Note: items without calorie information are considered 0 calorie.") +
       scale_color_discrete(name="Menu Lableing", labels=c("No", "Adjust", "Yes")) +
       theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
             plot.title = element_text(hjust = 0.5, size = 20),
@@ -305,11 +312,11 @@ ggplot(data=subset(area, state=="CA"), aes(x=interaction(year, month, lex.order 
             axis.title.y = element_text(size = 12),
             legend.text=element_text(size=10),
             plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-ggsave("tables/analytic-model/mean-calorie-per-order/california-pre-post-ml.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/mean-calorie-per-order/california-pre-post-ml.jpeg", dpi="retina")
 
 # find out slope of 3 fitted lines
-summary(lm(data=subset(area, state=="CA"&ml2==0), calorie~monthno)) #beta=-0.07, not significiant
-summary(lm(data=subset(area, state=="CA"&ml2==1), calorie~monthno)) #beta=24, ***
+summary(lm(data=subset(area, state=="CA"&ml2==0), calorie~monthno)) #beta=-0.13, not significiant
+summary(lm(data=subset(area, state=="CA"&ml2==1), calorie~monthno)) #beta=26, ***
 summary(lm(data=subset(area, state=="CA"&ml2==2), calorie~monthno)) #beta=-1.21, ***
 
 

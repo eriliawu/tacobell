@@ -36,6 +36,17 @@ colnames(acs)[1:15] <- c("geo", "state", "state_num", "county", "county_num", "t
                        "median_income", "capita_income")
 sapply(acs, class)
 
+acs$geo1 <- substr(acs$geo, 2,3)
+acs$geo2 <- substr(acs$geo, 5,7)
+acs$geo3 <- substr(acs$geo, 9,14)
+acs$geo <- paste0(acs$geo1, acs$geo2, acs$geo3)
+acs <- acs[, -c(3,5:6,20:22)]
+names(acs)
+colnames(acs)[1] <- "tract_num"
+acs[, c(4,5,7:10,13:16)] <- acs[, c(4,5,7:10,13:16)]/acs$total
+#write.csv(acs, "data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_clean.csv",
+#          row.names = FALSE)
+
 ### add census tract number to restaurants ----
 restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",
                        stringsAsFactors = FALSE)
@@ -61,16 +72,6 @@ restaurant %>%
 #restaurant$tract_num <- substr(restaurant$tract_num, 2,12)
 #restaurant$block_num <- substr(restaurant$block_num, 2,16)
 
-acs$geo1 <- substr(acs$geo, 2,3)
-acs$geo2 <- substr(acs$geo, 5,7)
-acs$geo3 <- substr(acs$geo, 9,14)
-acs$geo <- paste0(acs$geo1, acs$geo2, acs$geo3)
-acs <- acs[, -c(3,5:6,20:22)]
-names(acs)
-colnames(acs)[1] <- "tract_num"
-#write.csv(acs, "data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_clean.csv",
-#          row.names = FALSE)
-acs[, c(4,5,7:10,13:16)] <- acs[, c(4,5,7:10,13:16)]/acs$total
 restaurant <- merge(restaurant, acs, by="tract_num") #lose 3 restaurants
 names(restaurant)
 restaurant <- restaurant %>%
@@ -81,10 +82,56 @@ colnames(restaurant)[c(4,14)] <- c("state", "county")
 sapply(restaurant, class)
 restaurant <- cbind(restaurant[c(1:4, 9:27)], lapply(restaurant[c(5:8)], function(x) as.Date(x, "%m/%d/%Y")))
 
+### clean restaurant level transaction records ----
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("restid", "year", "month", "calorie", "fat",
+                                     "sat_fat", "carb", "protein", "sodium", "count", "dollar"))
+sapply(sample07q1, class)
+sample07q1[, c(4:9, 11)] <- sample07q1[, c(4:9, 11)]/2
+
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("restid", "year", "month",
+                                       "calorie", "fat", "sat_fat",
+                                       "carb", "protein", "sodium",
+                                       "count", "dollar"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+
+### add time information: month, year; keep yearno and monthno ----
+time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
+names(time)
+time <- time[, c(4, 7, 17, 38)]
+colnames(time) <- c("year", "month", "yearno", "monthno")
+sapply(time, class)
+time$yearno <- as.integer(substr(time$yearno, 2, 5))
+time$monthno <- as.integer(substr(time$monthno, 6, 7))
+time <- time[!duplicated(time) & time$yearno>=2006, ]
+
+calorie <- merge(calorie, time, by=c("year", "month"))
+colnames(calorie)[c(1:2, 12:13)] <- c("yearno", "monthno", "year", "month")
+calorie <- aggregate(data=calorie, .~year+month+restid+yearno+monthno, sum) 
+calorie <- calorie[order(calorie$year, calorie$month), ]
+calorie[, c(6:11, 13)] <- calorie[, c(6:11, 13)]/calorie$count
+
+### merge restaurant and calorie information ----
+restaurant <- merge(restaurant, calorie, by="restid")
+
 ### add timeline for menu labeling in city/state ----
 #C:\Users\wue04\NYU Langone Health\Elbel, Brian - Taco Bell labeling R01\PROPOSAL\Menu Labeling Legislation Research
-table(restaurant$city[restaurant$state=="NY"])
-
 restaurant$ml <- ifelse(restaurant$state=="NY"&
                           (restaurant$county=="New York"|restaurant$county=="Kings"|
                              restaurant$county=="Bronx"|restaurant$county=="Queens"|
@@ -102,11 +149,11 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
                                   restaurant$county=="San Francisco")&
                                  (restaurant$year>=2009|(restaurant$year==2008&restaurant$month>=10)), 1,
                         ifelse(restaurant$state=="NY"&restaurant$county=="Westchester"&
-                                 (year>=2010|(year==2009&month>=5)), 1,
+                                 (restaurant$year>=2010|(restaurant$year==2009&restaurant$month>=5)), 1,
                         ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery"&
-                                 (year>=2011|(year==2010&month>=7)), 1,
+                                 (restaurant$year>=2011|(restaurant$year==2010&restaurant$month>=7)), 1,
                         ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah"&
-                                 (year>=2011|(year==2010&month>=7)), 1,
+                                 (restaurant$year>=2011|(restaurant$year==2010&restaurant$month>=7)), 1,
                         ifelse(restaurant$state=="CA"&restaurant$year>=2011, 1,
                         ifelse(restaurant$state=="MA"&(restaurant$year>=2011|
                                   (restaurant$year==2010&restaurant$month>=11)), 1,
@@ -118,11 +165,12 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
                         ifelse(restaurant$state=="NY"&restaurant$county=="Ulster"&
                                  (restaurant$year>=2010|(restaurant$year==2009&
                                   restaurant$month>=10)),1,
-                        iflese(restaurant$state=="NY"&restaurant$county=="Nassau"&
+                        ifelse(restaurant$state=="NY"&restaurant$county=="Nassau"&
                                  (restaurant$year>=2010)|(restaurant$year==2009)&
                                  restaurant$month>=11, 1,
                         ifelse(restaurant$state=="VT"&(restaurant$year>=2013|
                                 (restaurant$year==2011&restaurant$month>=6)), 1, 0))))))))))))))))
-
+rm(acs, calorie)
+### matching ----
 
 
