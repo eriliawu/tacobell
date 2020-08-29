@@ -17,6 +17,8 @@ library(tidyverse)
 library(tigris)
 library(sf)
 library(tidycensus)
+#install.packages("rollmatch")
+library(rollmatch)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -33,7 +35,7 @@ acs <- acs %>%
          UHDE001, UJAE001, hsbelow, collegeup, under18, above65) 
 colnames(acs)[1:15] <- c("geo", "state", "state_num", "county", "county_num", "tract_num",
                        "male", "female", "total", "white", "black", "asian", "hisp",
-                       "median_income", "capita_income")
+                       "median_income", "capital_income")
 sapply(acs, class)
 
 acs$geo1 <- substr(acs$geo, 2,3)
@@ -54,23 +56,6 @@ summary(restaurant$lat)
 summary(restaurant$lon)
 names(restaurant)
 restaurant$tract_num <- substr(restaurant$tract_num, 2, 12) 
-#restaurant %>%
-#  filter(lat<0) %>%
-#  select(restid, address,lat, lon)
-#restaurant$lat[restaurant$restid==139763] <- 39.3409
-#restaurant$lon[restaurant$restid==139763] <- -105.0659
-#restaurant$lon[restaurant$restid==149611] <- -117.8847
-
-restaurant %>%
-  filter(lon>0) %>%
-  select(restid, address, open, close, lat, lon) # fill in lat/lon manually in csv file after google searches
-#restaurant$block_num <- apply(restaurant, 1, function(row) call_geolocator_latlon(row['lat'], row['lon']))
-#restaurant$tract_num <- substr(restaurant$block_num, 1, 11)
-#restaurant$tract_num <- paste0('"',restaurant$tract_num, '"') #forcing csv to read these as characters
-#restaurant$block_num <- paste0('"',restaurant$block_num, '"')
-#write.csv(restaurant, "data/restaurants/analytic_restaurants.csv", row.names = FALSE)
-#restaurant$tract_num <- substr(restaurant$tract_num, 2,12)
-#restaurant$block_num <- substr(restaurant$block_num, 2,16)
 
 restaurant <- merge(restaurant, acs, by="tract_num") #lose 3 restaurants
 names(restaurant)
@@ -169,8 +154,85 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
                                  (restaurant$year>=2010)|(restaurant$year==2009)&
                                  restaurant$month>=11, 1,
                         ifelse(restaurant$state=="VT"&(restaurant$year>=2013|
-                                (restaurant$year==2011&restaurant$month>=6)), 1, 0))))))))))))))))
+                                (restaurant$year==2012&restaurant$month>=6)), 1, 0))))))))))))))))
 rm(acs, calorie)
+
+### prepare data for matching ----
+restaurant$entry <- ifelse(restaurant$state=="NY"&
+                          (restaurant$county=="New York"|restaurant$county=="Kings"|
+                             restaurant$county=="Bronx"|restaurant$county=="Queens"|
+                             restaurant$county=="Richmond"), 221,
+                        ifelse(restaurant$state=="WA"&restaurant$county=="King", 229,
+                        ifelse(restaurant$state=="NY"&restaurant$county=="Albany", 242,
+                        ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", 241, 
+                        ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
+                                                         restaurant$county=="San Francisco"), 226,
+                        ifelse(restaurant$state=="NY"&restaurant$county=="Westchester", 233,
+                        ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery", 247,
+                        ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah", 247,
+                        ifelse(restaurant$state=="CA", 253,
+                        ifelse(restaurant$state=="MA", 251,
+                        ifelse(restaurant$state=="ME", 254,
+                        ifelse(restaurant$state=="NJ", 254,
+                        ifelse(restaurant$state=="OR", 253,
+                        ifelse(restaurant$state=="NY"&restaurant$county=="Ulster",238,
+                        ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 239,
+                        ifelse(restaurant$state=="VT", 270, restaurant$monthno))))))))))))))))
+
+restaurant$treat <- ifelse(restaurant$state=="NY"&
+                             (restaurant$county=="New York"|restaurant$county=="Kings"|
+                                restaurant$county=="Bronx"|restaurant$county=="Queens"|
+                                restaurant$county=="Richmond"), 1,
+                           ifelse(restaurant$state=="WA"&restaurant$county=="King", 1,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Albany", 1,
+                           ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", 1, 
+                           ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
+                                                            restaurant$county=="San Francisco"), 1,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Westchester", 1,
+                           ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery", 1,
+                           ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah", 1,
+                           ifelse(restaurant$state=="CA", 1,
+                           ifelse(restaurant$state=="MA", 1,
+                           ifelse(restaurant$state=="ME", 14,
+                           ifelse(restaurant$state=="NJ", 1,
+                           ifelse(restaurant$state=="OR", 1,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Ulster",1,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 1,
+                           ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
+
+# fix NA values
+restaurant$drive_thru[is.na(restaurant$drive_thru)] <- 0
+table(restaurant$drive_thru)
+restaurant <- restaurant[!is.na(restaurant$median_income), ]
+restaurant$drive_thru_type[is.na(restaurant$drive_thru_type)] <- "Driver"
+
 ### matching ----
+#reduce input data for matching
+reduced_data <- reduce_data(data=subset(restaurant, select=-c(open:close)),
+                            treat="treat", tm="monthno", entry="entry",
+                            id="restid", lookback=3)
+
+#select variables for matching
+#calculate propsensity scores for each observation
+names(reduced_data)
+scored_data <- score_data(reduced_data = reduced_data, model_type = "logistic",
+                          match_on = "logit", treat="treat",
+                          tm="monthno", entry="entry", id="restid",
+                          fm=as.formula(treat~concept+drive_thru+ownership+male+
+                                          total+white+black+asian+hisp+median_income+
+                                          capital_income+hsbelow+collegeup+under18+
+                                          above65+calorie+count+dollar))
+
+# apply rolling entry mathcing algorithm
+matched_data <- rollmatch(scored_data = scored_data, data=restaurant,
+                          treat="treat",
+                          tm="monthno", entry="entry", id="restid",
+                          vars=all.vars(as.formula(treat~concept+drive_thru+ownership+male+
+                                            total+white+black+asian+hisp+median_income+
+                                            capital_income+hsbelow+collegeup+under18+
+                                            above65+calorie+count+dollar)),
+                          lookback = 3, alpha = 0.2,
+                          standard_deviation = "average", num_matches = 3,
+                          replacement = FALSE)
 
 
