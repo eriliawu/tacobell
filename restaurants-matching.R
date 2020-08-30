@@ -157,7 +157,7 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
                                 (restaurant$year==2012&restaurant$month>=6)), 1, 0))))))))))))))))
 rm(acs, calorie)
 
-### prepare data for matching ----
+### prepare data for rolling entry matching ----
 restaurant$entry <- ifelse(restaurant$state=="NY"&
                           (restaurant$county=="New York"|restaurant$county=="Kings"|
                              restaurant$county=="Bronx"|restaurant$county=="Queens"|
@@ -206,11 +206,19 @@ table(restaurant$drive_thru)
 restaurant <- restaurant[!is.na(restaurant$median_income), ]
 restaurant$drive_thru_type[is.na(restaurant$drive_thru_type)] <- "Driver"
 
-### matching ----
+# change characters to numeric
+restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY", 1,
+                               ifelse(restaurant$ownership=="FRANCHISE", 2, 3))
+restaurant$concept <- ifelse(restaurant$concept=="KFC/TBC", 1,
+                             ifelse(restaurant$concept=="KFC/TBC/PHI", 2,
+                             ifelse(restaurant$concept=="TBC", 3,
+                             ifelse(restaurant$concept=="TBC/LJS", 4, 5))))
+
+### rolling entry matching ----
 #reduce input data for matching
 reduced_data <- reduce_data(data=subset(restaurant, select=-c(open:close)),
                             treat="treat", tm="monthno", entry="entry",
-                            id="restid", lookback=3)
+                            id="restid", lookback=1)
 
 #select variables for matching
 #calculate propsensity scores for each observation
@@ -218,7 +226,8 @@ names(reduced_data)
 scored_data <- score_data(reduced_data = reduced_data, model_type = "logistic",
                           match_on = "logit", treat="treat",
                           tm="monthno", entry="entry", id="restid",
-                          fm=as.formula(treat~concept+drive_thru+ownership+male+
+                          fm=as.formula(treat~as.character(concept)+drive_thru+
+                                          as.character(ownership)+male+
                                           total+white+black+asian+hisp+median_income+
                                           capital_income+hsbelow+collegeup+under18+
                                           above65+calorie+count+dollar))
@@ -227,12 +236,42 @@ scored_data <- score_data(reduced_data = reduced_data, model_type = "logistic",
 matched_data <- rollmatch(scored_data = scored_data, data=restaurant,
                           treat="treat",
                           tm="monthno", entry="entry", id="restid",
-                          vars=all.vars(as.formula(treat~concept+drive_thru+ownership+male+
+                          vars=all.vars(as.formula(treat~as.character(concept)+
+                                                     drive_thru+as.character(ownership)+male+
                                             total+white+black+asian+hisp+median_income+
                                             capital_income+hsbelow+collegeup+under18+
                                             above65+calorie+count+dollar)),
-                          lookback = 3, alpha = 0.2,
+                          lookback = 1, alpha = 0.2,
                           standard_deviation = "average", num_matches = 3,
-                          replacement = FALSE)
+                          replacement = TRUE)
+names(matched_data)
+sapply(matched_data, class)
+
+matched <- matched_data$matched_data
+matched <- matched[order(matched$treat_id, matched$match_rank),
+                   c(3,1,10,9,12,2,4:5,8,6:7,11,13)]
+table(matched$control_matches)
+length(unique(matched$treat_id))
+length(unique(matched$control_id))
+
+hist(matched$control_matches, breaks=100,
+     main="", xlab="Number of times a comparison restaurant was used")
+
+length(matched$treat_id)
+length(matched$control_id)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
