@@ -3,9 +3,10 @@
 getwd()
 setwd("C:/Users/wue04/OneDrive - NYU Langone Health/tacobell")
 
-current_warning <- getOption("warn")
+current_warning <- getOption("warn") #not display warnings
 options(warn = -1)
 #options(warn = current_warning)
+options("scipen"=100)
 
 ### install and load packages ----
 library(dplyr)
@@ -19,6 +20,10 @@ library(sf)
 library(tidycensus)
 #install.packages("rollmatch")
 library(rollmatch)
+#install.packages("cobalt") #check and visualize balances for ps matching/rem
+library(cobalt)
+#install.packages("MatchIt")
+library(MatchIt)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -214,33 +219,48 @@ restaurant$concept <- ifelse(restaurant$concept=="KFC/TBC", 1,
                              ifelse(restaurant$concept=="TBC", 3,
                              ifelse(restaurant$concept=="TBC/LJS", 4, 5))))
 
+# take lagged measurements for dynamic vars
+restaurant <- restaurant[order(restaurant$restid, restaurant$monthno), ]
+restaurant <- restaurant %>%
+  group_by(restid) %>%
+  mutate(calorie1 = lag(calorie, 1)) %>%
+  mutate(calorie2 = lag(calorie, 2)) %>%
+  mutate(calorie3 = lag(calorie, 3)) %>%
+  mutate(count1 = lag(count, 1)) %>%
+  mutate(count2 = lag(count, 2)) %>%
+  mutate(count3 = lag(count, 3)) %>%
+  mutate(dollar1 = lag(dollar, 1)) %>%
+  mutate(dollar2 = lag(dollar, 2)) %>%
+  mutate(dollar3 = lag(dollar, 3)) 
+
 ### rolling entry matching ----
 #reduce input data for matching
-reduced_data <- reduce_data(data=subset(restaurant, select=-c(open:close)),
+restaurant_subset <- subset(restaurant, select=-c(open:close),
+                            subset=(!is.na(calorie1)&!is.na(calorie2)&!is.na(calorie3)&
+                                      !is.na(count1)&!is.na(count2)&!is.na(count3)&
+                                      !is.na(dollar2)&!is.na(dollar2)&!is.na(dollar3)))
+
+reduced_data <- reduce_data(data=restaurant_subset,
                             treat="treat", tm="monthno", entry="entry",
                             id="restid", lookback=1)
 
 #select variables for matching
 #calculate propsensity scores for each observation
 names(reduced_data)
+formula <- treat~as.character(concept)+drive_thru+as.character(ownership)+male+
+  total+white+black+asian+hisp+median_income+capital_income+hsbelow+collegeup+
+  under18+above65+calorie+calorie2+calorie3+count+count2+count3+dollar+dollar2+dollar3
+
 scored_data <- score_data(reduced_data = reduced_data, model_type = "logistic",
                           match_on = "logit", treat="treat",
                           tm="monthno", entry="entry", id="restid",
-                          fm=as.formula(treat~as.character(concept)+drive_thru+
-                                          as.character(ownership)+male+
-                                          total+white+black+asian+hisp+median_income+
-                                          capital_income+hsbelow+collegeup+under18+
-                                          above65+calorie+count+dollar))
+                          fm=as.formula(formula))
 
 # apply rolling entry mathcing algorithm
-matched_data <- rollmatch(scored_data = scored_data, data=restaurant,
+matched_data <- rollmatch(scored_data = scored_data, data=restaurant_subset,
                           treat="treat",
                           tm="monthno", entry="entry", id="restid",
-                          vars=all.vars(as.formula(treat~as.character(concept)+
-                                                     drive_thru+as.character(ownership)+male+
-                                            total+white+black+asian+hisp+median_income+
-                                            capital_income+hsbelow+collegeup+under18+
-                                            above65+calorie+count+dollar)),
+                          vars=all.vars(as.formula(formula)),
                           lookback = 1, alpha = 0.2,
                           standard_deviation = "average", num_matches = 3,
                           replacement = TRUE)
@@ -260,8 +280,47 @@ hist(matched$control_matches, breaks=100,
 length(matched$treat_id)
 length(matched$control_id)
 
+### diagnostics, check balance ----
+balance <- matched_data$balance
+balance$diff_pre <- balance$`Full Treatment Mean` - balance$`Full Comparison Mean`
+balance$diff_post <- balance$`Matched Treatment Mean` - balance$`Matched Comparison Mean`
+plot(x=balance$diff_pre, y=1:24)
+plot(x=balance$diff_post, y=1:24)
 
+### manual propsensity score matching ----
+ps.match <- matchit(data=subset(restaurant_subset, entry==253&monthno==253),
+                    treat~as.character(concept)+drive_thru+
+                      as.character(ownership)+male+total+white+black+asian+hisp+
+                      median_income+capital_income+hsbelow+collegeup+under18+
+                      above65+calorie1+calorie2+calorie3+count1+count2+count3+
+                      dollar1+dollar2+dollar3,
+                    ratio=5, distance="logit", method="nearest", caliper=0.2)
+sapply(ps.match, class)
 
+summary(ps.match)
+love.plot(ps.match, stats = "mean.diffs", size=2, limits=c(-1.1, 2.5), grid=TRUE,
+          shape="circle", sample.names = c("Matched", "Unmatched"),
+          var.names = data.frame(old=c("distance","as.character(concept)_1","as.character(concept)_2",
+                                       "as.character(concept)_3","as.character(concept)_4",
+                                       "as.character(concept)_5","drive_thru",
+                                       "as.character(ownership)_1","as.character(ownership)_2",
+                                       "as.character(ownership)_3","male","total","white","black","asian","hisp",
+                                       "median_income","capital_income","hsbelow","collegeup","under18","
+                                         above65","calorie1","calorie2","calorie3","count1","count2","count3",
+                                         "dollar1","dollar2","dollar3"),
+                                 new=c("Distance","Is KFC/TBC", "Is KFC/TBC/PHI", "Is TBC",
+                                       "Is TBC/LJS", "Is TBC/PHI", "Has drive through",
+                                       "Is company owned", "Is franchise", "Is licensed",
+                                       "% male", "Total population","% white", "% Black", "% Asian",
+                                       "% Hispanic", "Household median income", "Income per capita",
+                                       "% without HS degree", "% has college degree and up",
+                                       "% under 18", "% above 65", "Mean calorie, t-1", 
+                                       "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
+                                       "# of transactions, t-2", "# of transactions, t-3",
+                                       "Mean spending per order, t-1", "Mean spending per order, t-2",
+                                       "Mean spending per order, t-3")))
+
+match <- match.data(ps.match, distance="pscore") # create a dataset with matched results
 
 
 
