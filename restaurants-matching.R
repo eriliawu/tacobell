@@ -24,6 +24,10 @@ library(rollmatch)
 library(cobalt)
 #install.packages("MatchIt")
 library(MatchIt)
+#install.packages("tableone") #calcualte SMD before matching
+library(tableone)
+#install.packages("stddiff") #calcualte smd
+library(stddiff)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -160,7 +164,7 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
                                  restaurant$month>=11, 1,
                         ifelse(restaurant$state=="VT"&(restaurant$year>=2013|
                                 (restaurant$year==2012&restaurant$month>=6)), 1, 0))))))))))))))))
-rm(acs, calorie)
+rm(acs, calorie, time)
 
 ### prepare data for rolling entry matching ----
 restaurant$entry <- ifelse(restaurant$state=="NY"&
@@ -205,20 +209,6 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 1,
                            ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
 
-# fix NA values
-restaurant$drive_thru[is.na(restaurant$drive_thru)] <- 0
-table(restaurant$drive_thru)
-restaurant <- restaurant[!is.na(restaurant$median_income), ]
-restaurant$drive_thru_type[is.na(restaurant$drive_thru_type)] <- "Driver"
-
-# change characters to numeric
-restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY", 1,
-                               ifelse(restaurant$ownership=="FRANCHISE", 2, 3))
-restaurant$concept <- ifelse(restaurant$concept=="KFC/TBC", 1,
-                             ifelse(restaurant$concept=="KFC/TBC/PHI", 2,
-                             ifelse(restaurant$concept=="TBC", 3,
-                             ifelse(restaurant$concept=="TBC/LJS", 4, 5))))
-
 # take lagged measurements for dynamic vars
 restaurant <- restaurant[order(restaurant$restid, restaurant$monthno), ]
 restaurant <- restaurant %>%
@@ -233,13 +223,26 @@ restaurant <- restaurant %>%
   mutate(dollar2 = lag(dollar, 2)) %>%
   mutate(dollar3 = lag(dollar, 3)) 
 
-### rolling entry matching ----
-#reduce input data for matching
-restaurant_subset <- subset(restaurant, select=-c(open:close),
+# fix NA values
+restaurant$drive_thru[is.na(restaurant$drive_thru)] <- 0
+table(restaurant$drive_thru)
+restaurant <- restaurant[!is.na(restaurant$median_income), ]
+restaurant$drive_thru_type[is.na(restaurant$drive_thru_type)] <- "Driver"
+
+restaurant$concept <- as.factor(restaurant$concept)
+restaurant$ownership <- as.factor(restaurant$ownership)
+restaurant_subset <- subset(restaurant, select=-c(24:27),
                             subset=(!is.na(calorie1)&!is.na(calorie2)&!is.na(calorie3)&
                                       !is.na(count1)&!is.na(count2)&!is.na(count3)&
                                       !is.na(dollar2)&!is.na(dollar2)&!is.na(dollar3)))
+restaurant_subset$concept <- ifelse(restaurant_subset$concept=="TBC", 0, 1)
+restaurant_subset$ownership <- ifelse(restaurant_subset$ownership=="COMPANY", 1, 0)
 
+# check NA values
+colnames(restaurant_subset)[colSums(is.na(restaurant_subset)) > 0]
+
+### rolling entry matching ----
+#reduce input data for matching
 reduced_data <- reduce_data(data=restaurant_subset,
                             treat="treat", tm="monthno", entry="entry",
                             id="restid", lookback=1)
@@ -247,9 +250,9 @@ reduced_data <- reduce_data(data=restaurant_subset,
 #select variables for matching
 #calculate propsensity scores for each observation
 names(reduced_data)
-formula <- treat~as.character(concept)+drive_thru+as.character(ownership)+male+
+formula <- treat~concept+drive_thru+ownership+male+
   total+white+black+asian+hisp+median_income+capital_income+hsbelow+collegeup+
-  under18+above65+calorie+calorie2+calorie3+count+count2+count3+dollar+dollar2+dollar3
+  under18+above65+calorie+calorie1+calorie2+count+count1+count2+dollar+dollar1+dollar2
 
 scored_data <- score_data(reduced_data = reduced_data, model_type = "logistic",
                           match_on = "logit", treat="treat",
@@ -262,17 +265,18 @@ matched_data <- rollmatch(scored_data = scored_data, data=restaurant_subset,
                           tm="monthno", entry="entry", id="restid",
                           vars=all.vars(as.formula(formula)),
                           lookback = 1, alpha = 0.2,
-                          standard_deviation = "average", num_matches = 3,
+                          standard_deviation = "average", num_matches = 5,
                           replacement = TRUE)
 names(matched_data)
 sapply(matched_data, class)
+summary(matched_data)
 
 matched <- matched_data$matched_data
 matched <- matched[order(matched$treat_id, matched$match_rank),
                    c(3,1,10,9,12,2,4:5,8,6:7,11,13)]
-table(matched$control_matches)
-length(unique(matched$treat_id))
-length(unique(matched$control_id))
+matched <- merge(matched, restaurant[, c(1, 3, 4, 9, 10)], by.x="treat_id", by.y="restid")
+table(matched$state)
+table(matched$county[matched$state=="NY"]) #restid in nyc has no matches
 
 hist(matched$control_matches, breaks=100,
      main="", xlab="Number of times a comparison restaurant was used")
@@ -280,47 +284,112 @@ hist(matched$control_matches, breaks=100,
 length(matched$treat_id)
 length(matched$control_id)
 
-### diagnostics, check balance ----
-balance <- matched_data$balance
-balance$diff_pre <- balance$`Full Treatment Mean` - balance$`Full Comparison Mean`
-balance$diff_post <- balance$`Matched Treatment Mean` - balance$`Matched Comparison Mean`
-plot(x=balance$diff_pre, y=1:24)
-plot(x=balance$diff_post, y=1:24)
-
 ### manual propsensity score matching ----
-ps.match <- matchit(data=subset(restaurant_subset, entry==253&monthno==253),
-                    treat~as.character(concept)+drive_thru+
-                      as.character(ownership)+male+total+white+black+asian+hisp+
-                      median_income+capital_income+hsbelow+collegeup+under18+
-                      above65+calorie1+calorie2+calorie3+count1+count2+count3+
-                      dollar1+dollar2+dollar3,
-                    ratio=5, distance="logit", method="nearest", caliper=0.2)
-sapply(ps.match, class)
+# delete NA rows and change variables types
+#specify matching formula
+matching.formua <- treat~concept+drive_thru+ownership+
+  male+total+white+black+asian+hisp+median_income+capital_income+hsbelow+collegeup+
+  under18+above65+calorie1+calorie2+calorie3+count1+count2+count3+dollar1+dollar2+dollar3
 
-summary(ps.match)
-love.plot(ps.match, stats = "mean.diffs", size=2, limits=c(-1.1, 2.5), grid=TRUE,
-          shape="circle", sample.names = c("Matched", "Unmatched"),
-          var.names = data.frame(old=c("distance","as.character(concept)_1","as.character(concept)_2",
-                                       "as.character(concept)_3","as.character(concept)_4",
-                                       "as.character(concept)_5","drive_thru",
-                                       "as.character(ownership)_1","as.character(ownership)_2",
-                                       "as.character(ownership)_3","male","total","white","black","asian","hisp",
-                                       "median_income","capital_income","hsbelow","collegeup","under18","
-                                         above65","calorie1","calorie2","calorie3","count1","count2","count3",
-                                         "dollar1","dollar2","dollar3"),
-                                 new=c("Distance","Is KFC/TBC", "Is KFC/TBC/PHI", "Is TBC",
-                                       "Is TBC/LJS", "Is TBC/PHI", "Has drive through",
-                                       "Is company owned", "Is franchise", "Is licensed",
-                                       "% male", "Total population","% white", "% Black", "% Asian",
-                                       "% Hispanic", "Household median income", "Income per capita",
-                                       "% without HS degree", "% has college degree and up",
-                                       "% under 18", "% above 65", "Mean calorie, t-1", 
-                                       "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
-                                       "# of transactions, t-2", "# of transactions, t-3",
-                                       "Mean spending per order, t-1", "Mean spending per order, t-2",
-                                       "Mean spending per order, t-3")))
+master <- NULL
+master_matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({
+  subset <- subset(restaurant_subset, entry==i & monthno==i)
+  subset.match <- matchit(data=subset,
+                          formula = matching.formua, caliper=0.2,
+                          ratio=5, distance="logit", method="nearest", replace=TRUE)
+  subset.matched <- match.data(subset.match, distance="distance") # create a dataset with matched results
+  subset <- cbind(subset, subset.match$distance)
+  
+  # combine clusters of restaurants
+  master <- rbind(master, subset)
+  master_matched <- rbind(master_matched, subset.matched)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+colnames(master)[48] <- "distance"
+rm(i, subset, subset.match, subset.matched)
 
-match <- match.data(ps.match, distance="pscore") # create a dataset with matched results
+# calculate standardized mean differences manually
+names(master)
+result <- as.data.frame(col_w_smd(mat=subset(master,
+                             select = c(5:6,8,11,13:23,39:48)),
+                  treat = master$treat, weights = NULL,
+                  std = TRUE,
+                  bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+
+result2 <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+                   treat = master_matched$treat, weights = master_matched$weights,
+                   std = TRUE,
+                   bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+
+colnames(result)[1] <- "pre"
+colnames(result2)[1] <- "post"
+result <- cbind(result, result2)
+
+result <- cbind(result,
+                data.frame(old=c("concept", "drive_thru", "ownership",   
+                         "male","total","white","black","asian","hisp",
+                         "median_income","capital_income","hsbelow","collegeup","under18",
+                         "above65", "calorie1","calorie2","calorie3","count1","count2","count3",
+                         "dollar1","dollar2","dollar3","pscore"),
+                   new=c("Joint brand","Has drive through", "Ownership",
+                         "% male", "Total population","% white", "% Black", "% Asian",
+                         "% Hispanic", "Household median income", "Income per capita",
+                         "% without HS degree", "% has college degree and up",
+                         "% under 18", "% above 65","Mean calorie, t-1", 
+                         "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
+                         "# of transactions, t-2", "# of transactions, t-3",
+                         "Mean spending per order, t-1", "Mean spending per order, t-2",
+                         "Mean spending per order, t-3", "Distance")))
+names(result)
+result <- reshape(result, 
+               direction = "long",
+               varying = list(names(result)[1:2]),
+               v.names = "score",
+               idvar = c("old", "new"),
+               timevar = "method",
+               times = c("pre", "post"))
+rm(result2)
+
+# replicate love.plot
+result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through",
+                                      "Ownership",
+                                      "Mean calorie, t-1", 
+                                      "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
+                                      "# of transactions, t-2", "# of transactions, t-3",
+                                      "Mean spending per order, t-1", "Mean spending per order, t-2",
+                                      "Mean spending per order, t-3",
+                                      "Total population", "% male", "% white", "% Black", "% Asian",
+                                      "% Hispanic", "Household median income", "Income per capita",
+                                      "% without HS degree", "% has college degree and up",
+                                      "% under 18", "% above 65"))
+ggplot(data = result,
+       mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
+  geom_point() +
+  geom_hline(yintercept = 0.1, color = "red", size = 0.1, linetype="dashed") +
+  geom_hline(yintercept = -0.1, color = "red", size = 0.1, linetype="dashed") +
+  geom_vline(xintercept = 24.5) +
+  geom_hline(yintercept = 0, color = "black", size = 0.1) +
+  coord_flip() +
+  scale_y_continuous(limits = c(-1, 3)) +
+  labs(title="Covariate balance", y="Standardized mean differences", x="") +
+  scale_color_discrete(name="Sample",
+                       labels=c("Matched", "Unmatched")) +
+  theme_bw() +
+  theme(legend.key = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+
+
+
+
+
+
+
+
+
+
 
 
 
