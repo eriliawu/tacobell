@@ -157,7 +157,7 @@ tapply(calorie$calorie, calorie$occasion, summary)
 tapply(calorie$calorie, calorie$occasion, sd)
 
 ### by daypart ----
-sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-daypart/mean-calorie-daypart_2007_Q1.csv",
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-daypart/mean-calorie_daypart_2007_Q1.csv",
                        stringsAsFactors = FALSE,
                        col.names = c("year", "month", "time", "calorie","fat", 
                                      "sat_fat", "carb", "protein", "sodium", "count"))
@@ -166,27 +166,35 @@ sample07q1$calorie <- sample07q1$calorie/2
 
 calorie <- NULL
 for (i in 2007:2015) {
-      for (j in 1:4) {
-            tryCatch(
-                  if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
-                  {
-                        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie/by-month-overall-daypart/mean-calorie-daypart_",
-                                                  i,"_Q",j,".csv"),
-                                           stringsAsFactors = FALSE,
-                                           col.names=c("year", "month", "time", "calorie","fat", 
-                                                       "sat_fat", "carb", "protein", "sodium", "count"))
-                        calorie <- rbind(calorie, sample)
-                  }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
-            )
-      }
+   for (j in 1:4) {
+      tryCatch(
+         if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else if (i<=2012|(i==2013&(j==1|j==3)))
+            {
+               sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-daypart/mean-calorie_daypart_",
+                                         i,"_Q",j,".csv"), stringsAsFactors = FALSE,
+                                  col.names=c("year", "month", "time", "calorie",
+                                              "fat", "sat_fat", "carb", "protein",
+                                              "sodium", "count"))
+               calorie <- rbind(calorie, sample)
+            } else {
+               sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-month-overall-daypart/mean-calorie_daypart_",
+                                         i,"_Q",j,".csv"), stringsAsFactors = FALSE,
+                                  col.names=c("year", "month", "time", "calorie",
+                                              "fat", "sat_fat", "carb", "protein",
+                                              "sodium", "count", "dollar"))
+               sample$dollar <- NULL
+               calorie <- rbind(calorie, sample)
+            }, error=function(e){cat("ERROR :",paste0("year", i, " quarter", j),conditionMessage(e), "\n")}
+      )
+   }
 }
 calorie <- rbind(calorie, sample07q1)
 rm(sample, sample07q1, i, j)
 
 calorie <- merge(calorie, time, by=c("year", "month"))
-calorie <- calorie[, -c(1:2)]
-colnames(calorie)[6:7] <- c("year", "month")
-calorie <- aggregate(data=calorie, .~year+month+time, sum) #fiscal month doesnt align with calendar month
+colnames(calorie)[c(1:2, 11:12)] <- c("yearno", "monthno", "year", "month")
+calorie <- aggregate(data=calorie, .~year+month+time+yearno+monthno, sum) #fiscal month doesnt align with calendar month
+calorie[, 6:11] <- calorie[, 6:11]/calorie$count
 calorie <- calorie[order(calorie$year, calorie$month), ]
 #write.csv(calorie, "data/calorie-descriptive-data/mean-calorie-by-month-daypart.csv", row.names = FALSE)
 summary(calorie$calorie)
@@ -215,7 +223,7 @@ ggplot(data=calorie, aes(x=interaction(year, month, lex.order = TRUE), y=calorie
             plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/mean-calorie-per-order/w-mod/mean-calorie-overall-by-daypart.jpeg", dpi="retina")
 
-mod1 <- lm(data=calorie, calorie~year+month+as.character(time))
+mod1 <- lm(data=calorie, calorie~monthno+as.character(time))
 summary(mod1) #no significance on year or month
 rm(mod1)
 
