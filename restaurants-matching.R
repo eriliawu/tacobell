@@ -245,6 +245,15 @@ restaurant_subset$ownership <- ifelse(restaurant_subset$ownership=="COMPANY", 1,
 # check NA values
 colnames(restaurant_subset)[colSums(is.na(restaurant_subset)) > 0]
 
+# pre-matching summary stats
+# by city/state, N restaurants and N restid-month
+tmp <- restaurant[(restaurant$treat==1)&(restaurant$monthno==restaurant$entry), c(1,3:4,9:10,41)]
+tmp$n <- 1
+table(tmp$county[tmp$state!="CA"], tmp$state[tmp$state!="CA"])
+
+temp <- aggregate(data=tmp[tmp$state=="NY",], n~state+county+entry, FUN=length)
+rm(temp, tmp)
+
 ### rolling entry matching ----
 #reduce input data for matching
 reduced_data <- reduce_data(data=restaurant_subset,
@@ -300,9 +309,10 @@ master_matched <- NULL
 for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   tryCatch({ #catch groups that do not have comparison restaurants
   subset <- subset(restaurant_subset, entry==i & monthno==i)
-  subset.match <- matchit(data=subset,
-                          formula = formula, caliper=0.2, #subclass=20,
-                          ratio=1, distance="logit", method="nearest", replace=FALSE)
+  subset.match <- matchit(data=subset, formula = formula, 
+                          distance="logit", method="nearest", 
+                          caliper=0.2, #calclosest=TRUE, subclass=20,
+                          replace=FALSE, ratio=1)
   subset.matched <- match.data(subset.match, distance="distance") # create a dataset with matched results
   subset <- cbind(subset, subset.match$distance)
   
@@ -632,3 +642,9 @@ length(unique(master_matched$restid[master_matched$treat==0]))
 tmp <- merge(master_matched, restaurant, by="restid")
 rm(tmp)
 
+
+### sanity checks ----
+tmp <- restaurant %>%
+  dplyr::filter(state=="ME") %>%
+  dplyr::select(address, state, year, month, open, close)
+table(tmp$month, tmp$year)
