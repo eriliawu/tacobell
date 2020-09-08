@@ -172,48 +172,61 @@ start +
                 fill='white', size=0.25, size=0.25) +
       ggplot2::annotate('text', x= 50, y=97,label= '446 Patients assessed for eligibility', size=2.5)
 
-### flowchart, taco bell data matching ----
-matching <- "digraph {
-graph [layout=dot, rankdir = TB, concentrate=true, splines=ortho]
+### flowchart, taco bell data matching for treatment and comparison groups ----
+grViz("digraph {
+graph [layout=dot, rankdir = LR, concentrate=true, splines=ortho]
 node [shape = rectangle, style = filled]
 
       subgraph cluster_data {
       color='#625a5a'
       style=dashed
-      label='Analytical data'
+      label='Assemble analytical data'
       fontname = 'helvetica-bold'
       node[fillcolor='#00FFFF'];
-      a0[label = 'Sales aggregated \n to calendar month']
+      a0[label = 'Aggregate restaurant \n level sales \n to calendar month']
+      a1[label='Aggregate nutritional \n characteristics']
+      a2[label='Pull in restaurant \n characteristics']
+      a3[label='Pull in ACS data']
+      a4[label='Identify menu labeling \n implementation time']
+      a5[label='Take lagged measurements \n on dynamic vars']
+      a0 -> a1 -> a2 -> a3 -> a4 -> a5
+      {rank=same; a0; a1; a2;}
+      {rank=same; a3; a4; a5;}
       }
 
       subgraph cluster_match {
-      label = 'Matching process'
+      label = 'Matching'
       style=dashed
       color= '#625a5a'
       fontname = 'helvetica-bold'
-      node[fillcolor=Linen]
-      b0[label='Identify city/state \n labeling implementation']
-      b1[label='Match treatment \n restaurants to comparison']
-      b2[label='Repeat for every \n treatment restaurant']
-      b3[label='Weighting?']
-      b4[label='Rolling entry \n matching', fillcolor='#FFC300']
-      b0 -> b1 -> b2 -> b3
-      {rank=same; b0; b1; b2; b3;}
+      node[fillcolor=hotpink]
+      b0[label='Define lookback \n period, establish \n baseline, t=3']
+      b1[label='Isolate one \n cluster of \n treated restaurants']
+      b2[label='Narrow down to \n the month before \n labeling implementation']
+      b3[label='Matching \n -select distance (PS, exact, Mahalanobis, etc) \n -replacement \n -matching ratio']
+      b4[label='Repeat for \n all clusters']
+      b5[label='Combine all \n clusters of \n matched restaurants']
+      b6[label='Merge back to \n analytical data']
+      b0 -> b1 -> b2 -> b3 -> b4 -> b5 -> b6
+      {rank=same; b0; b1; b2;}
+      {rank=same; b3; b4; b5; b6;}
       }
 
       subgraph cluster_matched {
       color='#625a5a'
       style=dashed
-      label='Matched data'
+      label='Diagnostics'
       fontname = 'helvetica-bold'
       node[fillcolor='#DAF7A6']
-      c0[label='Merge back to \n analytical data']
+      c0[label='Check covariate \n balance, visualize']
       }
 
-a0 -> {b0 b4}
-{b3 b4} -> c0
-b0 -> c0 [style=invis]
-b1 -> c0 [style=invis]
-}"
-grViz(matching) %>%
+a5 -> b0
+b6 -> c0
+a0 -> b0 [style=invis]
+a0 -> c0 [style=invis]
+b3 -> c0 [style=invis]
+}")
+
+grViz(rem) %>%
       export_svg %>% charToRaw %>% rsvg_png("tables/analytic-model/matching-strategy.png")
