@@ -6,7 +6,7 @@ setwd("C:/Users/wue04/OneDrive - NYU Langone Health/tacobell")
 current_warning <- getOption("warn") #not display warnings
 options(warn = -1)
 #options(warn = current_warning)
-#options("scipen"=100)
+options("scipen"=100)
 
 ### install and load packages ----
 library(dplyr)
@@ -331,7 +331,6 @@ result <- as.data.frame(col_w_smd(mat=subset(master,
                   treat = master$treat, weights = NULL,
                   std = TRUE,
                   bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
-
 result2 <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
                    treat = master_matched$treat, weights = master_matched$weights,
                    std = TRUE,
@@ -396,12 +395,26 @@ ggplot(data = result,
 #ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-mahalanobis.jpeg", dpi="retina")
 
 #summary stats
-#before matching
+#before matching, all restid-month rows
 length(unique(restaurant$restid))
 length(unique(restaurant$restid[restaurant$treat==1]))
 length(unique(restaurant$restid[restaurant$treat==0]))
 
-#after matching
+#after reducing to obs at time of labeling implementation
+master <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    master <- rbind(master, subset)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+length(unique(master$restid)) #3605
+length(unique(master$restid[master$treat==1])) #581
+length(unique(master$restid[master$treat==0])) #3024
+master <- master[!duplicated(master$restid), 1]
+master <- merge(master, restaurant, by="restid")
+
+#after matching, with matched units
 table(master_matched$treat)
 length(unique(master_matched$restid))
 length(unique(master_matched$restid[master_matched$treat==1]))
@@ -648,3 +661,140 @@ tmp <- restaurant %>%
   dplyr::filter(state=="ME") %>%
   dplyr::select(address, state, year, month, open, close)
 table(tmp$month, tmp$year)
+
+### combine ps nearest, subclass and optimal ----
+master <- NULL
+master_matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="nearest", 
+                            caliper=0.2, #calclosest=TRUE, subclass=20,
+                            replace=FALSE, ratio=1)
+    subset.matched <- match.data(subset.match, distance="distance") # create a dataset with matched results
+    subset <- cbind(subset, subset.match$distance)
+    
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    master_matched <- rbind(master_matched, subset.matched)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+colnames(master)[48] <- "distance"
+
+# calculate standardized mean differences manually
+names(master)
+result.pre <- as.data.frame(col_w_smd(mat=subset(master,
+                                             select = c(5:6,8,11,13:23,39:48)),
+                                  treat = master$treat, weights = NULL,
+                                  std = TRUE,
+                                  bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+result.nearest <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+                                   treat = master_matched$treat, weights = master_matched$weights,
+                                   std = TRUE,
+                                   bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+master <- NULL
+master_matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="nearest", 
+                            caliper=0.2, subclass=20,
+                            replace=FALSE, ratio=1)
+    subset.matched <- match.data(subset.match, distance="distance") # create a dataset with matched results
+    subset <- cbind(subset, subset.match$distance)
+    
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    master_matched <- rbind(master_matched, subset.matched)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+colnames(master)[48] <- "distance"
+result.subclass <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+                                          treat = master_matched$treat, weights = master_matched$weights,
+                                          std = TRUE,
+                                          bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+
+master <- NULL
+master_matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="optimal", 
+                            caliper=0.2,
+                            replace=FALSE, ratio=1)
+    subset.matched <- match.data(subset.match, distance="distance") # create a dataset with matched results
+    subset <- cbind(subset, subset.match$distance)
+    
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    master_matched <- rbind(master_matched, subset.matched)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+colnames(master)[48] <- "distance"
+result.op <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+                                           treat = master_matched$treat, weights = master_matched$weights,
+                                           std = TRUE,
+                                           bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+result <- cbind(result.pre, result.nearest, result.subclass, result.op,
+                data.frame(old=c("concept", "drive_thru", "ownership", "male", "total",
+                                 "white", "black", "asian", "hisp","median_income","capital_income",
+                                 "hsbelow","collegeup","under18","above65",
+                                 "calorie1","calorie2","calorie3","count1","count2","count3",
+                                 "dollar1","dollar2","dollar3","distance"),
+                           new=c("Joint brand","Has drive through", "Ownership",
+                                 "% male","Total population", "% white", "% Black", "% Asian",
+                                 "% Hispanic", "Household median income", "Income per capita",
+                                 "% without HS degree", "% has college degree and up",
+                                 "% under 18", "% above 65", 
+                                 "Mean calorie, t-1", "Mean calorie, t-2", "Mean calorie, t-3",
+                                 "# of transactions, t-1", "# of transactions, t-2", "# of transactions, t-3",
+                                 "Mean spending per order, t-1", "Mean spending per order, t-2",
+                                 "Mean spending per order, t-3",
+                                 "Distance")))
+rm(i, subset, subset.match, subset.matched)
+
+names(result)
+colnames(result)[1:4] <- c("pre", "nearest", "subclass", "optimal")
+result <- reshape(result, direction = "long",
+                  varying = list(names(result)[1:4]), v.names = "score",
+                  idvar = c("old", "new"),
+                  timevar = "method", times = c("pre", "nearest", "subclass", "optimal"))
+rm(result.nearest, result.subclass, result.op, result.pre)
+
+# replicate love.plot
+result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through",
+                                            "Ownership",
+                                            "Mean calorie, t-1", 
+                                            "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
+                                            "# of transactions, t-2", "# of transactions, t-3",
+                                            "Mean spending per order, t-1", "Mean spending per order, t-2",
+                                            "Mean spending per order, t-3",
+                                            "Total population", "% male", "% white", "% Black", "% Asian",
+                                            "% Hispanic", "Household median income", "Income per capita",
+                                            "% without HS degree", "% has college degree and up",
+                                            "% under 18", "% above 65"))
+result$method <- factor(result$method, levels=c("pre", "nearest", "subclass", "optimal"))
+
+#visualization
+ggplot(data = result,
+       mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
+  geom_point(pch=1) +
+  geom_hline(yintercept = 0.25, color = "red", size = 0.1, linetype="dashed") +
+  geom_hline(yintercept = -0.25, color = "red", size = 0.1, linetype="dashed") +
+  geom_vline(xintercept = 24.5) +
+  geom_hline(yintercept = 0, color = "black", size = 0.1) +
+  coord_flip() +
+  #scale_y_continuous(limits = c(-1, 3)) +
+  labs(title="Covariate balance, propensity score matching",
+       y="Standardized mean differences", x="",
+       caption="Note: matching ratio 1:1, without replacement") +
+  scale_color_manual(name="Sample", labels=c("Unmatched", "Nearest", "Subclass", "Optimal"),
+                       values =c("orange", "blueviolet", "hot pink", "aquamarine3")) +
+  theme_bw() +
+  theme(legend.key = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption=element_text(hjust=0, face="italic"))
+ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-overall.jpeg", dpi="retina")
