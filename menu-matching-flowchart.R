@@ -188,7 +188,7 @@ node [shape = rectangle, style = filled]
       a2[label='Pull in restaurant \n characteristics']
       a3[label='Pull in ACS data']
       a4[label='Identify menu labeling \n implementation time']
-      a5[label='Take lagged measurements \n on dynamic vars']
+      a5[label='Take lagged \n measurements on \n dynamic vars']
       a0 -> a1 -> a2 -> a3 -> a4 -> a5
       {rank=same; a0; a1; a2;}
       {rank=same; a3; a4; a5;}
@@ -202,14 +202,13 @@ node [shape = rectangle, style = filled]
       node[fillcolor=hotpink]
       b0[label='Define lookback \n period, establish \n baseline, t=3']
       b1[label='Isolate one \n cluster of \n treated restaurants']
-      b2[label='Narrow down to \n the month before \n labeling implementation']
-      b3[label='Select parameters \n -select distance (PS, exact, Mahalanobis, etc) \n -replacement \n -matching ratio \n -caliper']
+      b2[label='Reduce data to \n the month of \n labeling implementation']
+      b3[label='Select parameters \n -select distance (PS, exact, Mahalanobis, etc) \n -replacement \n -matching ratio \n -caliper \n -subclassification \n -method']
       b4[label='Repeat for \n all clusters']
       b5[label='Combine all \n clusters of \n matched restaurants']
-      b6[label='Merge back to \n analytical data']
-      b0 -> b1 -> b2 -> b3 -> b4 -> b5 -> b6
+      b0 -> b1 -> b2 -> b3 -> b4 -> b5
       {rank=same; b0; b1; b2;}
-      {rank=same; b3; b4; b5; b6;}
+      {rank=same; b3; b4; b5; }
       }
 
       subgraph cluster_matched {
@@ -218,11 +217,15 @@ node [shape = rectangle, style = filled]
       label='Diagnostics'
       fontname = 'helvetica-bold'
       node[fillcolor='#DAF7A6']
-      c0[label='Check covariate \n balance, visualize']
+      c0[label='Merge back to \n analytical data']
+      c1[label='Check covariate \n balance, visualize']
+      c2[label='Summary statistics']
+      c0 -> c1 -> c2
+      {rank=same; c0; c1; c2;}
       }
 
 a5 -> b0
-b6 -> c0
+b5 -> c0
 a0 -> b0 [style=invis]
 a0 -> c0 [style=invis]
 b3 -> c0 [style=invis]
