@@ -123,10 +123,33 @@ calorie <- merge(calorie, time, by=c("year", "month"))
 colnames(calorie)[c(1:2, 12:13)] <- c("yearno", "monthno", "year", "month")
 calorie <- aggregate(data=calorie, .~year+month+restid+yearno+monthno, sum) 
 calorie <- calorie[order(calorie$year, calorie$month), ]
-calorie[, c(6:11, 13)] <- calorie[, c(6:11, 13)]/calorie$count
+#calorie[, c(6:11, 13)] <- calorie[, c(6:11, 13)]/calorie$count
 
-### merge restaurant and calorie information ----
+### merge restaurant and calorie information, fix missing values, consolidate restaurants by address ----
 restaurant <- merge(restaurant, calorie, by="restid")
+restaurant <- restaurant[order(restaurant$address, restaurant$state, restaurant$monthno), ]
+names(restaurant)
+sapply(restaurant, function(x) sum(is.na(x)))
+sapply(restaurant, function(x) sum(is.nan(x)))
+
+#fix drive-thru information
+table(restaurant$drive_thru, restaurant$drive_thru_type, useNA="always")
+sum(is.na(restaurant$drive_thru))
+restaurant$drive_thru[is.na(restaurant$drive_thru)] <- 0
+restaurant$drive_thru_type[restaurant$drive_thru==0] <- "Neither"
+restaurant$drive_thru_type[restaurant$drive_thru==1&is.na(restaurant$drive_thru_type)] <- "Driver"
+
+tmp1 <- restaurant[, c(2:4, 9:23)]
+tmp1 <- tmp1[!duplicated(tmp1), ]
+length(unique(paste0(restaurant$address, restaurant$tract_num)))
+tmp1 <- tmp1[order(tmp1$state, tmp1$address), ]
+
+tmp2 <- restaurant[, c(2:3, 5:8, 28:39)]
+tmp2 <- aggregate(data=tmp2,
+                  .~tract_num+address+concept+drive_thru+drive_thru_type+ownership+year+month+yearno+monthno,
+                  sum)
+restaurant <- merge(tmp2, tmp1, by=c("address", "tract_num"))
+rm(tmp1, tmp2)
 
 ### add timeline for menu labeling in city/state ----
 #C:\Users\wue04\NYU Langone Health\Elbel, Brian - Taco Bell labeling R01\PROPOSAL\Menu Labeling Legislation Research
@@ -164,11 +187,12 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
                                  (restaurant$year>=2010|(restaurant$year==2009&
                                   restaurant$month>=10)),1,
                         ifelse(restaurant$state=="NY"&restaurant$county=="Nassau"&
-                                 (restaurant$year>=2010)|(restaurant$year==2009)&
-                                 restaurant$month>=11, 1,
+                                 ((restaurant$year>=2010)|((restaurant$year==2009)&
+                                 restaurant$month>=11)), 1,
                         ifelse(restaurant$state=="VT"&(restaurant$year>=2013|
                                 (restaurant$year==2012&restaurant$month>=6)), 1, 0))))))))))))))))
 rm(acs, calorie, time)
+table(restaurant$state[restaurant$ml==1])
 
 ### prepare data for rolling entry matching ----
 restaurant$entry <- ifelse(restaurant$state=="NY"&
@@ -214,9 +238,9 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
 
 # take lagged measurements for dynamic vars
-restaurant <- restaurant[order(restaurant$restid, restaurant$monthno), ]
+restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
-  group_by(restid) %>%
+  group_by(address, tract_num, concept, ownership) %>%
   mutate(calorie1 = lag(calorie, 1)) %>%
   mutate(calorie2 = lag(calorie, 2)) %>%
   mutate(calorie3 = lag(calorie, 3)) %>%
@@ -227,15 +251,9 @@ restaurant <- restaurant %>%
   mutate(dollar2 = lag(dollar, 2)) %>%
   mutate(dollar3 = lag(dollar, 3)) 
 
-# fix NA values
-restaurant$drive_thru[is.na(restaurant$drive_thru)] <- 0
-table(restaurant$drive_thru)
-restaurant <- restaurant[!is.na(restaurant$median_income), ]
-restaurant$drive_thru_type[is.na(restaurant$drive_thru_type)] <- "Driver"
-
 restaurant$concept <- as.factor(restaurant$concept)
 restaurant$ownership <- as.factor(restaurant$ownership)
-restaurant_subset <- subset(restaurant, select=-c(24:27),
+restaurant_subset <- subset(restaurant, #select=-c(24:27),
                             subset=(!is.na(calorie1)&!is.na(calorie2)&!is.na(calorie3)&
                                       !is.na(count1)&!is.na(count2)&!is.na(count3)&
                                       !is.na(dollar2)&!is.na(dollar2)&!is.na(dollar3)))
@@ -321,17 +339,17 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   master_matched <- rbind(master_matched, subset.matched)
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
-colnames(master)[48] <- "distance"
+colnames(master)[47] <- "distance"
 rm(i, subset, subset.match, subset.matched)
 
 # calculate standardized mean differences manually
 names(master)
 result <- as.data.frame(col_w_smd(mat=subset(master,
-                             select = c(5:6,8,11,13:23,39:48)),
+                             select = c(3:4,6,22,24:34,38:47)),
                   treat = master$treat, weights = NULL,
                   std = TRUE,
                   bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
-result2 <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+result2 <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(3:4,6,22,24:34,38:47)),
                    treat = master_matched$treat, weights = master_matched$weights,
                    std = TRUE,
                    bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
@@ -399,20 +417,6 @@ ggplot(data = result,
 length(unique(restaurant$restid))
 length(unique(restaurant$restid[restaurant$treat==1]))
 length(unique(restaurant$restid[restaurant$treat==0]))
-
-#after reducing to obs at time of labeling implementation
-master <- NULL
-for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
-  tryCatch({ #catch groups that do not have comparison restaurants
-    subset <- subset(restaurant_subset, entry==i & monthno==i)
-    master <- rbind(master, subset)
-  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
-}
-length(unique(master$restid)) #3605
-length(unique(master$restid[master$treat==1])) #581
-length(unique(master$restid[master$treat==0])) #3024
-master <- master[!duplicated(master$restid), 1]
-master <- merge(master, restaurant, by="restid")
 
 #after matching, with matched units
 table(master_matched$treat)
@@ -656,11 +660,25 @@ tmp <- merge(master_matched, restaurant, by="restid")
 rm(tmp)
 
 
-### sanity checks ----
+### sanity checks, why some restaurants didnt have any match ----
 tmp <- restaurant %>%
   dplyr::filter(state=="ME") %>%
   dplyr::select(address, state, year, month, open, close)
 table(tmp$month, tmp$year)
+
+#after reducing to obs at time of labeling implementation
+check <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i & treat==1)
+    check <- rbind(check, subset)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, i)
+
+table(check$state)
+table(check$city[check$state=="NY"])
+
 
 ### combine ps nearest, subclass and optimal ----
 master <- NULL
@@ -685,11 +703,11 @@ colnames(master)[48] <- "distance"
 # calculate standardized mean differences manually
 names(master)
 result.pre <- as.data.frame(col_w_smd(mat=subset(master,
-                                             select = c(5:6,8,11,13:23,39:48)),
+                                             select = c(3:4,6,22,24:34,38:47)),
                                   treat = master$treat, weights = NULL,
                                   std = TRUE,
                                   bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
-result.nearest <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+result.nearest <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(3:4,6,22,24:34,38:47)),
                                    treat = master_matched$treat, weights = master_matched$weights,
                                    std = TRUE,
                                    bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
@@ -711,7 +729,7 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 colnames(master)[48] <- "distance"
-result.subclass <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+result.subclass <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(3:4,6,22,24:34,38:47)),
                                           treat = master_matched$treat, weights = master_matched$weights,
                                           std = TRUE,
                                           bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
@@ -734,7 +752,7 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 colnames(master)[48] <- "distance"
-result.op <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(5:6,8,11,13:23,39:48)),
+result.op <- as.data.frame(col_w_smd(mat=subset(master_matched, select = c(3:4,6,22,24:34,38:47)),
                                            treat = master_matched$treat, weights = master_matched$weights,
                                            std = TRUE,
                                            bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
@@ -797,4 +815,4 @@ ggplot(data = result,
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
-ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-overall.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-overall.jpeg", dpi="retina")
