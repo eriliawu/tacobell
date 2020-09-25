@@ -32,6 +32,10 @@ library(CBPS)
 library(Matching)
 #install.packages("optmatch")
 library(optmatch)
+#install.packages("ebal") #entropy balance weighting after matching
+library(ebal)
+#install.packages("WeightIt")
+library(WeightIt)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -237,31 +241,24 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 1,
                            ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
 
+# mean spending per order, mean calorie
+restaurant[, c(11:16, 18)] <- restaurant[, c(11:16, 18)]/restaurant$count
+
+# create log vars
+restaurant <- restaurant %>% 
+  mutate(across(c(calorie,count,median_income, capital_income, total), ~ log(.), .names = "{col}_log"))
+
 # take lagged measurements for dynamic vars
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
   group_by(address, tract_num, concept, ownership) %>%
-  mutate(calorie1 = lag(calorie, 1)) %>%
-  mutate(calorie2 = lag(calorie, 2)) %>%
-  mutate(calorie3 = lag(calorie, 3)) %>%
-  mutate(count1 = lag(count, 1)) %>%
-  mutate(count2 = lag(count, 2)) %>%
-  mutate(count3 = lag(count, 3)) %>%
-  mutate(dollar1 = lag(dollar, 1)) %>%
-  mutate(dollar2 = lag(dollar, 2)) %>%
-  mutate(dollar3 = lag(dollar, 3)) 
+  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 1), .names = "{col}1")) %>%
+  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 2), .names = "{col}2")) %>%
+  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 3), .names = "{col}3")) 
 
-restaurant$concept <- as.factor(restaurant$concept)
-restaurant$ownership <- as.factor(restaurant$ownership)
-restaurant_subset <- subset(restaurant, #select=-c(24:27),
-                            subset=(!is.na(calorie1)&!is.na(calorie2)&!is.na(calorie3)&
-                                      !is.na(count1)&!is.na(count2)&!is.na(count3)&
-                                      !is.na(dollar2)&!is.na(dollar2)&!is.na(dollar3)))
+restaurant_subset <- restaurant[complete.cases(restaurant), ] #drop rows with NA values
 restaurant_subset$concept <- ifelse(restaurant_subset$concept=="TBC", 0, 1)
 restaurant_subset$ownership <- ifelse(restaurant_subset$ownership=="COMPANY", 1, 0)
-
-# check NA values
-colnames(restaurant_subset)[colSums(is.na(restaurant_subset)) > 0]
 
 # pre-matching summary stats
 # by city/state, N restaurants and N restid-month
@@ -402,15 +399,15 @@ ggplot(data = result,
   geom_hline(yintercept = 0, color = "black", size = 0.1) +
   coord_flip() +
   #scale_y_continuous(limits = c(-1, 3)) +
-  labs(title="Covariate balance, Mahalanobis distance",
+  labs(title="Covariate balance, PS distance",
        y="Standardized mean differences", x="",
-       caption="Note: matching ratio 1:1, without replacement, using Mahalanobis distance") +
+       caption="Note: matching ratio 1:1, without replacement") +
   scale_color_discrete(name="Sample", labels=c("Matched", "Unmatched")) +
   theme_bw() +
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
-#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-mahalanobis.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance.jpeg", dpi="retina")
 
 #summary stats
 #before matching, all restid-month rows
@@ -522,27 +519,6 @@ length(unique(master.cbps$restid[master.cbps$treat==0]))
 tmp <- merge(master_matched, restaurant, by="restid")
 rm(tmp)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ### testing manually calculate smd ----
 #calculate manually
 (mean(subset$under18[subset$treat==1]) - mean(subset$under18[subset$treat==0]))/
@@ -550,9 +526,26 @@ rm(tmp)
 (mean(subset$ownership[subset$treat==1]) - mean(subset$ownership[subset$treat==0]))/
   sqrt((mean(subset$ownership[subset$treat==1])*(1-mean(subset$ownership[subset$treat==1]))+mean(subset$ownership[subset$treat==0])*(1-mean(subset$ownership[subset$treat==0])))/2)
 
-col_w_smd(mat=subset(subset, select = c(8,22)),
+col_w_smd(mat=subset(subset, select = c(33,6)),
           treat = subset$treat, weights = NULL,
-          std = TRUE)
+          std = TRUE, bin.vars = c(FALSE, TRUE)) #0.149, -0.2937
+
+# after matching
+col_w_smd(mat=subset(match, select = c(33,6)), #s.d.denom="weighted",
+          weights = match$weights,
+          treat = match$treat, #s.weights = match$weights,
+          std = TRUE, bin.vars = c(FALSE, TRUE)) #-0.03194, -0.01234
+w.m <- function(x, w) sum(x*w)/sum(w)
+w.sd <- function(x, w) sqrt(sum(((x - w.m(x,w))^2)*w)/(sum(w)-1))
+with(match, (w.m(ownership[treat==1], weights[treat==1]) - w.m(ownership[treat==0], weights[treat==0]))/
+       w.sd(ownership[treat==1], weights[treat==1])) #-0.01246656
+
+# output from bal.tab is diff from using col_w_smd and user defined functions
+bal.tab(subset.match) #-0.0333, -0.0061
+
+w2 <- cobalt::get.w(subset.match, treat = subset.match$treat)
+with(subset, (w.m(under18[treat==1], w2[treat==1]) - w.m(under18[treat==0], w2[treat==0]))/
+       w.sd(under18[treat==1], w2[treat==1])) #-0.03326
 
 ### propensity score matching, optimal matching ----
 master <- NULL
@@ -816,3 +809,204 @@ ggplot(data = result,
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-overall.jpeg", dpi="retina")
+
+### try different matching strategy, with replacement, diff ratio ----
+#ps distance, ps weighting
+formula <- treat~concept+drive_thru+ownership+calorie_log1+calorie_log2+calorie_log3+
+  count_log1+count_log2+count_log3+dollar1+dollar2+dollar3+
+  total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
+  hsbelow+collegeup+under18+above65
+
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="nearest", 
+                            replace=TRUE, ratio=3, caliper=0.2)
+    match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+    #add distance to unmatched data
+    subset$distance <- subset.match$distance
+    #add ps balance
+    bal <- weightit(data=match, formula = formula, method = "ps",
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+
+# calculate standardized mean differences manually
+names(master)
+result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          treat = master$treat,
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+
+colnames(result)[1:3] <- c("pre", "ps", "ps_weight")
+result <- cbind(result,
+                data.frame(old=row.names(result),
+                           new=c("Joint brand","Has drive through", "Ownership",
+                                 "% male", "% white", "% Black", "% Asian",
+                                 "% Hispanic", "% without HS degree", "% has college degree and up",
+                                 "% under 18", "% above 65",
+                                 "Household median income", "Income per capita","Total population",
+                                 "Mean spending per order, t-1", "Mean calorie, t-1", "# of transactions, t-1",
+                                 "Mean spending per order, t-2", "Mean calorie, t-2", "# of transactions, t-2", 
+                                 "Mean spending per order, t-3", "Mean calorie, t-3", "# of transactions, t-3",
+                                 "Distance")))
+names(result)
+result <- reshape(result, direction = "long",
+                  varying = list(names(result)[1:3]), v.names = "score",
+                  idvar = c("old", "new"),
+                  timevar = "method", times = c("pre","ps", "ps_weight"))
+
+# replicate love.plot
+result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through",
+                                            "Ownership",
+                                            "Mean calorie, t-1", 
+                                            "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
+                                            "# of transactions, t-2", "# of transactions, t-3",
+                                            "Mean spending per order, t-1", "Mean spending per order, t-2",
+                                            "Mean spending per order, t-3",
+                                            "Total population", "% male", "% white", "% Black", "% Asian",
+                                            "% Hispanic", "Household median income", "Income per capita",
+                                            "% without HS degree", "% has college degree and up",
+                                            "% under 18", "% above 65"))
+ggplot(data = result,
+       mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
+  geom_point(pch=1) +
+  geom_hline(yintercept = 0.1, color = "red", size = 0.1, linetype="longdash") +
+  geom_hline(yintercept = -0.1, color = "red", size = 0.1, linetype="longdash") +
+  geom_vline(xintercept = 24.5) +
+  geom_hline(yintercept = 0, color = "black", size = 0.1) +
+  coord_flip() +
+  #scale_y_continuous(limits = c(-1, 3)) +
+  labs(title="Covariate balance, PS distance with weighting",
+       y="Standardized mean differences", x="",
+       caption="Note: matching ratio 1:3, with replacement") +
+  scale_color_manual(name="Sample", labels=c("Unmatched","PS", "PS Weighting"),
+                       values =c("orange", "aquamarine3", "blueviolet")) +
+  theme_bw() +
+  theme(legend.key = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption=element_text(hjust=0, face="italic"))
+#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-ps-weighting.jpeg", dpi="retina")
+
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+
+#### mahalanobis distance ----
+vars <- c("concept","drive_thru","ownership","calorie_log1","calorie_log2",
+          "calorie_log3","count_log1","count_log2","count_log3","dollar1",
+          "dollar2","dollar3","total_log","male","white","black","asian","hisp",
+          "median_income_log","capital_income_log","hsbelow","collegeup",
+          "under18","above65")
+
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==254& monthno==254)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="mahalanobis", method="nearest", 
+                            replace=TRUE, ratio=3, caliper=0.2,
+                            mahvars=vars)
+    summary(subset.match)
+    match <- match.data(subset.match, weights = "s.weights")
+    match$distance <- NULL
+    #add entropy balance
+    bal <- weightit(data=match, formula = formula, method = "ebal",
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+
+ebalance(Treatment = match$treat, X=c(match$male, match$ownership, match$calorie_log1),
+         base.weight = match$s.weights)
+
+
+result.mahal <- cbind(col_w_smd(mat=subset(subset,select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:57)),
+                          treat = subset$treat,
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(match, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:57)),
+                          treat = match$treat, s.weights = match$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(match, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:57)),
+                          weights = match$weights, treat = match$treat, s.weights = match$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+colnames(result.mahal)[1:3] <- c("pre_mahal", "mahal", "mahal_entropy")
+result.mahal <- cbind(result.mahal,
+                data.frame(old=row.names(result.mahal),
+                           new=c("Joint brand","Has drive through", "Ownership",
+                                 "% male", "% white", "% Black", "% Asian",
+                                 "% Hispanic", "% without HS degree", "% has college degree and up",
+                                 "% under 18", "% above 65",
+                                 "Household median income", "Income per capita","Total population",
+                                 "Mean spending per order, t-1", "Mean calorie, t-1", "# of transactions, t-1",
+                                 "Mean spending per order, t-2", "Mean calorie, t-2", "# of transactions, t-2", 
+                                 "Mean spending per order, t-3", "Mean calorie, t-3", "# of transactions, t-3")))
+names(result.mahal)
+result.mahal <- reshape(result.mahal, direction = "long",
+                  varying = list(names(result.mahal)[1:3]), v.names = "score",
+                  idvar = c("old", "new"),
+                  timevar = "method", times = c("pre_mahal", "mahal", "mahal_entropy"))
+
+# replicate love.plot
+result.mahal$label <- factor(result.mahal$new, levels=c("Joint brand", "Has drive through",
+                                            "Ownership",
+                                            "Mean calorie, t-1", 
+                                            "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
+                                            "# of transactions, t-2", "# of transactions, t-3",
+                                            "Mean spending per order, t-1", "Mean spending per order, t-2",
+                                            "Mean spending per order, t-3",
+                                            "Total population", "% male", "% white", "% Black", "% Asian",
+                                            "% Hispanic", "Household median income", "Income per capita",
+                                            "% without HS degree", "% has college degree and up",
+                                            "% under 18", "% above 65"))
+result <- rbind(result, result.mahal)
+result$method <- factor(result$method,
+                        levels=c("pre", "pre_mahal", "ps", "ps_weight", "mahal", "mahal_entropy"))
+
+ggplot(data = result,
+       mapping = aes(x = fct_rev(label), y=score, group=method, color=method)) +
+  geom_point(data = result %>% filter(method!="pre_mahal"), size=2) +
+  geom_hline(yintercept = 0.1, color = "red", size = 0.1, linetype="longdash") +
+  geom_hline(yintercept = -0.1, color = "red", size = 0.1, linetype="longdash") +
+  geom_vline(xintercept = 24.5) +
+  geom_hline(yintercept = 0, color = "black", size = 0.1) +
+  coord_flip() +
+  labs(title="Covariate balance, comparing different methods",
+       y="Standardized mean differences", x="",
+       caption="Note: matching ratio 1:3, with replacement. Methods involving Mahalanobis distance matching do not have an overall distance metric.") +
+  scale_color_manual(name="Sample", labels=c("Unmatched", "PS", "PS+Weighting",
+                                             "Mahalanobis", "Mahalanobis+Entropy"),
+                     values =c("orange", "aquamarine3", "blueviolet", "#999999", "red")) +
+  theme_bw() +
+  theme(legend.key = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption=element_text(hjust=0, face="italic"))
+#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-comparing.jpeg", dpi="retina")
+rm(bal, result, result.mahal, subset, subset.match, vars)
+
+
+
+
+
+
+
+
