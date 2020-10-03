@@ -1070,7 +1070,7 @@ rm(tmp)
 # assess common support
 ggplot(data = master,
        mapping = aes(x = pscore, y=log(median_income), group=as.factor(treat), color=as.factor(treat))) +
-  geom_point(pch=1, size=1, ) +
+  geom_point(pch=1, size=1) +
   labs(title="", x="Probability of being treated",
        caption="Note: matching ratio 1:3, with replacement. 'Distance' metricethods involving Mahalanobis distance is the propensity score.") +
   theme_bw() +
