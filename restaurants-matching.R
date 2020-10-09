@@ -36,6 +36,8 @@ library(optmatch)
 library(ebal)
 #install.packages("WeightIt")
 library(WeightIt)
+#install.packages("broom") #change lm model results into dataframe for estimating individual slopes
+library(broom)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -254,9 +256,43 @@ restaurant <- restaurant %>%
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
   group_by(address, tract_num, concept, ownership) %>%
-  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 1), .names = "{col}1")) %>%
-  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 2), .names = "{col}2")) %>%
-  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 3), .names = "{col}3")) 
+  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 1), .names = "{col}1"))
+
+### estimating individual slopes ----
+length(unique(restaurant$address))
+
+master <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+    dollar <- restaurant %>% 
+      group_by(address, tract_num, ownership, concept) %>%
+      filter(monthno>=247 & monthno<253) %>%
+      do(tidy(lm(dollar~monthno, data = .))) %>%
+      filter(!is.na(estimate)&term=="monthno") %>%
+      dplyr::select(address:concept, estimate) %>%
+      rename(slope_dollar = estimate) 
+    count <- restaurant %>% 
+      group_by(address, tract_num, ownership, concept) %>%
+      filter(monthno>=i-6 & monthno<i) %>%
+      do(tidy(lm(count_log~monthno, data = .))) %>%
+      filter(!is.na(estimate)&term=="monthno") %>%
+      dplyr::select(address:concept, estimate) %>%
+      rename(slope_count = estimate) 
+    calorie <- restaurant %>% 
+      group_by(address, tract_num, ownership, concept) %>%
+      filter(monthno>=i-6 & monthno<i) %>%
+      do(tidy(lm(calorie_log~monthno, data = .))) %>%
+      filter(!is.na(estimate)&term=="monthno") %>%
+      dplyr::select(address:concept, estimate) %>%
+      rename(slope_calorie = estimate)
+    dollar <- merge(dollar, count, by=c("address","tract_num","ownership","concept"))
+    dollar <- merge(dollar, calorie, by=c("address","tract_num","ownership","concept"))
+    dollar$monthno <- i
+    master <- rbind(master, dollar)
+}
+rm(i, dollar, count, calorie)
+
+restaurant <- merge(restaurant, master, all = TRUE,
+                    by=c("address","tract_num","ownership","concept", "monthno"))
 
 restaurant_subset <- restaurant[complete.cases(restaurant), ] #drop rows with NA values
 restaurant_subset$concept <- ifelse(restaurant_subset$concept=="TBC", 0, 1)
@@ -805,8 +841,8 @@ ggplot(data = result,
 
 ### try different matching strategy, with replacement, diff ratio ----
 #ps distance, ps weighting
-formula <- treat~concept+drive_thru+ownership+calorie_log1+calorie_log2+calorie_log3+
-  count_log1+count_log2+count_log3+dollar1+dollar2+dollar3+
+formula <- treat~concept+drive_thru+ownership+calorie_log1+slope_calorie+
+  count_log1+slope_count+dollar1+slope_dollar+
   total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
   hsbelow+collegeup+under18+above65
 
@@ -836,15 +872,17 @@ rm(subset, subset.match, match, i, bal)
 
 # calculate standardized mean differences manually
 names(master)
-result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
                           treat = master$treat,
-                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
                           treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))))
+
+#same parameters, no caliper
 master <- NULL
 matched <- NULL
 for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
@@ -870,9 +908,9 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
 rm(subset, subset.match, match, i, bal)
 
 result <- cbind(result,
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))))
 colnames(result)[1:4] <- c("pre", "ps", "ps_weight", "ps_weight_nocal")
 result <- cbind(result,
                 data.frame(old=row.names(result),
@@ -882,8 +920,7 @@ result <- cbind(result,
                                  "% under 18", "% above 65",
                                  "Household median income", "Income per capita","Total population",
                                  "Mean spending per order, t-1", "Mean calorie, t-1", "# of transactions, t-1",
-                                 "Mean spending per order, t-2", "Mean calorie, t-2", "# of transactions, t-2", 
-                                 "Mean spending per order, t-3", "Mean calorie, t-3", "# of transactions, t-3",
+                                 "Mean spending per order trend", "# of transactions trend", "Mean calorie trend", 
                                  "Distance")))
 names(result)
 result <- reshape(result, direction = "long",
@@ -892,13 +929,10 @@ result <- reshape(result, direction = "long",
                   timevar = "method", times = c("pre","ps", "ps_weight", "ps_weight_nocal"))
 
 # replicate love.plot
-result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through",
-                                            "Ownership",
-                                            "Mean calorie, t-1", 
-                                            "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
-                                            "# of transactions, t-2", "# of transactions, t-3",
-                                            "Mean spending per order, t-1", "Mean spending per order, t-2",
-                                            "Mean spending per order, t-3",
+result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through","Ownership",
+                                            "Mean calorie, t-1", "Mean calorie trend",
+                                            "# of transactions, t-1", "# of transactions trend",
+                                            "Mean spending per order, t-1", "Mean spending per order trend",
                                             "Total population", "% male", "% white", "% Black", "% Asian",
                                             "% Hispanic", "Household median income", "Income per capita",
                                             "% without HS degree", "% has college degree and up",
@@ -934,9 +968,9 @@ length(unique(restaurant$address[restaurant$treat==1]))
 length(unique(restaurant$address[restaurant$treat==0]))
 
 ### mahalanobis distance ----
-vars <- c("concept","drive_thru","ownership","calorie_log1","calorie_log2",
-          "calorie_log3","count_log1","count_log2","count_log3","dollar1",
-          "dollar2","dollar3","total_log","male","white","black","asian","hisp",
+vars <- c("concept","drive_thru","ownership","calorie_log1","slope_calorie",
+          "count_log1","slope_count","dollar1",
+          "slope_dollar","total_log","male","white","black","asian","hisp",
           "median_income_log","capital_income_log","hsbelow","collegeup",
           "under18","above65", "pscore")
 
@@ -945,8 +979,8 @@ ps <- glm(formula = formula, data=restaurant_subset, family=binomial())
 restaurant_subset$pscore <- ps$fitted.values
 rm(ps)
 
-formula.m <- treat~concept+drive_thru+ownership+calorie_log1+calorie_log2+calorie_log3+
-  count_log1+count_log2+count_log3+dollar1+dollar2+dollar3+
+formula.m <- treat~concept+drive_thru+ownership+calorie_log1+slope_calorie+
+  count_log1+slope_count+dollar1+slope_dollar+
   total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
   hsbelow+collegeup+under18+above65+pscore
 
@@ -983,13 +1017,13 @@ rm(subset, subset.match, match, i, bal)
 
 result.mahal <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
                           treat = master$treat,
-                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))),
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
                 col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
                           treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))),
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
                 col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 22))))
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))))
 colnames(result.mahal)[1:3] <- c("pre_mahal", "mahal", "mahal_entropy")
 result.mahal <- cbind(result.mahal,
                 data.frame(old=row.names(result.mahal),
