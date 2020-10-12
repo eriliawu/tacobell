@@ -131,6 +131,51 @@ calorie <- aggregate(data=calorie, .~year+month+restid+yearno+monthno, sum)
 calorie <- calorie[order(calorie$year, calorie$month), ]
 #calorie[, c(6:11, 13)] <- calorie[, c(6:11, 13)]/calorie$count
 
+### adding drive-thru and meal time breakdown ----
+drive07 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_occasion_2007_Q1.csv",
+                  stringsAsFactors=FALSE)
+drive07$count <- drive07$count/2
+meal07 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_2007_Q1.csv",
+                 stringsAsFactors=FALSE)
+meal07$count <- meal07$count/2
+
+drive <- NULL
+meal <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_occasion_",
+                                  i,"_Q",j,".csv"), stringsAsFactors = FALSE)
+        drive <- rbind(drive, sample)
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_",
+                                  i,"_Q",j,".csv"), stringsAsFactors = FALSE)
+        meal <- rbind(meal, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+drive <- rbind(drive07, drive)
+drive <- drive %>%
+  filter(DW_OCCASION==2) %>%
+  dplyr::select(1,3,11) %>%
+  rename(drive=count) %>%
+  group_by(DW_RESTID, DW_MONTH) %>%
+  summarise(drive = sum(drive))
+  
+meal <- rbind(meal07, meal)
+meal <- meal %>%
+  filter(DW_DAYPART==3|DW_DAYPART==5) %>%
+  dplyr::select(1,3,11) %>%
+  rename(meal=count) %>%
+  group_by(DW_RESTID, DW_MONTH) %>%
+  summarise(meal = sum(meal))
+rm(drive07, sample, meal07, i, j)
+drive <- merge(drive, meal, by=c("DW_RESTID", "DW_MONTH"))
+colnames(drive)[1:2] <- c("restid", "monthno")
+rm(meal)
+
 ### merge restaurant and calorie information, fix missing values, consolidate restaurants by address ----
 restaurant <- merge(restaurant, calorie, by="restid")
 restaurant <- restaurant[order(restaurant$address, restaurant$state, restaurant$monthno), ]
@@ -145,17 +190,25 @@ restaurant$drive_thru[is.na(restaurant$drive_thru)] <- 0
 restaurant$drive_thru_type[restaurant$drive_thru==0] <- "Neither"
 restaurant$drive_thru_type[restaurant$drive_thru==1&is.na(restaurant$drive_thru_type)] <- "Driver"
 
-tmp1 <- restaurant[, c(2:4, 9:23)]
+# merge drive-thru and mealtime breakdown
+restaurant <- merge(restaurant, drive, by=c("restid", "monthno"))
+restaurant <- restaurant[, -c(8,25:28)]
+
+# aggregate on address, instead of restid
+tmp1 <- restaurant[, c(3:5, 9:23)]
 tmp1 <- tmp1[!duplicated(tmp1), ]
 length(unique(paste0(restaurant$address, restaurant$tract_num)))
 tmp1 <- tmp1[order(tmp1$state, tmp1$address), ]
 
-tmp2 <- restaurant[, c(2:3, 5:8, 28:39)]
+#tmp2 <- restaurant[, c(2:3, 5:8, 28:39)]
+tmp2 <- restaurant[, c(2:4,6:8,24:36)]
 tmp2 <- aggregate(data=tmp2,
-                  .~tract_num+address+concept+drive_thru+drive_thru_type+ownership+year+month+yearno+monthno,
+                  .~tract_num+address+concept+drive_thru+ownership+year+month+yearno+monthno,
                   sum)
 restaurant <- merge(tmp2, tmp1, by=c("address", "tract_num"))
-rm(tmp1, tmp2)
+rm(tmp1, tmp2, drive)
+restaurant <- restaurant[!duplicated(restaurant), ]
+restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$ownership, restaurant$monthno), ]
 
 ### add timeline for menu labeling in city/state ----
 #C:\Users\wue04\NYU Langone Health\Elbel, Brian - Taco Bell labeling R01\PROPOSAL\Menu Labeling Legislation Research
@@ -244,7 +297,7 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
 
 # mean spending per order, mean calorie
-restaurant[, c(11:16, 18)] <- restaurant[, c(11:16, 18)]/restaurant$count
+restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17:19)]/restaurant$count
 
 # create log vars
 # replace 0 values with a small value
@@ -265,7 +318,7 @@ master <- NULL
 for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     dollar <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
-      filter(monthno>=247 & monthno<253) %>%
+      filter(monthno>=i-6 & monthno<i) %>%
       do(tidy(lm(dollar~monthno, data = .))) %>%
       filter(!is.na(estimate)&term=="monthno") %>%
       dplyr::select(address:concept, estimate) %>%
@@ -293,6 +346,7 @@ rm(i, dollar, count, calorie)
 
 restaurant <- merge(restaurant, master, all = TRUE,
                     by=c("address","tract_num","ownership","concept", "monthno"))
+rm(master)
 
 restaurant_subset <- restaurant[complete.cases(restaurant), ] #drop rows with NA values
 restaurant_subset$concept <- ifelse(restaurant_subset$concept=="TBC", 0, 1)
@@ -842,7 +896,7 @@ ggplot(data = result,
 ### try different matching strategy, with replacement, diff ratio ----
 #ps distance, ps weighting
 formula <- treat~concept+drive_thru+ownership+calorie_log1+slope_calorie+
-  count_log1+slope_count+dollar1+slope_dollar+
+  count_log1+slope_count+dollar1+slope_dollar+drive+meal+
   total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
   hsbelow+collegeup+under18+above65
 
@@ -872,15 +926,15 @@ rm(subset, subset.match, match, i, bal)
 
 # calculate standardized mean differences manually
 names(master)
-result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
+result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           treat = master$treat,
-                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))))
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
 
 #same parameters, no caliper
 master <- NULL
@@ -908,13 +962,14 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
 rm(subset, subset.match, match, i, bal)
 
 result <- cbind(result,
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:51)),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))))
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
 colnames(result)[1:4] <- c("pre", "ps", "ps_weight", "ps_weight_nocal")
 result <- cbind(result,
                 data.frame(old=row.names(result),
-                           new=c("Joint brand","Has drive through", "Ownership",
+                           new=c("Joint brand", "Ownership", "Has drive through",
+                                 "% drive-thru transactions", "% lunch/dinner transactions",
                                  "% male", "% white", "% Black", "% Asian",
                                  "% Hispanic", "% without HS degree", "% has college degree and up",
                                  "% under 18", "% above 65",
@@ -933,6 +988,7 @@ result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has driv
                                             "Mean calorie, t-1", "Mean calorie trend",
                                             "# of transactions, t-1", "# of transactions trend",
                                             "Mean spending per order, t-1", "Mean spending per order trend",
+                                            "% drive-thru transactions", "% lunch/dinner transactions",
                                             "Total population", "% male", "% white", "% Black", "% Asian",
                                             "% Hispanic", "Household median income", "Income per capita",
                                             "% without HS degree", "% has college degree and up",
@@ -942,7 +998,7 @@ ggplot(data = result,
   geom_point() +
   geom_hline(yintercept = 0.1, color = "red", size = 0.5, linetype="dashed") +
   geom_hline(yintercept = -0.1, color = "red", size = 0.5, linetype="dashed") +
-  geom_vline(xintercept = 24.5) +
+  geom_vline(xintercept = 23.5) +
   geom_hline(yintercept = 0, color = "black", size = 0.1) +
   coord_flip() +
   #scale_y_continuous(limits = c(-1, 3)) +
@@ -969,8 +1025,8 @@ length(unique(restaurant$address[restaurant$treat==0]))
 
 ### mahalanobis distance ----
 vars <- c("concept","drive_thru","ownership","calorie_log1","slope_calorie",
-          "count_log1","slope_count","dollar1",
-          "slope_dollar","total_log","male","white","black","asian","hisp",
+          "count_log1","slope_count","dollar1", "slope_dollar", "drive", "meal",
+          "total_log","male","white","black","asian","hisp",
           "median_income_log","capital_income_log","hsbelow","collegeup",
           "under18","above65", "pscore")
 
@@ -980,9 +1036,9 @@ restaurant_subset$pscore <- ps$fitted.values
 rm(ps)
 
 formula.m <- treat~concept+drive_thru+ownership+calorie_log1+slope_calorie+
-  count_log1+slope_count+dollar1+slope_dollar+
-  total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
-  hsbelow+collegeup+under18+above65+pscore
+    count_log1+slope_count+dollar1+slope_dollar+drive+meal+
+    total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
+    hsbelow+collegeup+under18+above65+pscore
 
 master <- NULL
 matched <- NULL
@@ -995,7 +1051,7 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     #matching
     subset.match <- matchit(data=subset, formula = formula.m, 
                             distance="mahalanobis", method="nearest", 
-                            replace=TRUE, ratio=3, caliper=0.2,
+                            replace=TRUE, ratio=3, #caliper=0.2,
                             mahvars=vars)
     summary(subset.match)
     match <- match.data(subset.match, weights = "s.weights")
@@ -1005,7 +1061,7 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
                     estimand = "ATT", s.weights = "s.weights")
     match$weights <- bal$weights
     #bal <- ebalance(Treatment = match$treat,
-    #                X=match[, c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:57)],
+    #                X=match[, c(3:4,6,22,25:28,31:34,40:42,45:51)],
     #                base.weight = match$s.weights[match$treat==0])
     #match$weights <- ifelse(match$treat==0, bal$weights, 1)
     
@@ -1015,26 +1071,26 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
 }
 rm(subset, subset.match, match, i, bal)
 
-result.mahal <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+result.mahal <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           treat = master$treat,
-                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,22,25:28,31:34,40:42,45:47,50:52,55:58)),
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 19))))
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
 colnames(result.mahal)[1:3] <- c("pre_mahal", "mahal", "mahal_entropy")
 result.mahal <- cbind(result.mahal,
                 data.frame(old=row.names(result.mahal),
-                           new=c("Joint brand","Has drive through", "Ownership",
+                           new=c("Joint brand", "Ownership", "Has drive through",
+                                 "% drive-thru transactions", "% lunch/dinner transactions",
                                  "% male", "% white", "% Black", "% Asian",
                                  "% Hispanic", "% without HS degree", "% has college degree and up",
                                  "% under 18", "% above 65",
                                  "Household median income", "Income per capita","Total population",
                                  "Mean spending per order, t-1", "Mean calorie, t-1", "# of transactions, t-1",
-                                 "Mean spending per order, t-2", "Mean calorie, t-2", "# of transactions, t-2", 
-                                 "Mean spending per order, t-3", "Mean calorie, t-3", "# of transactions, t-3",
+                                 "Mean spending per order trend", "# of transactions trend", "Mean calorie trend", 
                                  "Distance")))
 names(result.mahal)
 result.mahal <- reshape(result.mahal, direction = "long",
@@ -1043,13 +1099,11 @@ result.mahal <- reshape(result.mahal, direction = "long",
                   timevar = "method", times = c("pre_mahal", "mahal", "mahal_entropy"))
 
 # replicate love.plot
-result.mahal$label <- factor(result.mahal$new, levels=c("Distance", "Joint brand", "Has drive through",
-                                            "Ownership",
-                                            "Mean calorie, t-1", 
-                                            "Mean calorie, t-2", "Mean calorie, t-3", "# of transactions, t-1",
-                                            "# of transactions, t-2", "# of transactions, t-3",
-                                            "Mean spending per order, t-1", "Mean spending per order, t-2",
-                                            "Mean spending per order, t-3",
+result.mahal$label <- factor(result.mahal$new, levels=c("Distance", "Joint brand", "Has drive through","Ownership",
+                                            "Mean calorie, t-1", "Mean calorie trend",
+                                            "# of transactions, t-1", "# of transactions trend",
+                                            "Mean spending per order, t-1", "Mean spending per order trend",
+                                            "% drive-thru transactions", "% lunch/dinner transactions",
                                             "Total population", "% male", "% white", "% Black", "% Asian",
                                             "% Hispanic", "Household median income", "Income per capita",
                                             "% without HS degree", "% has college degree and up",
@@ -1064,7 +1118,7 @@ ggplot(data = result,
   geom_point(data = result %>% filter(method!="pre_mahal"), size=2) +
   geom_hline(yintercept = 0.1, color = "red", size = 0.75, linetype="dashed") +
   geom_hline(yintercept = -0.1, color = "red", size = 0.75, linetype="dashed") +
-  geom_vline(xintercept = 24.5) +
+  geom_vline(xintercept = 23.5) +
   geom_hline(yintercept = 0, color = "black", size = 0.1) +
   coord_flip() +
   labs(title="Covariate balance, comparing different methods",
