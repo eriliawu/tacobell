@@ -917,7 +917,6 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     bal <- weightit(data=match, formula = formula, method = "ps",
                     estimand = "ATT", s.weights = "s.weights")
     match$weights <- bal$weights
-    # combine clusters of restaurants
     master <- rbind(master, subset)
     matched <- rbind(matched, match)
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
@@ -935,6 +934,24 @@ result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,18:19,23,26:29,32:3
                 col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
                           std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+
+#summary stats
+# unique restaurants, all
+length(unique(restaurant$address[restaurant$treat==1]))
+length(unique(restaurant$address[restaurant$treat==0]))
+
+#reduced data
+length(unique(master$address[master$treat==1]))
+length(unique(master$address[master$treat==0]))
+tmp <- master[!duplicated(master$address, master$tract_num), c(1:2)]
+tmp <- merge(tmp, restaurant, by=c("address", "tract_num")) #num of restaurant-month obs for reduced data
+
+#matched data
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+tmp <- matched[!duplicated(matched$address, matched$tract_num, matched$monthno), c(1:2)]
+tmp <- merge(tmp, restaurant, by=c("address", "tract_num")) #num of restaurant-month obs for matched data
+rm(tmp)
 
 #same parameters, no caliper
 master <- NULL
@@ -993,7 +1010,7 @@ result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has driv
                                             "% Hispanic", "Household median income", "Income per capita",
                                             "% without HS degree", "% has college degree and up",
                                             "% under 18", "% above 65"))
-ggplot(data = result,
+ggplot(data = result %>% filter(method=="pre"|method=="ps"|method=="ps_weight"|method=="ps_weight_nocal"),
        mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
   geom_point() +
   geom_hline(yintercept = 0.1, color = "red", size = 0.5, linetype="dashed") +
@@ -1001,7 +1018,6 @@ ggplot(data = result,
   geom_vline(xintercept = 23.5) +
   geom_hline(yintercept = 0, color = "black", size = 0.1) +
   coord_flip() +
-  #scale_y_continuous(limits = c(-1, 3)) +
   labs(title="Covariate balance, PS distance with weighting",
        y="Standardized mean differences", x="",
        caption="Note: matching ratio 1:3, with replacement") +
@@ -1011,17 +1027,15 @@ ggplot(data = result,
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
-#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-ps-weighting.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/matching/ps-matching/6-month-trend-formula/covariate-balance-ps-weighting-nocal.jpeg", dpi="retina")
 
 #summary stats
+#matched data
 length(unique(matched$address[matched$treat==1]))
 length(unique(matched$address[matched$treat==0]))
-
 tmp <- matched[!duplicated(matched$address, matched$tract_num, matched$monthno), c(1:2)]
-tmp <- merge(tmp, restaurant, by=c("address", "tract_num"))
-
-length(unique(restaurant$address[restaurant$treat==1]))
-length(unique(restaurant$address[restaurant$treat==0]))
+tmp <- merge(tmp, restaurant, by=c("address", "tract_num")) #num of restaurant-month obs for matched data
+rm(tmp)
 
 ### mahalanobis distance ----
 vars <- c("concept","drive_thru","ownership","calorie_log1","slope_calorie",
@@ -1047,7 +1061,6 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     subset <- subset(restaurant_subset, entry==i & monthno==i)
     # combine clusters of restaurants
     master <- rbind(master, subset)
-    
     #matching
     subset.match <- matchit(data=subset, formula = formula.m, 
                             distance="mahalanobis", method="nearest", 
@@ -1060,11 +1073,6 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     bal <- weightit(data=match, formula = formula.m, method = "ebal",
                     estimand = "ATT", s.weights = "s.weights")
     match$weights <- bal$weights
-    #bal <- ebalance(Treatment = match$treat,
-    #                X=match[, c(3:4,6,22,25:28,31:34,40:42,45:51)],
-    #                base.weight = match$s.weights[match$treat==0])
-    #match$weights <- ifelse(match$treat==0, bal$weights, 1)
-    
     # combine clusters of restaurants
     matched <- rbind(matched, match)
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
@@ -1131,27 +1139,12 @@ ggplot(data = result,
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
-#ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-comparing.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/matching/ps-matching/6-month-trend-formula/covariate-balance-comparing.jpeg", dpi="retina")
 
 #summary stats
 length(unique(matched$address[matched$treat==1]))
 length(unique(matched$address[matched$treat==0]))
-
 tmp <- matched[!duplicated(matched$address, matched$tract_num, matched$monthno), c(1:2)]
-tmp <- merge(tmp, restaurant, by=c("address", "tract_num"))
-rm(tmp)
-
-master <- NULL
-for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
-    subset <- subset(restaurant_subset, entry==i & monthno==i)
-    # combine clusters of restaurants
-    master <- rbind(master, subset)
-}
-rm(subset, i)
-
-length(unique(master$address[master$treat==1]))
-length(unique(master$address[master$treat==0]))
-tmp <- master[!duplicated(master$address, master$tract_num, master$monthno), c(1:2)]
 tmp <- merge(tmp, restaurant, by=c("address", "tract_num"))
 rm(tmp)
 
