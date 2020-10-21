@@ -38,6 +38,10 @@ library(ebal)
 library(WeightIt)
 #install.packages("broom") #change lm model results into dataframe for estimating individual slopes
 library(broom)
+#install.packages("optweight")
+library(optweight)
+#install.packages("sbw")
+library(sbw)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -309,7 +313,7 @@ restaurant <- restaurant %>%
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
   group_by(address, tract_num, concept, ownership) %>%
-  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 1), .names = "{col}1"))
+  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 1), .names = "{col}1")) 
 
 ### estimating individual slopes ----
 length(unique(restaurant$address))
@@ -326,14 +330,14 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     count <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
       filter(monthno>=i-6 & monthno<i) %>%
-      do(tidy(lm(count_log~monthno, data = .))) %>%
+      do(tidy(lm(count~monthno, data = .))) %>%
       filter(!is.na(estimate)&term=="monthno") %>%
       dplyr::select(address:concept, estimate) %>%
       rename(slope_count = estimate) 
     calorie <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
       filter(monthno>=i-6 & monthno<i) %>%
-      do(tidy(lm(calorie_log~monthno, data = .))) %>%
+      do(tidy(lm(calorie~monthno, data = .))) %>%
       filter(!is.na(estimate)&term=="monthno") %>%
       dplyr::select(address:concept, estimate) %>%
       rename(slope_calorie = estimate)
@@ -895,9 +899,9 @@ ggplot(data = result,
 
 ### try different matching strategy, with replacement, diff ratio ----
 #ps distance, ps weighting
-formula <- treat~concept+drive_thru+ownership+calorie_log1+slope_calorie+
-  count_log1+slope_count+dollar1+slope_dollar+drive+meal+
-  total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
+formula <- treat~concept+drive_thru+ownership+calorie1+slope_calorie+
+  count1+slope_count+dollar1+slope_dollar+drive+meal+
+  total+male+white+black+asian+hisp+median_income+capital_income+
   hsbelow+collegeup+under18+above65
 
 master <- NULL
@@ -922,6 +926,10 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 rm(subset, subset.match, match, i, bal)
+
+hist(matched$s.weights[matched$treat==0], breaks = 100,
+     main="PS matching weighting results, caliper=0.2",
+     xlab="Weights assigned to comparison units")
 
 # calculate standardized mean differences manually
 names(master)
@@ -977,6 +985,10 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 rm(subset, subset.match, match, i, bal)
+
+hist(matched$s.weights[matched$treat==0], breaks = 100,
+     main="PS matching weighting results, no caliper",
+     xlab="Weights assigned to comparison units")
 
 result <- cbind(result,
                 col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
@@ -1038,10 +1050,10 @@ tmp <- merge(tmp, restaurant, by=c("address", "tract_num")) #num of restaurant-m
 rm(tmp)
 
 ### mahalanobis distance ----
-vars <- c("concept","drive_thru","ownership","calorie_log1","slope_calorie",
-          "count_log1","slope_count","dollar1", "slope_dollar", "drive", "meal",
-          "total_log","male","white","black","asian","hisp",
-          "median_income_log","capital_income_log","hsbelow","collegeup",
+vars <- c("concept","drive_thru","ownership","calorie1","slope_calorie",
+          "count1","slope_count","dollar1", "slope_dollar", "drive", "meal",
+          "total","male","white","black","asian","hisp",
+          "median_income","capital_income","hsbelow","collegeup",
           "under18","above65", "pscore")
 
 # use pscore as one of the covariates to be balanced
@@ -1049,35 +1061,44 @@ ps <- glm(formula = formula, data=restaurant_subset, family=binomial())
 restaurant_subset$pscore <- ps$fitted.values
 rm(ps)
 
-formula.m <- treat~concept+drive_thru+ownership+calorie_log1+slope_calorie+
-    count_log1+slope_count+dollar1+slope_dollar+drive+meal+
-    total_log+male+white+black+asian+hisp+median_income_log+capital_income_log+
+formula.m <- treat~concept+drive_thru+ownership+calorie1+slope_calorie+
+    count1+slope_count+dollar1+slope_dollar+drive+meal+
+    total+male+white+black+asian+hisp+median_income+capital_income+
     hsbelow+collegeup+under18+above65+pscore
 
 master <- NULL
 matched <- NULL
 for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   tryCatch({ #catch groups that do not have comparison restaurants
-    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    subset <- subset(restaurant_subset, entry==247 & monthno==247)
     # combine clusters of restaurants
-    master <- rbind(master, subset)
+    #master <- rbind(master, subset)
     #matching
     subset.match <- matchit(data=subset, formula = formula.m, 
                             distance="mahalanobis", method="nearest", 
                             replace=TRUE, ratio=3, #caliper=0.2,
                             mahvars=vars)
-    summary(subset.match)
+    #summary(subset.match)
     match <- match.data(subset.match, weights = "s.weights")
     match$distance <- NULL
     #add entropy balance
-    bal <- weightit(data=match, formula = formula.m, method = "ebal",
-                    estimand = "ATT", s.weights = "s.weights")
-    match$weights <- bal$weights
+    #bal <- weightit(data=match, formula = formula.m, method = "ebal",
+    #                estimand = "ATT", s.weights = "s.weights")
+    #match$weights <- bal$weights
+    #add sbw weights
+    #bal <- optweight(data=match, formula = formula.m,
+    #                 estimand = "ATT", s.weights = "s.weights")
+    balance <- sbw(dat=match, ind="treat", bal=list(bal_cov=vars))
+    print(summary(bal$weights))
     # combine clusters of restaurants
-    matched <- rbind(matched, match)
+    #matched <- rbind(matched, match)
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 rm(subset, subset.match, match, i, bal)
+
+hist(matched$s.weights[matched$treat==0], breaks = 100,
+     main="Mahalanobis matching weighting results + entropy balance weighting, no caliper",
+     xlab="Weights assigned to comparison units")
 
 result.mahal <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,18:19,23,26:29,32:35,41:43,46:52)),
                           treat = master$treat,
@@ -1153,13 +1174,12 @@ ggplot(data = master,
        mapping = aes(x = pscore, y=log(median_income), group=as.factor(treat), color=as.factor(treat))) +
   geom_point(pch=1, size=1) +
   labs(title="", x="Probability of being treated",
-       caption="Note: matching ratio 1:3, with replacement. 'Distance' metricethods involving Mahalanobis distance is the propensity score.") +
+       caption="") +
   theme_bw() +
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/ps-matching/covariate-balance-comparing.jpeg", dpi="retina")
-
 
 
 
