@@ -300,24 +300,24 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 1,
                            ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
 
-# mean spending per order, mean calorie
-restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17:19)]/restaurant$count
+# mean spending per order, mean calorie, % drive-thru, % lunch/dinner
+names(restaurant)
+restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17)]/restaurant$count
 
 # create log vars
 # replace 0 values with a small value
-restaurant$calorie[restaurant$calorie==0] <- 0.00001
-restaurant <- restaurant %>% 
-  mutate(across(c(calorie,count,median_income, capital_income, total), ~ log(.), .names = "{col}_log"))
+#restaurant$calorie[restaurant$calorie==0] <- 0.000000001
+#restaurant <- restaurant %>% 
+#  mutate(across(c(calorie,count,median_income, capital_income, total), ~ log(.), .names = "{col}_log"))
+#restaurant$calorie[restaurant$calorie==0.000000001] <- 0
 
 # take lagged measurements for dynamic vars
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
   group_by(address, tract_num, concept, ownership) %>%
-  mutate(across(c(calorie,count,dollar,calorie_log,count_log), ~ lag(., 1), .names = "{col}1")) 
+  mutate(across(c(calorie,count,dollar), ~ lag(., 1), .names = "{col}1")) 
 
 ### estimating individual slopes ----
-length(unique(restaurant$address))
-
 master <- NULL
 for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     dollar <- restaurant %>% 
@@ -355,6 +355,15 @@ rm(master)
 restaurant_subset <- restaurant[complete.cases(restaurant), ] #drop rows with NA values
 restaurant_subset$concept <- ifelse(restaurant_subset$concept=="TBC", 0, 1)
 restaurant_subset$ownership <- ifelse(restaurant_subset$ownership=="COMPANY", 1, 0)
+
+### estimating pscore before matching ----
+ps <- glm(formula = treat~concept+drive_thru+ownership+calorie1+slope_calorie+
+            count1+slope_count+dollar1+slope_dollar+drive+meal+
+            total+male+white+black+asian+hisp+median_income+capital_income+
+            hsbelow+collegeup+under18+above65,
+          data=restaurant_subset, family=binomial())
+restaurant_subset$pscore <- ps$fitted.values
+rm(ps)
 
 ### rolling entry matching ----
 #reduce input data for matching
@@ -1022,7 +1031,7 @@ result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has driv
                                             "% Hispanic", "Household median income", "Income per capita",
                                             "% without HS degree", "% has college degree and up",
                                             "% under 18", "% above 65"))
-ggplot(data = result %>% filter(method=="pre"|method=="ps"|method=="ps_weight"|method=="ps_weight_nocal"),
+ggplot(data = result,
        mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
   geom_point() +
   geom_hline(yintercept = 0.1, color = "red", size = 0.5, linetype="dashed") +
@@ -1070,7 +1079,7 @@ master <- NULL
 matched <- NULL
 for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   tryCatch({ #catch groups that do not have comparison restaurants
-    subset <- subset(restaurant_subset, entry==247 & monthno==247)
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
     # combine clusters of restaurants
     #master <- rbind(master, subset)
     #matching
@@ -1082,14 +1091,14 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     match <- match.data(subset.match, weights = "s.weights")
     match$distance <- NULL
     #add entropy balance
-    #bal <- weightit(data=match, formula = formula.m, method = "ebal",
-    #                estimand = "ATT", s.weights = "s.weights")
-    #match$weights <- bal$weights
+    bal <- weightit(data=match, formula = formula.m, method = "ebal",
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
     #add sbw weights
     #bal <- optweight(data=match, formula = formula.m,
     #                 estimand = "ATT", s.weights = "s.weights")
-    balance <- sbw(dat=match, ind="treat", bal=list(bal_cov=vars))
-    print(summary(bal$weights))
+    #balance <- sbw(dat=match, ind="treat", bal=list(bal_cov=vars))
+    #print(summary(bal$weights))
     # combine clusters of restaurants
     #matched <- rbind(matched, match)
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
@@ -1184,4 +1193,256 @@ ggplot(data = master,
 
 
 
+
+
+### finalize matching+weighting, no caliper ----
+# ps+iptw, mahal+entrp,mahal+sbw, entrp only
+formula <- treat~concept+drive_thru+ownership+calorie1+slope_calorie+
+  count1+slope_count+dollar1+slope_dollar+drive+meal+
+  total+male+white+black+asian+hisp+median_income+capital_income+
+  hsbelow+collegeup+under18+above65
+
+#ps matching+iptw
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    #matching
+    set.seed(10)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="nearest", #caliper=0.5,
+                            replace=TRUE, ratio=3)
+    match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+    #add distance to unmatched data
+    subset$distance <- subset.match$distance
+    #add ps balance
+    bal <- weightit(data=match, formula = formula, method = "ps",
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+
+#summary stats
+#reduced data
+length(unique(master$address[master$treat==1]))
+length(unique(master$address[master$treat==0]))
+
+#matched data
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+length(unique(matched$address[matched$treat==0&matched$weights>=0.1]))
+
+hist(matched$s.weights[matched$treat==0], breaks = 100,
+     main="PS matching weighting results, no caliper",
+     xlab="Weights assigned to comparison units")
+
+result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,18:19,23,25:35,39:44,46)),
+                          treat = master$treat,
+                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,25:35,39:44,46)),
+                          weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+#ps+entrp
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    #matching
+    set.seed(10)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="nearest", #caliper=0.2,
+                            replace=TRUE, ratio=3)
+    match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+    #add distance to unmatched data
+    subset$distance <- subset.match$distance
+    #add ps balance
+    bal <- weightit(data=match, formula = formula, method = "entropy", tol=rep(0.25,23),
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+matched <- matched[matched$weights!=2143289344, ]
+#matched data
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+length(unique(matched$address[matched$treat==0&matched$weights>=0.1]))
+result <- cbind(result,
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,25:35,39:44,46)),
+                          weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+
+#ps+sbw
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    #matching
+    set.seed(10)
+    subset.match <- matchit(data=subset, formula = formula, 
+                            distance="logit", method="nearest", #caliper=0.2,
+                            replace=TRUE, ratio=3)
+    match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+    #add distance to unmatched data
+    subset$distance <- subset.match$distance
+    #add ps balance
+    #bal <- weightit(data=match, formula = formula, method = "entropy",
+    #                estimand = "ATT", s.weights = "s.weights")
+    bal <- optweight(data=match, formula = formula, tol=rep(0.25,23),
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+matched <- matched[matched$weights!=2143289344, ]
+#matched data
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+length(unique(matched$address[matched$treat==0&matched$weights>=0.1]))
+result <- cbind(result,
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,25:35,39:44,46)),
+                          weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+#mahal distance
+# use pscore as one of the covariates to be balanced
+vars <- c("concept","drive_thru","ownership","calorie1","slope_calorie",
+          "count1","slope_count","dollar1", "slope_dollar", "drive", "meal",
+          "total","male","white","black","asian","hisp",
+          "median_income","capital_income","hsbelow","collegeup",
+          "under18","above65", "pscore")
+
+formula.m <- treat~concept+drive_thru+ownership+calorie1+slope_calorie+
+  count1+slope_count+dollar1+slope_dollar+drive+meal+
+  total+male+white+black+asian+hisp+median_income+capital_income+
+  hsbelow+collegeup+under18+above65+pscore
+
+# mahal+entrp
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    #matching
+    subset.match <- matchit(data=subset, formula = formula.m, 
+                            distance="mahalanobis", method="nearest", 
+                            replace=TRUE, ratio=3, mahvars=vars)
+    #summary(subset.match)
+    match <- match.data(subset.match, weights = "s.weights")
+    match$distance <- NULL
+    #add entropy balance
+    bal <- weightit(data=match, formula = formula.m, method = "ebal", tol=rep(0.25,24),
+                    estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    # combine clusters of restaurants
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+#matched data
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+length(unique(matched$address[matched$treat==0&matched$weights>=0.1]))
+result <- cbind(result,
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,25:35,39:44,45)),
+                          weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+
+#mahal+sbw
+master <- NULL
+matched <- NULL
+for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    subset <- subset(restaurant_subset, entry==i & monthno==i)
+    # combine clusters of restaurants
+    master <- rbind(master, subset)
+    #matching
+    subset.match <- matchit(data=subset, formula = formula.m, 
+                            distance="mahalanobis", method="nearest", 
+                            replace=TRUE, ratio=3, mahvars=vars)
+    #summary(subset.match)
+    match <- match.data(subset.match, weights = "s.weights")
+    match$distance <- NULL
+    #add sbw weights
+    bal <- optweight(data=match, formula = formula.m, tols = c(rep(0.25,24)),
+                     estimand = "ATT", s.weights = "s.weights")
+    match$weights <- bal$weights
+    # combine clusters of restaurants
+    matched <- rbind(matched, match)
+  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
+}
+rm(subset, subset.match, match, i, bal)
+matched <- matched %>% filter(weights!=2143289344)
+#matched data
+length(unique(matched$address[matched$treat==1]))
+length(unique(matched$address[matched$treat==0]))
+length(unique(matched$address[matched$treat==0&matched$weights>=0.1]))
+result <- cbind(result,
+                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,25:35,39:44,45)),
+                          weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
+
+colnames(result)[1:6] <- c("pre", "ps_weight", "ps_entrp", "ps_sbw", "mahal_entrp", "mahal_sbw")
+result <- cbind(result,
+                data.frame(old=row.names(result),
+                           new=c("Joint brand", "Ownership", "Has drive through",
+                                 "% drive-thru transactions", "% lunch/dinner transactions",
+                                 "% male", "Total population","% white", "% Black", "% Asian",
+                                 "% Hispanic", "Household median income", "Income per capita",
+                                 "% without HS degree", "% has college degree and up",
+                                 "% under 18", "% above 65","Mean calorie, t-1",
+                                 "# of transactions, t-1","Mean spending per order, t-1",  
+                                 "Mean spending per order trend", "# of transactions trend", "Mean calorie trend", 
+                                 "Distance")))
+names(result)
+result <- reshape(result, direction = "long",
+                  varying = list(names(result)[1:6]), v.names = "score",
+                  idvar = c("old", "new"),
+                  timevar = "method", times = c("pre","ps_weight", "ps_entrp", "ps_sbw", "mahal_entrp", "mahal_sbw"))
+
+# replicate love.plot
+result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through","Ownership",
+                                            "Mean calorie, t-1", "Mean calorie trend",
+                                            "# of transactions, t-1", "# of transactions trend",
+                                            "Mean spending per order, t-1", "Mean spending per order trend",
+                                            "% drive-thru transactions", "% lunch/dinner transactions",
+                                            "Total population", "% male", "% white", "% Black", "% Asian",
+                                            "% Hispanic", "Household median income", "Income per capita",
+                                            "% without HS degree", "% has college degree and up",
+                                            "% under 18", "% above 65"))
+result$method <- factor(result$method, levels = c("pre","ps_weight", "ps_entrp", "ps_sbw", "mahal_entrp", "mahal_sbw"))
+
+ggplot(data = result,
+       mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
+  geom_point() +
+  geom_hline(yintercept = 0.1, color = "red", size = 0.5, linetype="dashed") +
+  geom_hline(yintercept = -0.1, color = "red", size = 0.5, linetype="dashed") +
+  geom_vline(xintercept = 23.5) +
+  geom_hline(yintercept = 0, color = "black", size = 0.1) +
+  coord_flip() +
+  labs(title="Covariate balance",
+       y="Standardized mean differences", x="",
+       caption="in percent, no log") +
+  scale_color_manual(name="Sample", labels=c("Unmatched","PS+IPTW", "PS+Entropy", "PS+SBW",
+                                             "Mahalanobis+Entropy", "Mahalanobis+SBW"),
+                     values =c("orange", "aquamarine3", "red", "blueviolet", "skyblue", "grey")) +
+  theme_bw() +
+  theme(legend.key = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption=element_text(hjust=0, face="italic"))
+#ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance.jpeg", dpi="retina")
 
