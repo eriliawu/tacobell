@@ -38,10 +38,12 @@ library(ebal)
 library(WeightIt)
 #install.packages("broom") #change lm model results into dataframe for estimating individual slopes
 library(broom)
-#install.packages("optweight")
-library(optweight)
 #install.packages("sbw")
 library(sbw)
+#install.packages("ggpubr")
+library(ggpubr)
+#install.packages("gbm")
+library(gbm)
 
 ### import acs data from ipums ----
 acs <- read.csv("data/census-data/tract/nhgis0004_acs-for-matching/nhgis0004_ds201_20135_2013_tract.csv",
@@ -302,14 +304,12 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
 
 # mean spending per order, mean calorie, % drive-thru, % lunch/dinner
 names(restaurant)
-restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17)]/restaurant$count
+restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17:19)]/restaurant$count
 
 # create log vars
 # replace 0 values with a small value
-#restaurant$calorie[restaurant$calorie==0] <- 0.000000001
 #restaurant <- restaurant %>% 
-#  mutate(across(c(calorie,count,median_income, capital_income, total), ~ log(.), .names = "{col}_log"))
-#restaurant$calorie[restaurant$calorie==0.000000001] <- 0
+#  mutate(across(c(calorie,count,median_income,capital_income,total), ~ ifelse(.==0, log(.+1), log(.)), .names = "{col}"))
 
 # take lagged measurements for dynamic vars
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
@@ -364,6 +364,14 @@ ps <- glm(formula = treat~concept+drive_thru+ownership+calorie1+slope_calorie+
           data=restaurant_subset, family=binomial())
 restaurant_subset$pscore <- ps$fitted.values
 rm(ps)
+
+hist(restaurant$count, breaks = 1000)
+hist(restaurant$dollar, breaks = 1000, xlim=c(0,20))
+hist(restaurant$calorie, breaks = 1000, xlim=c(0,4000))
+
+#export unmatched data
+restaurant$tract_num <- paste0("'",restaurant$tract_num,"'")
+#write.csv(restaurant, "data/calorie-aims/unmatched-restaurants.csv", row.names = FALSE)
 
 ### rolling entry matching ----
 #reduce input data for matching
@@ -1227,6 +1235,17 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
 }
 rm(subset, subset.match, match, i, bal)
 
+#export table for aim 1 analysis
+# identify comparison units that were matched to multiple restaurants
+matched <- matched %>%
+  dplyr::select(address, monthno, tract_num, ownership, concept, distance, s.weights, weights) %>%
+  rename(match_to = monthno) %>%
+  left_join(restaurant, by=c("address", "tract_num", "ownership", "concept")) %>%
+  arrange(address, state, monthno) %>%
+  dplyr::select(address:treat)
+matched$tract_num <- paste0("'", matched$tract_num, "'")
+#write.csv(matched, "data/calorie-aims/matched-restaurants.csv", row.names = FALSE)
+
 #summary stats
 #reduced data
 length(unique(master$address[master$treat==1]))
@@ -1256,13 +1275,13 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
     #matching
     set.seed(10)
     subset.match <- matchit(data=subset, formula = formula, 
-                            distance="logit", method="nearest", #caliper=0.2,
+                            distance="logit", method="nearest",
                             replace=TRUE, ratio=3)
     match <- match.data(subset.match, distance="distance", weights = "s.weights") 
     #add distance to unmatched data
     subset$distance <- subset.match$distance
     #add ps balance
-    bal <- weightit(data=match, formula = formula, method = "entropy", tol=rep(0.25,23),
+    bal <- weightit(data=match, formula = formula, method = "entropy", #tol=rep(0.5,23),
                     estimand = "ATT", s.weights = "s.weights")
     match$weights <- bal$weights
     # combine clusters of restaurants
@@ -1271,7 +1290,6 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 rm(subset, subset.match, match, i, bal)
-matched <- matched[matched$weights!=2143289344, ]
 #matched data
 length(unique(matched$address[matched$treat==1]))
 length(unique(matched$address[matched$treat==0]))
@@ -1386,7 +1404,7 @@ for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
 rm(subset, subset.match, match, i, bal)
-matched <- matched %>% filter(weights!=2143289344)
+matched <- matched %>% filter(weights==2143289344)
 #matched data
 length(unique(matched$address[matched$treat==1]))
 length(unique(matched$address[matched$treat==0]))
@@ -1434,9 +1452,9 @@ ggplot(data = result,
   geom_vline(xintercept = 23.5) +
   geom_hline(yintercept = 0, color = "black", size = 0.1) +
   coord_flip() +
-  labs(title="Covariate balance",
+  labs(title="Covariate balance, overall comparisons",
        y="Standardized mean differences", x="",
-       caption="in percent, no log") +
+       caption="Note: no transformations on any variables.") +
   scale_color_manual(name="Sample", labels=c("Unmatched","PS+IPTW", "PS+Entropy", "PS+SBW",
                                              "Mahalanobis+Entropy", "Mahalanobis+SBW"),
                      values =c("orange", "aquamarine3", "red", "blueviolet", "skyblue", "grey")) +
@@ -1444,5 +1462,4 @@ ggplot(data = result,
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
-#ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance.jpeg", dpi="retina")
-
+#ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-nolog.jpeg", dpi="retina")
