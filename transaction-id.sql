@@ -1,5 +1,5 @@
 /* -- access tacobell database
-srun  --time=5-00:01:00 --pty --mem-per-cpu=64G bash 
+srun  --time=8-00:01:00 --pty --mem-per-cpu=64G bash 
 module load mariadb/5.5.64
 mysql -p -h db -P 33061 -u wue04 tacobell
 
@@ -945,4 +945,36 @@ limit 25;
 |   2267915567 |           3 | COMBO-DETAIL            |     1.0 |         0.00 |       1.00 |       0.0 |       1692 | COMBO 7                    |             4450 | CRUNCHY TACO BEEF          |   170.00 |            -1 | N/A                    |     NULL |
 |   2267915567 |           2 | NON-COMBO-ITEM          |     1.0 |         1.49 |       1.00 |       0.0 |       3649 | LARGE PEPSI                |             3649 | LARGE PEPSI                |   375.00 |            -1 | N/A                    |     NULL |
 +--------------+-------------+-------------------------+---------+--------------+------------+-----------+------------+----------------------------+------------------+----------------------------+----------+---------------+------------------------+----------+
+
+select t.DW_RESTID, a.ADDRESS_LINE_1, a.STATENAME, a.COUNTYNAME, t.DW_PRODUCT from TLD_FACT_2008_Q02 t
+left join ALIGN_DIM a using(DW_RESTID)
+where STATENAME="NY" and COUNTYNAME="QUEENS"
+order by ADDRESS_LINE_1
+LIMIT 10;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
