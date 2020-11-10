@@ -21,6 +21,9 @@ library(plm)
 library(lmerTest)
 #install.packages("stargazer")
 library(stargazer)
+#install.packages("table1")
+library(table1)
+library(tableone)
 
 ### import data, unmatched ----
 unmatched <- read.csv("data/calorie-aims/unmatched-restaurants.csv",
@@ -241,7 +244,64 @@ ggplot(data=unmatched, aes(x=interaction(year, month, lex.order = TRUE), y=calor
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/calories-trend-by-ml.jpeg", dpi="retina")
 
+# only california and oregon
+ggplot(data=unmatched %>% filter (treat==0 | (treat==1&(entry==253))),
+       aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
+                           group=as.character(treat), color=as.character(treat))) +
+  geom_point(data=unmatched %>% filter (calorie>=500 & calorie<=2000), size=2, color="#F4EDCA") + #make calorie points bigger so it's not ugly
+  stat_summary(aes(y=calorie,group=as.character(treat),color=as.character(treat)),
+               fun.y=mean, geom="line") + #insert monthly mean as scatter plots
+  ggplot2::annotate(geom="text", x=1:106, y=450, label=c(12, rep(c(1:12),8), c(1:9)), size = 2) + #month
+  ggplot2::annotate(geom="text", x=c(1, seq(7.5, 7.5+12*7, 12), 102), y=350, label=seq(2006, 2015, 1), size=4) + #year
+  geom_vline(xintercept = 18, color="grey", linetype="dashed", size=1) + #nyc
+  geom_vline(xintercept = 50, color="grey", linetype="dashed", size=1) + #california and oregon
+  geom_vline(xintercept = 67, color="grey", linetype="dashed", size=1) + #vermont
+  ggplot2::annotate(geom="label", x=20.5, y=1600, label="NYC", size=3) + #add label for nyc
+  ggplot2::annotate(geom="label", x=57, y=1600, label="California & Oregon", size=3) + #add label for california
+  ggplot2::annotate(geom="label", x=71, y=1600, label="Vermont", size=3) + #add label for vermont
+  coord_cartesian(ylim=c(500, 2000), expand = FALSE, clip = "off") + 
+  labs(title="Calories trend, CA and OR only", x="", y="Monthly mean calories per order, at restaurant level",
+       caption="Note: data include comparison restaurants, and treated restaurants in California and Oregon.") +
+  scale_color_discrete(name="Menu Lableing", labels=c("No", "Yes")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 20),
+        axis.title.x = element_text(vjust=-7, size = 12), #vjust to adjust position of x-axis
+        axis.text.x = element_blank(), #turn off default x axis label
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/calories-trend-by-ml-CA-OR-only.jpeg", dpi="retina")
 
+# by diff entry date
+ggplot(data=unmatched %>%
+         filter ((treat==1&(entry==239|entry==247|entry==251|entry==253|entry==254))|treat==0),
+       aes(x=interaction(year, month, lex.order = TRUE), y=calorie,
+           group=as.character(treat*entry), color=as.character(treat*entry))) +
+  geom_point(data=unmatched %>% filter (calorie>=500 & calorie<=2000), size=2, color="#F4EDCA") + #make calorie points bigger so it's not ugly
+  stat_summary(aes(y=calorie,group=as.character(treat*entry),color=as.character(treat*entry)),
+               fun.y=mean, geom="line") + #insert monthly mean as scatter plots
+  ggplot2::annotate(geom="text", x=1:106, y=450, label=c(12, rep(c(1:12),8), c(1:9)), size = 2) + #month
+  ggplot2::annotate(geom="text", x=c(1, seq(7.5, 7.5+12*7, 12), 102), y=350, label=seq(2006, 2015, 1), size=4) + #year
+  geom_vline(xintercept = 18, color="grey", linetype="dashed", size=1) + #nyc
+  geom_vline(xintercept = 50, color="grey", linetype="dashed", size=1) + #california and oregon
+  geom_vline(xintercept = 67, color="grey", linetype="dashed", size=1) + #vermont
+  ggplot2::annotate(geom="label", x=20.5, y=1600, label="NYC", size=3) + #add label for nyc
+  ggplot2::annotate(geom="label", x=57, y=1600, label="California & Oregon", size=3) + #add label for california
+  ggplot2::annotate(geom="label", x=71, y=1600, label="Vermont", size=3) + #add label for vermont
+  coord_cartesian(ylim=c(500, 2000), expand = FALSE, clip = "off") + 
+  labs(title="Calories trend, CA and OR only", x="", y="Monthly mean calories per order, at restaurant level",
+       caption="Note: data include comparison restaurants, and treated restaurants in California and Oregon.") +
+  scale_color_discrete(name="Menu Lableing",
+                       labels=c("No", "Nassau county", "Mont/Mult", "MA", "CA/OR", "NJ/ME")) +
+  #scale_color_brewer(palette = "Set3") +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 20),
+        axis.title.x = element_text(vjust=-7, size = 12), #vjust to adjust position of x-axis
+        axis.text.x = element_blank(), #turn off default x axis label
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/calories-trend-by-ml-CA-OR-only.jpeg", dpi="retina")
 
 ### visualization, months available ----
 hist(unmatched$monthno-203, breaks = 50, xlim = c(0,106),
@@ -250,14 +310,51 @@ hist(unmatched$monthno-203, breaks = 50, xlim = c(0,106),
 
 hist(matched$relative, breaks = 50, xlim = c(-60, 80),
      main = "Distribution of data availability pre- and post-labeling",
-     xlab = "Relative month, the month of labeling=t0")
+     xlab = "Relative month, the month of labeling = t1")
 
 # % sales from drive through, by drive-through status
-ggplot(data=unmatched, aes(x=drive, color=as.character(treat),fill=as.character(treat))) +
-  geom_histogram(bins = 100) +
+ggplot(data=unmatched, aes(x=drive, color=as.character(drive_thru),fill=as.character(drive_thru))) +
+  geom_histogram(bins = 200, position="identity", alpha=0.5) +
   labs(title="% sales from drive-thrugh, by drive-through status",
        x="% sales from drive-through", y="Number of restaurants",
        caption="") +
-  scale_color_discrete(name="Menu Lableing", labels=c("No", "Yes")) +
+  scale_color_discrete(name="Has drive through", labels=c("No", "Yes")) +
+  scale_fill_discrete(name="Has drive through", labels=c("No", "Yes")) +
   scale_x_continuous(labels=scales::percent)
+#ggsave("tables/analytic-model/matching/results/pct-drive-thru-orders-by-drive-thru-status.jpeg", dpi="retina")
+
   
+### descriptive data ----
+summary <- rbind(unmatched %>%
+                    dplyr::select(calorie, dollar, count, drive, treat, year, month) %>%
+                    mutate(data="unmatched"),
+                  matched %>%
+                    dplyr::select(calorie, dollar, count, drive, treat, year, month) %>%
+                    mutate(data="matched"))
+summary <- summary %>%
+  filter(year==2015&month==1)
+            
+summary$treat <- factor(summary$treat, levels=c(1, 0),
+                          labels = c("Yes", "No"))
+label(summary$calorie) <- "Calorie"
+label(summary$dollar) <- "Mean spending per order"
+label(summary$count) <- "Total # of transactions"
+label(summary$drive) <- "% sales from drive-through"
+
+table1::table1(data=summary %>% filter(data=="matched"),
+       ~calorie+dollar+count+drive|treat,
+       caption="<b>Summary statistics, matched data, January 2015</b>")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
