@@ -259,7 +259,7 @@ restaurant$ml <- ifelse(restaurant$state=="NY"&
 rm(acs, calorie, time)
 table(restaurant$state[restaurant$ml==1])
 
-### prepare data for rolling entry matching ----
+### prepare data for matching ----
 restaurant$entry <- ifelse(restaurant$state=="NY"&
                           (restaurant$county=="New York"|restaurant$county=="Kings"|
                              restaurant$county=="Bronx"|restaurant$county=="Queens"|
@@ -351,10 +351,31 @@ rm(i, dollar, count, calorie)
 restaurant <- merge(restaurant, master, all = TRUE,
                     by=c("address","tract_num","ownership","concept", "monthno"))
 rm(master)
-
+restaurant$tract_num <- paste0("'",restaurant$tract_num,"'")
+# identify ml policy by city/state
+restaurant$policy <- ifelse(restaurant$state=="NY"&
+                              (restaurant$county=="New York"|restaurant$county=="Kings"|
+                                 restaurant$county=="Bronx"|restaurant$county=="Queens"|
+                                 restaurant$county=="Richmond"), "nyc",
+                            ifelse(restaurant$state=="WA"&restaurant$county=="King", "king",
+                            ifelse(restaurant$state=="NY"&restaurant$county=="Albany", "albany",
+                            ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", "philly", 
+                            ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
+                                                             restaurant$county=="San Francisco"), "sf",
+                            ifelse(restaurant$state=="NY"&restaurant$county=="Westchester", "westchester",
+                            ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery", "mont",
+                            ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah", "mult",
+                            ifelse(restaurant$state=="CA", "ca",
+                            ifelse(restaurant$state=="MA", "ma",
+                            ifelse(restaurant$state=="ME", "me",
+                            ifelse(restaurant$state=="NJ", "nj",
+                            ifelse(restaurant$state=="OR", "or",
+                            ifelse(restaurant$state=="NY"&restaurant$county=="Ulster","ulster",
+                            ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", "nassau",
+                            ifelse(restaurant$state=="VT", "vt", "none"))))))))))))))))
+restaurant$concept <- ifelse(restaurant$concept=="TBC", 1, 0)
+restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY", 1, 0)
 restaurant_subset <- restaurant[complete.cases(restaurant), ] #drop rows with NA values
-restaurant_subset$concept <- ifelse(restaurant_subset$concept=="TBC", 0, 1)
-restaurant_subset$ownership <- ifelse(restaurant_subset$ownership=="COMPANY", 1, 0)
 
 ### estimating pscore before matching ----
 ps <- glm(formula = treat~concept+drive_thru+ownership+calorie1+slope_calorie+
@@ -370,7 +391,6 @@ hist(restaurant$dollar, breaks = 1000, xlim=c(0,20))
 hist(restaurant$calorie, breaks = 1000, xlim=c(0,4000))
 
 #export unmatched data
-restaurant$tract_num <- paste0("'",restaurant$tract_num,"'")
 #write.csv(restaurant, "data/calorie-aims/unmatched-restaurants.csv", row.names = FALSE)
 
 ### rolling entry matching ----
@@ -1205,7 +1225,7 @@ ggplot(data = master,
 
 ### finalize matching+weighting, no caliper ----
 # ps+iptw, mahal+entrp,mahal+sbw, entrp only
-formula <- treat~concept+drive_thru+ownership+calorie1+slope_calorie+
+formula <- treat~concept+ownership+calorie1+slope_calorie+
   count1+slope_count+dollar1+slope_dollar+drive+meal+
   total+male+white+black+asian+hisp+median_income+capital_income+
   hsbelow+collegeup+under18+above65
@@ -1213,37 +1233,110 @@ formula <- treat~concept+drive_thru+ownership+calorie1+slope_calorie+
 #ps matching+iptw
 master <- NULL
 matched <- NULL
-for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+for (i in c(221,226,229,233,238,239,241,242,247,251,253,254,270)) {
   tryCatch({ #catch groups that do not have comparison restaurants
-    subset <- subset(restaurant_subset, entry==i & monthno==i)
-    #matching
-    set.seed(10)
-    subset.match <- matchit(data=subset, formula = formula, 
-                            distance="logit", method="nearest", #caliper=0.5,
-                            replace=TRUE, ratio=3)
-    match <- match.data(subset.match, distance="distance", weights = "s.weights") 
-    #add distance to unmatched data
-    subset$distance <- subset.match$distance
-    #add ps balance
-    bal <- weightit(data=match, formula = formula, method = "ps",
-                    estimand = "ATT", s.weights = "s.weights")
-    match$weights <- bal$weights
-    # combine clusters of restaurants
-    master <- rbind(master, subset)
-    matched <- rbind(matched, match)
+    if (i==247) {
+      for (j in c("mont", "mult")) {
+        subset <- subset(restaurant_subset, (entry==i & monthno==i)&(treat==0|(treat==1&policy==j)))
+        #matching
+        set.seed(10)
+        subset.match <- matchit(data=subset, formula = formula, 
+                                distance="logit", method="nearest", #caliper=0.5,
+                                replace=TRUE, ratio=3)
+        match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+        #add distance to unmatched data
+        subset$distance <- subset.match$distance
+        #add ps balance
+        bal <- weightit(data=match, formula = formula, method = "ps",
+                        estimand = "ATT", s.weights = "s.weights")
+        match$weights <- bal$weights
+        match$match_place <- j
+        # combine clusters of restaurants
+        master <- rbind(master, subset)
+        matched <- rbind(matched, match)
+      }
+    } else if (i==253) {
+      for (j in c("ca", "or")) {
+        subset <- subset(restaurant_subset, (entry==i & monthno==i)&(treat==0|(treat==1&policy==j)))
+        #matching
+        set.seed(10)
+        subset.match <- matchit(data=subset, formula = formula, 
+                                distance="logit", method="nearest", #caliper=0.5,
+                                replace=TRUE, ratio=3)
+        match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+        #add distance to unmatched data
+        subset$distance <- subset.match$distance
+        #add ps balance
+        bal <- weightit(data=match, formula = formula, method = "ps",
+                        estimand = "ATT", s.weights = "s.weights")
+        match$weights <- bal$weights
+        match$match_place <- j
+        # combine clusters of restaurants
+        master <- rbind(master, subset)
+        matched <- rbind(matched, match)
+      }
+    } else if (i==254) {
+      for (j in c("nj", "me")) {
+        subset <- subset(restaurant_subset, (entry==i & monthno==i)&(treat==0|(treat==1&policy==j)))
+        #matching
+        set.seed(10)
+        subset.match <- matchit(data=subset, formula = formula, 
+                                distance="logit", method="nearest", #caliper=0.5,
+                                replace=TRUE, ratio=3)
+        match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+        #add distance to unmatched data
+        subset$distance <- subset.match$distance
+        #add ps balance
+        bal <- weightit(data=match, formula = formula, method = "ps",
+                        estimand = "ATT", s.weights = "s.weights")
+        match$weights <- bal$weights
+        match$match_place <- j
+        # combine clusters of restaurants
+        master <- rbind(master, subset)
+        matched <- rbind(matched, match)
+      }
+    } else {
+      subset <- subset(restaurant_subset, entry==i & monthno==i)
+      #matching
+      set.seed(10)
+      subset.match <- matchit(data=subset, formula = formula, 
+                              distance="logit", method="nearest", #caliper=0.5,
+                              replace=TRUE, ratio=3)
+      match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+      #add distance to unmatched data
+      subset$distance <- subset.match$distance
+      #add ps balance
+      bal <- weightit(data=match, formula = formula, method = "ps",
+                      estimand = "ATT", s.weights = "s.weights")
+      match$weights <- bal$weights
+      match$match_place <- as.character(i)
+      # combine clusters of restaurants
+      master <- rbind(master, subset)
+      matched <- rbind(matched, match)
+    }
   }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
 }
-rm(subset, subset.match, match, i, bal)
+rm(subset, subset.match, match, i, bal, j)
+matched$match_place <- ifelse(matched$match_place=="229", "king",
+                              ifelse(matched$match_place=="239", "nassau",
+                              ifelse(matched$match_place=="241", "philly",
+                              ifelse(matched$match_place=="242", "albany",
+                              ifelse(matched$match_place=="251", "ma", matched$match_place)))))
+table(matched$match_place)
 
 #export table for aim 1 analysis
 # identify comparison units that were matched to multiple restaurants
-matched <- matched %>%
-  dplyr::select(address, monthno, tract_num, ownership, concept, distance, s.weights, weights) %>%
-  rename(match_to = monthno) %>%
-  left_join(restaurant, by=c("address", "tract_num", "ownership", "concept")) %>%
-  arrange(address, state, monthno) %>%
-  dplyr::select(address:treat)
-matched$tract_num <- paste0("'", matched$tract_num, "'")
+master <- NULL
+for (i in c("albany","ca","king","ma","mont","mult","nassau","nj","or","philly")) {
+  tmp <- matched %>%
+    filter(match_place==i) %>%
+    dplyr::select(address, monthno, tract_num, ownership, concept, distance, s.weights, weights, match_place) %>%
+    rename(match_to = monthno) %>%
+    left_join(restaurant, by=c("address", "tract_num", "ownership", "concept")) %>%
+    arrange(address, tract_num, monthno) %>%
+    dplyr::select(address:treat)
+  master <- rbind(master, tmp)
+}
 #write.csv(matched, "data/calorie-aims/matched-restaurants.csv", row.names = FALSE)
 
 #summary stats
