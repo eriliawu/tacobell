@@ -1326,7 +1326,7 @@ table(matched$match_place)
 
 #export table for aim 1 analysis
 # identify comparison units that were matched to multiple restaurants
-master <- NULL
+master_all <- NULL
 for (i in c("albany","ca","king","ma","mont","mult","nassau","nj","or","philly")) {
   tmp <- matched %>%
     filter(match_place==i) %>%
@@ -1335,9 +1335,10 @@ for (i in c("albany","ca","king","ma","mont","mult","nassau","nj","or","philly")
     left_join(restaurant, by=c("address", "tract_num", "ownership", "concept")) %>%
     arrange(address, tract_num, monthno) %>%
     dplyr::select(address:treat)
-  master <- rbind(master, tmp)
+  master_all <- rbind(master_all, tmp)
 }
-#write.csv(matched, "data/calorie-aims/matched-restaurants.csv", row.names = FALSE)
+#write.csv(master_all, "data/calorie-aims/matched-restaurants.csv", row.names = FALSE)
+rm(master_all, i)
 
 #summary stats
 #reduced data
