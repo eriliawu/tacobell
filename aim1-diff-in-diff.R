@@ -24,6 +24,7 @@ library(stargazer)
 #install.packages("table1")
 library(table1)
 library(tableone)
+library(broom)
 
 ### import data, unmatched ----
 unmatched <- read.csv("data/calorie-aims/unmatched-restaurants.csv",
@@ -79,67 +80,6 @@ mod4.unmatched <- lme4::lmer(formula = calorie~ml+ml*monthno+monthno+
                          median_income+capital_income+hsbelow+collegeup+under18+above65+(1|id),
                    data=unmatched)
 summary(mod4.unmatched)
-
-### matched data, by ps matching and iptw weighting ----
-matched <- read.csv("data/calorie-aims/matched-restaurants.csv", stringsAsFactors = FALSE)
-matched$tract_num <- substr(matched$tract_num, 2, 12)
-matched$holiday <- ifelse(matched$month==12, 1, 0)
-matched <- matched %>%
-  mutate(id = group_indices(., address, tract_num, ownership, concept)) %>%
-  dplyr::select(id, address:holiday)
-
-# get relative month for pre-/post-labeling
-matched$relative <- matched$monthno - matched$match_to +1
-
-# identify ml policy by city/state
-matched$policy <- ifelse(matched$state=="NY"&
-                          (matched$county=="New York"|matched$county=="Kings"|
-                             matched$county=="Bronx"|matched$county=="Queens"|
-                             matched$county=="Richmond"), "nyc",
-                    ifelse(matched$state=="WA"&matched$county=="King", "king",
-                    ifelse(matched$state=="NY"&matched$county=="Albany", "albany",
-                    ifelse(matched$state=="PA"&matched$city=="Philadelphia", "philly", 
-                    ifelse(matched$state=="CA"&(matched$city=="San Francisco"|
-                                                  matched$county=="San Francisco"), "sf",
-                    ifelse(matched$state=="NY"&matched$county=="Westchester", "westchester",
-                    ifelse(matched$state=="MD"&matched$county=="Montgomery", "mont",
-                    ifelse(matched$state=="OR"&matched$county=="Multnomah", "mult",
-                    ifelse(matched$state=="CA", "ca",
-                    ifelse(matched$state=="MA", "ma",
-                    ifelse(matched$state=="ME", "me",
-                    ifelse(matched$state=="NJ", "nj",
-                    ifelse(matched$state=="OR", "or",
-                    ifelse(matched$state=="NY"&matched$county=="Ulster","ulster",
-                    ifelse(matched$state=="NY"&matched$county=="Nassau", "nassau",
-                    ifelse(matched$state=="VT", "vt", "none"))))))))))))))))
-
-# simple diff-in-diff
-mod1.matched <- lm(formula = calorie~ml+
-                     as.factor(year)+as.factor(month)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched, weights = weights)
-summary(mod1.matched)
-
-# month as relative and continuous
-mod2.matched <- lm(formula = calorie~ml+ml*relative+
-                     as.factor(year)+as.factor(month)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-             median_income+capital_income+hsbelow+collegeup+under18+above65,
-             data = matched, weights = weights)
-summary(mod2.matched)
-
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~ml+ml*relative+as.factor(year)+as.factor(month)+holiday,
-            data = pdata.frame(matched, index = c("id")), weights = weights,
-            model = "within")
-summary(mod3.matched)
-
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = calorie~ml+ml*relative+
-                             as.factor(year)+as.factor(month)+holiday+concept+drive_thru+ownership+total+
-                             male+white+black+asian+hisp+median_income+capital_income+
-                             hsbelow+collegeup+under18+above65+(1|id),
-                           data=matched, weights = weights)
-summary(mod4.matched)
 
 ### unmatched data, expand comparison units, to match each treated unit ----
 tmp <- unmatched[unmatched$treat==1, ]
@@ -376,310 +316,30 @@ table1::table1(data=summary %>% filter(data=="matched"),
        ~calorie+rev+count+dollar+drive+meal+nonwhite+median_income+hsbelow+under18|treat,
        caption="<b>Summary statistics, matched data, January 2015</b>")
 
-### model 2, use treat instead of ml ----
-# simple diff-in-diff, pre-/post-
-mod1.unmatched <- lm(formula = calorie~treat+
-                       year+month+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                       median_income+capital_income+hsbelow+collegeup+under18+above65,
-                     data = unmatched)
-summary(mod1.unmatched)
-# diff in diff, month as continunous var
-mod2.unmatched <- lm(formula = calorie~treat+treat*monthno+monthno+
-                       holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                       median_income+capital_income+hsbelow+collegeup+under18+above65,
-                     data = unmatched)
-summary(mod2.unmatched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.unmatched <- plm(formula = calorie~treat+treat*monthno+monthno+holiday,
-                      data = pdata.frame(unmatched, index = c("id")),
-                      model = "within")
-summary(mod3.unmatched)
-# diff-in-diff, random effect at restaurant level
-mod4.unmatched <- lme4::lmer(formula = calorie~treat+treat*monthno+monthno+
-                               holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                               median_income+capital_income+hsbelow+collegeup+under18+above65+(1|id),
-                             data=unmatched)
-summary(mod4.unmatched)
+### matched data, preparing data ----
+matched <- read.csv("data/calorie-aims/matched-restaurants.csv", stringsAsFactors = FALSE)
+matched$tract_num <- substr(matched$tract_num, 2, 12)
+matched$holiday <- ifelse(matched$month==12, 1, 0)
+matched <- matched %>%
+  mutate(id = group_indices(., address, tract_num, ownership, concept)) %>%
+  dplyr::select(id, address:holiday) %>%
+  arrange(id, monthno) %>% #find out for how many months a restaurant was open
+  group_by(id, treat, match_place) %>%
+  mutate(rank=row_number(id)) %>%
+  mutate(open_month=max(rank))
+summary(matched$rank) #sanity check, the max should be 106
+hist(matched$open_month, breaks = 50)
 
-# simple diff-in-diff
-mod1.matched <- lm(formula = calorie~treat+
-                     year+month+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched, weights = weights)
-summary(mod1.matched)
-# month as relative and continuous
-mod2.matched <- lm(formula = calorie~treat+treat*relative+
-                     year+month+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched, weights = weights)
-summary(mod2.matched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~treat+treat*relative+year+month+holiday,
-                    data = pdata.frame(matched, index = c("id")), weights = weights,
-                    model = "within")
-summary(mod3.matched)
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = calorie~treat+treat*relative+
-                             year+month+holiday+concept+drive_thru+ownership+total+
-                             male+white+black+asian+hisp+median_income+capital_income+
-                             hsbelow+collegeup+under18+above65+(1|id),
-                           data=matched, weights = weights)
-summary(mod4.matched)
+# get relative month for pre-/post-labeling, month of labeling=1
+matched$relative <- matched$monthno - matched$match_to +1
 
-# simple diff-in-diff
-mod1.unmatched.comp <- lm(formula = calorie~treat+
-                            year+month+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                            median_income+capital_income+hsbelow+collegeup+under18+above65,
-                          data = unmatched.comp)
-summary(mod1.unmatched.comp)
-# month as relative and continuous var
-mod2.unmatched.comp <- lm(formula = calorie~treat+treat*relative+year+
-                            month+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                            median_income+capital_income+hsbelow+collegeup+under18+above65,
-                          data = unmatched.comp)
-summary(mod2.unmatched.comp)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.unmatched.comp <- plm(formula = calorie~treat+treat*relative+relative+year+month+holiday,
-                           data = pdata.frame(unmatched.comp, index = c("id")),
-                           model = "within")
-summary(mod3.unmatched.comp)
-# diff-in-diff, random effect at restaurant level
-mod4.unmatched.comp <- lme4::lmer(formula = calorie~treat+treat*relative+relative+
-                                    year+month+holiday+concept+drive_thru+ownership+
-                                    total+male+white+black+asian+hisp+median_income+
-                                    capital_income+hsbelow+collegeup+under18+above65+(1|id),
-                                  data=unmatched.comp)
-summary(mod4.unmatched.comp)
+# set albany to be ref group
+matched$match_place <- factor(matched$match_place)
+matched <- within(matched, match_place<-relevel(match_place, ref="albany"))
 
-stargazer(mod1.unmatched, mod2.unmatched, mod3.unmatched, mod4.unmatched,
-          mod1.unmatched.comp, mod2.unmatched.comp, mod3.unmatched.comp, mod4.unmatched.comp,
-          mod1.matched, mod2.matched, mod3.matched, mod4.matched,
-          type="html",
-          title="The effect of menu labeling on calories purchased",
-          #dep.var.labels="Mean calories per order",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          column.labels = c("<b> Unmatched, continuous month </b>",
-                            "<b> Unmatched, relative month</b>", "<b> Matched </b>"), #bold
-          column.separate = c(4,4,4),
-          model.names = FALSE,
-          keep = c("treat", "monthno", "treat:monthno", "relative", "treat:relative"),
-          order=c("^treat$", "^monthno$", "^treat:monthno$", "^relative$", "^treat:relative$"),
-          covariate.labels=c("Has labeling", "Month (continuous)", "Has labeling*month (continuous)", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model", "<em>Post dummy</em>", "<em>Month cont</em>", "<em>FE</em>", "<em>RE</em>",
-                             "<em>Post dummy</em>", "<em>Month relative</em>", "<em>FE</em>", "<em>RE</em>",
-                             "<em>Post dummy</em>", "<em>Month relative</em>", "<em>FE</em>", "<em>RE</em>")),
-          notes = c("Has labeling = 1 for all labeling restaurants regardless of implementation; month is presented as a continuous variable in columns 1-4. In all models, we control for purchase ",
-                    "characteristics (holiday season); restaurant characteristics: owned by Taco Bell, has drive through, has other brands on-site; and community characteristics at census ",
-                    "tract level: population density, % male, % Black, % Asian, % Hispanic, % White, household median income, income per capita, % without high school degree, % with bachelor ",
-                    "degree or higher, % under 18, % above 65. Additionally, for columns 5-12, we control for calendar year and month."),
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/aim1-treat.html")
-
-### model 3, limit data to 12 months pre-/post- ----
-# simple diff-in-diff, pre-/post-
-mod1.unmatched <- lm(formula = calorie~ml+
-                       as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                       median_income+capital_income+hsbelow+collegeup+under18+above65,
-                     data = unmatched)
-summary(mod1.unmatched)
-# diff in diff, month as continunous var
-mod2.unmatched <- lm(formula = calorie~ml+ml*monthno+monthno+
-                       holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                       median_income+capital_income+hsbelow+collegeup+under18+above65,
-                     data = unmatched)
-summary(mod2.unmatched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.unmatched <- plm(formula = calorie~ml+ml*monthno+monthno+holiday,
-                      data = pdata.frame(unmatched, index = c("id")),
-                      model = "within")
-summary(mod3.unmatched)
-# diff-in-diff, random effect at restaurant level
-mod4.unmatched <- lme4::lmer(formula = calorie~ml+ml*monthno+monthno+
-                               holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                               median_income+capital_income+hsbelow+collegeup+under18+above65+(1|id),
-                             data=unmatched)
-summary(mod4.unmatched)
-
-# simple diff-in-diff
-mod1.matched <- lm(formula = calorie~ml+
-                     as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched[matched$relative>=-12&matched$relative<=12, ], weights = weights)
-summary(mod1.matched)
-# month as relative and continuous
-mod2.matched <- lm(formula = calorie~ml+ml*relative+
-                     as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched[matched$relative>=-12&matched$relative<=12, ], weights = weights)
-summary(mod2.matched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~ml+ml*relative+as.factor(monthno)+holiday,
-                    data = pdata.frame(matched[matched$relative>=-12&matched$relative<=12, ], index = c("id")), weights = weights,
-                    model = "within")
-summary(mod3.matched)
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = calorie~ml+ml*relative+
-                             as.factor(monthno)+holiday+concept+drive_thru+ownership+total+
-                             male+white+black+asian+hisp+median_income+capital_income+
-                             hsbelow+collegeup+under18+above65+(1|id),
-                           data=matched[matched$relative>=-12&matched$relative<=12, ], weights = weights)
-summary(mod4.matched)
-
-# simple diff-in-diff
-mod1.unmatched.comp <- lm(formula = calorie~ml+
-                            as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                            median_income+capital_income+hsbelow+collegeup+under18+above65,
-                          data = unmatched.comp[unmatched.comp$relative>=-12&unmatched.comp$relative<=12, ])
-summary(mod1.unmatched.comp)
-# month as relative and continuous var
-mod2.unmatched.comp <- lm(formula = calorie~ml+ml*relative+
-                            as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                            median_income+capital_income+hsbelow+collegeup+under18+above65,
-                          data = unmatched.comp[unmatched.comp$relative>=-12&unmatched.comp$relative<=12, ])
-summary(mod2.unmatched.comp)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.unmatched.comp <- plm(formula = calorie~ml+ml*relative+relative+as.factor(monthno)+holiday,
-                           data = pdata.frame(unmatched.comp[unmatched.comp$relative>=-12&unmatched.comp$relative<=12, ], index = c("id")),
-                           model = "within")
-summary(mod3.unmatched.comp)
-# diff-in-diff, random effect at restaurant level
-mod4.unmatched.comp <- lme4::lmer(formula = calorie~ml+ml*relative+relative+
-                                    as.factor(monthno)+holiday+concept+drive_thru+ownership+
-                                    total+male+white+black+asian+hisp+median_income+
-                                    capital_income+hsbelow+collegeup+under18+above65+(1|id),
-                                  data=unmatched.comp[unmatched.comp$relative>=-12&unmatched.comp$relative<=12, ])
-summary(mod4.unmatched.comp)
-stargazer(mod1.unmatched, mod2.unmatched, mod3.unmatched, mod4.unmatched,
-          mod1.unmatched.comp, mod2.unmatched.comp, mod3.unmatched.comp, mod4.unmatched.comp,
-          mod1.matched, mod2.matched, mod3.matched, mod4.matched,
-          type="html",
-          title="The effect of menu labeling on calories purchased, 12 months before and after labeling",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          column.labels = c("<b> Unmatched, continuous month </b>",
-                            "<b> Unmatched, relative month</b>", "<b> Matched </b>"), #bold
-          column.separate = c(4,4,4),
-          model.names = FALSE,
-          keep = c("ml", "^monthno$", "ml:monthno", "relative", "ml:relative"),
-          order=c("^ml$", "^monthno$", "^ml:monthno$", "^relative$", "^ml:relative$"),
-          covariate.labels=c("Has labeling", "Month (continuous)", "Has labeling*month (continuous)", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model", "<em>Post dummy</em>", "<em>Month cont</em>", "<em>FE</em>", "<em>RE</em>",
-                             "<em>Post dummy</em>", "<em>Month relative</em>", "<em>FE</em>", "<em>RE</em>",
-                             "<em>Post dummy</em>", "<em>Month relative</em>", "<em>FE</em>", "<em>RE</em>")),
-          notes = c("Has labeling = 1 when a treated restaurant has labeling in place; month is presented as a continuous variable in columns 1-4. In all models, we control for purchase ",
-                    "characteristics (holiday season); restaurant characteristics: owned by Taco Bell, has drive through, has other brands on-site; and community characteristics at census ",
-                    "tract level: population density, % male, % Black, % Asian, % Hispanic, % White, household median income, income per capita, % without high school degree, % with bachelor ",
-                    "degree or higher, % under 18, % above 65. Additionally, for columns 5-12, we control for calendar year and month."),
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/aim1-limit-12-months.html")
-
-### model 4, use as.factor(monthno) ----
-# simple diff-in-diff, pre-/post-
-mod1.unmatched <- lm(formula = calorie~ml+treat+
-                       as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                       median_income+capital_income+hsbelow+collegeup+under18+above65,
-                     data = unmatched)
-summary(mod1.unmatched)
-# diff in diff, month as continunous var
-mod2.unmatched <- lm(formula = calorie~ml+ml*monthno+monthno+treat+
-                       holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                       median_income+capital_income+hsbelow+collegeup+under18+above65,
-                     data = unmatched)
-summary(mod2.unmatched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.unmatched <- plm(formula = calorie~ml+ml*monthno+treat+monthno+holiday,
-                      data = pdata.frame(unmatched, index = c("id")),
-                      model = "within")
-summary(mod3.unmatched)
-# diff-in-diff, random effect at restaurant level
-mod4.unmatched <- lme4::lmer(formula = calorie~ml+ml*monthno+monthno+treat+
-                               holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                               median_income+capital_income+hsbelow+collegeup+under18+above65+(1|id),
-                             data=unmatched)
-summary(mod4.unmatched)
-
-# simple diff-in-diff
-mod1.matched <- lm(formula = calorie~ml+treat+
-                     as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched, weights = weights)
-summary(mod1.matched)
-# month as relative and continuous
-mod2.matched <- lm(formula = calorie~ml+ml*relative+treat+
-                     as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                     median_income+capital_income+hsbelow+collegeup+under18+above65,
-                   data = matched, weights = weights)
-summary(mod2.matched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~ml+ml*relative+treat+as.factor(monthno)+holiday,
-                    data = pdata.frame(matched, index = c("id")), weights = weights,
-                    model = "within")
-summary(mod3.matched)
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = calorie~ml+ml*relative+treat+
-                             as.factor(monthno)+holiday+concept+drive_thru+ownership+total+
-                             male+white+black+asian+hisp+median_income+capital_income+
-                             hsbelow+collegeup+under18+above65+(1|id),
-                           data=matched, weights = weights)
-summary(mod4.matched)
-
-# simple diff-in-diff
-mod1.unmatched.comp <- lm(formula = calorie~ml+treat+
-                            as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                            median_income+capital_income+hsbelow+collegeup+under18+above65,
-                          data = unmatched.comp)
-summary(mod1.unmatched.comp)
-# month as relative and continuous var
-mod2.unmatched.comp <- lm(formula = calorie~ml+ml*relative+treat+
-                            as.factor(monthno)+holiday+concept+drive_thru+ownership+total+male+white+black+asian+hisp+
-                            median_income+capital_income+hsbelow+collegeup+under18+above65,
-                          data = unmatched.comp[unmatched.comp$relative>=-12&unmatched.comp$relative<=12, ])
-summary(mod2.unmatched.comp)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.unmatched.comp <- plm(formula = calorie~ml+ml*relative+relative+treat+as.factor(monthno)+holiday,
-                           data = pdata.frame(unmatched.comp, index = c("id")),
-                           model = "within")
-summary(mod3.unmatched.comp)
-# diff-in-diff, random effect at restaurant level
-mod4.unmatched.comp <- lme4::lmer(formula = calorie~ml+ml*relative+relative+treat+
-                                    as.factor(monthno)+holiday+concept+drive_thru+ownership+
-                                    total+male+white+black+asian+hisp+median_income+
-                                    capital_income+hsbelow+collegeup+under18+above65+(1|id),
-                                  data=unmatched.comp)
-summary(mod4.unmatched.comp)
-
-stargazer(mod1.unmatched, mod2.unmatched, mod3.unmatched, mod4.unmatched,
-          mod1.unmatched.comp, mod2.unmatched.comp, mod3.unmatched.comp, mod4.unmatched.comp,
-          mod1.matched, mod2.matched, mod3.matched, mod4.matched,
-          type="html",
-          title="The effect of menu labeling on calories purchased",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          column.labels = c("<b> Unmatched, continuous month </b>",
-                            "<b> Unmatched, relative month</b>", "<b> Matched </b>"), #bold
-          column.separate = c(4,4,4),
-          model.names = FALSE,
-          keep = c("ml", "^monthno$", "ml:monthno", "relative", "ml:relative", "treat"),
-          order=c("^treat$", "^ml$", "^monthno$", "^ml:monthno$", "^relative$", "^ml:relative$"),
-          covariate.labels=c("In labeling group", "Has labeling", "Month (continuous)", "Has labeling*month (continuous)", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model", "<em>Post dummy</em>", "<em>Month cont</em>", "<em>FE</em>", "<em>RE</em>",
-                             "<em>Post dummy</em>", "<em>Month relative</em>", "<em>FE</em>", "<em>RE</em>",
-                             "<em>Post dummy</em>", "<em>Month relative</em>", "<em>FE</em>", "<em>RE</em>")),
-          notes = c("Has labeling = 1 when a treated restaurant has labeling in place; month is presented as a continuous variable in columns 1-4. In all models, we control for purchase ",
-                    "characteristics (holiday season); restaurant characteristics: owned by Taco Bell, has drive through, has other brands on-site; and community characteristics at census ",
-                    "tract level: population density, % male, % Black, % Asian, % Hispanic, % White, household median income, income per capita, % without high school degree, % with bachelor ",
-                    "degree or higher, % under 18, % above 65. Additionally, for columns 5-12, we control for calendar year and month."),
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/aim1-monthno-factor-treat+ml.html")
-
-
+# summary stats for restarants continuously open for 106 months
+length(unique(matched$id[matched$open_month==106&matched$treat==1])) #59
+length(unique(matched$id[matched$open_month==106&matched$treat==0])) #95
 
 ### working off matched data only, summary stats, pick pre- data for all restaurants, regardless of actual time ----
 table1::table1(data=matched %>% filter(relative==-3) %>% mutate(nonwhite=black+asian+hisp) %>% mutate(rev=count*dollar),
@@ -693,7 +353,8 @@ table1::table1(data=matched %>% filter(relative==3) %>% mutate(nonwhite=black+as
                caption="<b>Summary statistics, 3 months after implementation </b>")
 
 # visualization, mean calorie, 12 month pre- and psot-
-ggplot(data=matched %>% filter(relative>=-11&relative<=12) %>% mutate(group=ifelse(treat==0,0,ifelse(match_to==253,1,2))),
+ggplot(data=matched %>% filter(relative>=-11&relative<=12) %>%
+         mutate(group=ifelse(treat==1&match_place=="ca", 1, ifelse(treat==0&match_place=="ca", 2,ifelse(treat==1&match_place!="ca",3,4)))),
        aes(x=relative, y=calorie, group=as.character(group), color=as.character(group))) +
   stat_summary(aes(y=calorie,group=as.character(group),color=as.character(group)),
                fun.y=mean, geom="line") + #insert monthly mean 
@@ -702,8 +363,9 @@ ggplot(data=matched %>% filter(relative>=-11&relative<=12) %>% mutate(group=ifel
   coord_cartesian(ylim=c(1000,1500), expand = FALSE, clip = "off") +
   scale_x_continuous(breaks=seq(-11,12,1)) +
   labs(title="Calories trend, 12 months before and after menu labeling", x="Month", y="Calories",
-       caption="Note: California and Oregon account for 84% of all treated restaurants.") +
-  scale_color_discrete(name="Menu Lableing", labels=c("No labeling", "CA & OR", "Other labeling areas")) +
+       caption="Note: California account for 77% of all treated restaurants. Grey dashed line represents the month when labeling was implemented.") +
+  scale_color_manual(name="Menu Lableing", values=c("hotpink", "skyblue", "orange", "#009E73"),
+                     labels=c("CA", "Comparison restaurants for CA", "Other treated restaurants", "other comparison restaurants")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16),
         axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
@@ -712,189 +374,10 @@ ggplot(data=matched %>% filter(relative>=-11&relative<=12) %>% mutate(group=ifel
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/calories-trend-12mon-before-after-single-out-ca.jpeg", dpi="retina")
 
-### matched data, stratify by city ----
-# simple diff-in-diff
-cov <- "concept+drive_thru+ownership+total+male+white+black+asian+hisp+
+### matched data, models ----
+cov <- "concept+ownership+total+male+white+black+asian+hisp+
   median_income+capital_income+hsbelow+collegeup+under18+above65"
-mod1.matched <- lm(formula = paste0("calorie~ml+as.factor(monthno)+", cov),
-                   data = matched%>%filter(relative>=-11&relative<=12), weights = weights)
-summary(mod1.matched)
-# month as relative and continuous
-mod2.matched <- lm(formula = paste0("calorie~ml*relative+as.factor(monthno)+",cov),
-                   data = matched%>%filter(relative>=-11&relative<=12), weights = weights)
-summary(mod2.matched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~ml*relative+as.factor(monthno),
-                    data = pdata.frame(matched%>%filter(relative>=-11&relative<=12), index = c("id")),
-                    weights = weights,
-                    model = "within")
-summary(mod3.matched)
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = paste0("calorie~ml*relative+as.factor(monthno)+", cov,"+(1|id)"),
-                           data=matched%>%filter(relative>=-11&relative<=12), weights = weights)
-summary(mod4.matched)
 
-# add diff treatment city as factor var
-mod5.matched <- lm(formula = paste0("calorie~ml*relative+as.factor(monthno)+as.factor(policy)+",cov),
-                   data = matched%>%filter(relative>=-11&relative<=12), weights = weights)
-summary(mod5.matched)
-
-stargazer(mod1.matched, mod2.matched, mod5.matched,mod3.matched, mod4.matched,
-          type="html",
-          title="The effect of menu labeling on calories purchased, 12 months pre- and post-labeling",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          model.names = FALSE,
-          keep = c("ml", "relative", "ml:relative"),
-          order=c("^ml$", "^relative$", "^ml:relative$"),
-          covariate.labels=c("Has labeling", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model","<em>Post dummy</em>","<em>Month relative</em>","<em>City factor</em>",
-                             "<em>FE</em>","<em>RE</em>")),
-          notes = c("All models has calendar month as control vars. On average, each restaurant had 79 months",
-                    "of data available."),
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/regression/aim1-matched-data-12mon.html")
-
-# stratify by diff treatment city
-model_list <- list()
-for (i in c(221,226,229,233,238,239,241,242,247,251,253,254,270)) {
-  tryCatch({ #catch groups that do not have comparison restaurants
-    model <- lm(data = matched %>% filter(match_to==i&relative>=-11&relative<=12),
-                formula = paste0("calorie~ml*relative+as.factor(monthno)+",cov),
-                weights = weights)
-    model_list[[i]] <- model
-  }, error=function(e){cat(paste0("ERROR : month ", i),conditionMessage(e), "\n")})
-}
-rm(model, i)
-stargazer(model_list[[229]],model_list[[239]],model_list[[241]],model_list[[242]],
-          model_list[[247]],model_list[[251]],model_list[[253]],model_list[[254]],
-          type="html",
-          title="The effect of menu labeling on calories purchased, stratified by city/state, 12 months pre- and post-labeling",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          model.names = FALSE,
-          keep = c("ml", "relative", "ml:relative"),
-          order=c("^ml$", "^relative$", "^ml:relative$"),
-          covariate.labels=c("Has labeling", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("City/state", "King county", "Nassau county", "Philadelphia",
-                             "Albany county","Montgomery, Multnomah",
-                             "MA", "CA, OR", "NJ, ME")),
-          notes = "All models has calendar month as control vars.",
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/regression/aim1-strat-by-city-12mon.html")
-
-### matched data, limit data to restaurants continuously open for entire period ----
-# find out for how many months a restaurant was open
-matched <- matched %>%
-  arrange(id, monthno) %>%
-  group_by(id, treat, match_to) %>%
-  mutate(rank=row_number(id)) %>%
-  mutate(open_month=max(rank))
-summary(matched$rank) #sanity check, the max should be 106
-hist(matched$count, breaks = 50)
-
-# summary stats for restarants continuously open for 106 months
-length(unique(matched$id[matched$count==106&matched$treat==1])) #59
-length(unique(matched$id[matched$count==106&matched$treat==0])) #89
-
-mod1.matched <- lm(formula = paste0("calorie~ml+as.factor(monthno)+", cov),
-                   data = matched%>%filter(count==106), weights = weights)
-summary(mod1.matched)
-# month as relative and continuous
-mod2.matched <- lm(formula = paste0("calorie~ml*relative+as.factor(monthno)+",cov),
-                   data = matched%>%filter(count==106), weights = weights)
-summary(mod2.matched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~ml*relative+as.factor(monthno),
-                    data = pdata.frame(matched%>%filter(count==106), index = c("id")),
-                    weights = weights,
-                    model = "within")
-summary(mod3.matched)
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = paste0("calorie~ml*relative+as.factor(monthno)+",
-                                            cov,"+(1|id)"),
-                           data=matched%>%filter(count==106), weights = weights)
-summary(mod4.matched)
-# add diff treatment city as factor var
-mod5.matched <- lm(formula = paste0("calorie~ml*relative+as.factor(monthno)+as.factor(policy)+",cov),
-                   data = matched%>%filter(count==106), weights = weights)
-summary(mod5.matched)
-
-stargazer(mod1.matched, mod2.matched, mod5.matched,mod3.matched, mod4.matched,
-          type="html",
-          title="The effect of menu labeling on calories purchased, continuously open restaurants only",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          model.names = FALSE,
-          keep = c("ml", "relative", "ml:relative"),
-          order=c("^ml$", "^relative$", "^ml:relative$"),
-          covariate.labels=c("Has labeling", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model","<em>Post dummy</em>","<em>Month relative</em>","<em>City factor</em>",
-                             "<em>FE</em>","<em>RE</em>")),
-          notes = c("All models has calendar month as control vars. The sample consists of 59 unique treated ",
-                    "restaurants and 89 comparison restaurants."),
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/regression/aim1-matched-data-continuous-restaurant-only.html")
-
-# restaurants continuously open for 12 months before and after ML
-tmp <- matched %>% filter(relative>=-11&relative<=12) %>%
-  group_by(id, treat, match_to) %>%
-  mutate(rank=row_number(id)) %>%
-  mutate(open_month=max(rank)) %>%
-  filter(open_month==24)
-hist(tmp$open_month)
-summary(tmp$open_month)
-length(unique(tmp$id[tmp$treat==1&tmp$open_month==24])) #443
-length(unique(tmp$id[tmp$treat==0&tmp$open_month==24])) #364
-
-mod1.matched <- lm(formula = paste0("calorie~ml+as.factor(monthno)+", cov),
-                   data = tmp, weights = weights)
-summary(mod1.matched)
-# month as relative and continuous
-mod2.matched <- lm(formula = paste0("calorie~ml*relative+as.factor(monthno)+",cov),
-                   data = tmp, weights = weights)
-summary(mod2.matched)
-# diff-in-diff, with fixed effect at restaurant level
-mod3.matched <- plm(formula = calorie~ml*relative+as.factor(monthno),
-                    data = pdata.frame(tmp, index = c("id")),
-                    weights = weights,
-                    model = "within")
-summary(mod3.matched)
-# diff-in-diff, random effect at restaurant level
-mod4.matched <- lme4::lmer(formula = paste0("calorie~ml*relative+as.factor(monthno)+", cov,"+(1|id)"),
-                           data=tmp, weights = weights)
-summary(mod4.matched)
-
-# add diff treatment city as factor var
-mod5.matched <- lm(formula = paste0("calorie~ml*relative+as.factor(monthno)+as.factor(policy)+",cov),
-                   data = tmp, weights = weights)
-summary(mod5.matched)
-
-stargazer(mod1.matched, mod2.matched, mod5.matched,mod3.matched, mod4.matched,
-          type="html",
-          title="The effect of menu labeling on calories purchased, restaruants continuously open for 12 months pre- and post-ML",
-          dep.var.caption = "Dependent variable: mean calories per order",
-          dep.var.labels.include = FALSE,
-          model.names = FALSE,
-          keep = c("ml", "relative", "ml:relative"),
-          order=c("^ml$", "^relative$", "^ml:relative$"),
-          covariate.labels=c("Has labeling", 
-                             "Month (relative)", "Has labeling*month (relative)"),
-          keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model","<em>Post dummy</em>","<em>Month relative</em>","<em>City factor</em>",
-                             "<em>FE</em>","<em>RE</em>")),
-          notes = c("All models has calendar month as control vars. The sample consists 443 treated restaurants,",
-                    "and 364 comparison restaurants."),
-          notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/regression/aim1-matched-data-12mon-continuous.html")
-
-### matched data, add treat to model, allow diff intercept pre-ML  ----
 mod1.matched <- lm(formula = paste0("calorie~ml+treat+as.factor(monthno)+", cov),
                    data = matched, weights = weights)
 summary(mod1.matched)
@@ -911,13 +394,19 @@ summary(mod3.matched)
 mod4.matched <- lme4::lmer(formula = paste0("calorie~treat+ml*relative+as.factor(monthno)+", cov,"+(1|id)"),
                            data=matched, weights = weights)
 summary(mod4.matched)
-# add diff treatment city as factor var
-mod5.matched <- lm(formula = paste0("calorie~treat+ml*relative+as.factor(monthno)+as.factor(policy)+",cov),
-                   data = matched, weights = weights)
+#city fixed effect
+mod5.matched <- plm(formula = paste0("calorie~treat+ml*relative+as.factor(monthno)+",cov),
+                    data = pdata.frame(matched%>%mutate(location=paste(state,"+",county)), index = c("location")),
+                    weights = weights, model = "within")
 summary(mod5.matched)
+
+length(unique(matched$id[matched$relative<=12&matched$relative>=-11])) #951
+length(unique(matched$id)) #951
+length(unique(matched$id[matched$open_month==106])) #154
+
 stargazer(mod1.matched, mod2.matched, mod5.matched,mod3.matched, mod4.matched,
           type="html",
-          title="The effect of menu labeling on calories purchased",
+          title="The effect of menu labeling on calories purchased, continuously open restaurants only",
           dep.var.caption = "Dependent variable: mean calories per order",
           dep.var.labels.include = FALSE,
           model.names = FALSE,
@@ -926,9 +415,135 @@ stargazer(mod1.matched, mod2.matched, mod5.matched,mod3.matched, mod4.matched,
           covariate.labels=c("In labeling group","Has labeling", 
                              "Month (relative)", "Has labeling*month (relative)"),
           keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("Model","<em>Post dummy</em>","<em>Month relative</em>","<em>City factor</em>",
-                             "<em>FE</em>","<em>RE</em>")),
+          add.lines = list(c("Model","<em>diff-in-diff</em>","<em>Month continuous</em>","<em>City FE</em>",
+                             "<em>Restaurant FE</em>","<em>Restaurant RE</em>"),
+                           c("Unique restaurants", "154", "154","154","154","154","154")),
           notes = c("In labeling group = 1 for all treated restaurants at all times; Has labeling = 1 for treated",
                     "restaruants when labeling is implemented. All models has calendar month as control vars."),
           notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/regression/aim1-matched-data-add-treat.html")
+          out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/aim1-matched-data-continuous.html")
+
+### matched data, strtify by location ----
+# stratify by diff treatment city
+model_list <- list()
+for (i in c("king","nassau","philly","albany","mont","mult","ma","ca","or","nj")) {
+  tryCatch({ #catch groups that do not have comparison restaurants
+    model <- lm(data = matched %>% filter(match_place==i),
+                formula = paste0("calorie~treat+ml*relative+as.factor(monthno)+",cov),
+                weights = weights)
+    #print(length(unique(matched$id[matched$match_place==i])))
+    model_list[[i]] <- model
+  }, error=function(e){cat(paste0("ERROR: ", i),conditionMessage(e), "\n")})
+}
+rm(model, i)
+stargazer(mod2.matched, model_list[["king"]],model_list[["nassau"]],model_list[["philly"]],
+          model_list[["albany"]],model_list[["mont"]],model_list[["mult"]],
+          model_list[["ma"]],model_list[["ca"]],model_list[["or"]],model_list[["nj"]],
+          type="html",
+          title="The effect of menu labeling on calories purchased, stratified by city/state",
+          dep.var.caption = "Dependent variable: mean calories per order",
+          dep.var.labels.include = FALSE,
+          model.names = FALSE,
+          keep = c("treat","ml", "relative", "ml:relative"),
+          order=c("treat","^ml$", "^relative$", "^ml:relative$"),
+          covariate.labels=c("In labeling group","Has labeling", 
+                             "Month (relative)", "Has labeling*month (relative)"),
+          keep.stat = c("n","adj.rsq"),
+          add.lines = list(c("City/state","Overall", "King county", "Nassau", "Philadelphia",
+                             "Albany","Montgomery", "Multnomah",
+                             "MA", "CA","OR", "NJ"),
+                           c("Unique restaurants","951","6","16","10","6","6","43","80","710","91","41")),
+          notes = "All models has calendar month as control vars.",
+          notes.align = "l",
+          out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/aim1-strat-by-city.html")
+
+# restaurants continuously open for 12 months before and after ML
+tmp <- matched %>% filter(relative>=-11&relative<=12) %>%
+  group_by(id, treat, match_to) %>%
+  mutate(rank=row_number(id)) %>%
+  mutate(open_month=max(rank)) %>%
+  filter(open_month==24)
+hist(tmp$open_month)
+summary(tmp$open_month)
+length(unique(tmp$id[tmp$treat==1&tmp$open_month==24])) #443
+length(unique(tmp$id[tmp$treat==0&tmp$open_month==24])) #364
+
+### have relative month as factor ----
+# month as relative and factor
+# set month 1 as ref group
+matched$relative.factor <- factor(matched$relative)
+matched <- within(matched, relative.factor<-relevel(relative.factor, ref="0"))
+summary(matched$relative)
+
+mod.factor <- lm(formula = paste0("calorie~treat+ml*relative.factor+as.factor(monthno)+",cov),
+                   data = matched, weights = weights)
+summary(mod.factor)
+tidy_mod.factor <- tidy(mod.factor)
+#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/relative-month-as-factor.csv")
+
+# import coefficients and clean table
+tidy_mod.factor <- tidy_mod.factor[-c(134:252), -(3:4)]
+# fill up hte 2 months of month=0
+tidy_mod.factor[264:265, 1] <- c("0","0")
+tidy_mod.factor[264:265, 2] <- c(0,0)
+tidy_mod.factor[264:265, 3] <- c(NA,NA)
+
+tidy_mod.factor$intercept <- as.numeric(tidy_mod.factor[1,2]) #long to wide
+tidy_mod.factor$treat <- as.numeric(tidy_mod.factor[2,2])
+tidy_mod.factor$ml <- as.numeric(tidy_mod.factor[3,2])
+tidy_mod.factor <- tidy_mod.factor[-c(1:3),]
+tidy_mod.factor$group <- 0 #differentiate treat/comp groups
+tidy_mod.factor$group[c(131:260,262)] <- 1
+colnames(tidy_mod.factor)[c(1:3)] <- c("month", "coef.month", "p")
+#convert month to numbers
+tidy_mod.factor$month <- as.integer(gsub(tidy_mod.factor$month, pattern="relative.factor|ml:",replacement = ""))
+summary(tidy_mod.factor$month)
+
+#prepare for visualization
+tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month),]
+tidy_mod.factor$coef.ml <- ifelse(tidy_mod.factor$group==1, tidy_mod.factor$coef.month, NA)
+tidy_mod.factor$coef.month[132:262] <- tidy_mod.factor$coef.month[1:131]
+tidy_mod.factor <- tidy_mod.factor[-c(252:262),]
+tidy_mod.factor <- tidy_mod.factor %>%
+  mutate(calorie=case_when(group==0 ~ coef.month+intercept,
+                           group==1&month<=0 ~ coef.month+treat+intercept,
+                           group==1&month>0 ~ coef.month+treat+ml+coef.ml+intercept))
+summary(tidy_mod.factor$calorie)
+tidy_mod.factor$coef.ml[1:131] <- tidy_mod.factor$coef.month[1:131]
+
+#visualize coef
+ggplot(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) + #
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=1) +
+  ggplot2::annotate(geom="label", x=5, y=1700, label="Ref group", size=3) + #add label for ML
+  #geom_hline(yintercept = 0, color="grey", linetype="solid", size=0.5) + #add line for ref group
+  coord_cartesian(expand = FALSE, clip = "off", ylim = c(900,1900)) + #
+  scale_y_continuous(breaks=seq(900,1900,100)) +
+  scale_x_continuous(breaks=seq(-49,81,5)) +
+  labs(title="Effect of menu labeling on calories purchased", x="Month", y="Calories",
+       caption="All coefficients set the reference group as month=0 (grey dashed line), the month immediately before labeling began. \n No estimates past month 71 as there was only one restaurant.") + #
+  scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16),
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/coef-month-interaction-in-calories.jpeg", dpi="retina")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
