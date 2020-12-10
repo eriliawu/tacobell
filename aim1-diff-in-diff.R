@@ -358,12 +358,14 @@ ggplot(data=matched %>% filter(relative>=-11&relative<=12) %>%
        aes(x=relative, y=calorie, group=as.character(group), color=as.character(group))) +
   stat_summary(aes(y=calorie,group=as.character(group),color=as.character(group)),
                fun.y=mean, geom="line") + #insert monthly mean 
-  geom_vline(xintercept = 1, color="grey", linetype="dashed", size=1) +
-  ggplot2::annotate(geom="label", x=2, y=1450, label="Menu labeling", size=3) + #add label for nyc
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=1) +
+  ggplot2::annotate(geom="label", x=0, y=1170, label="Just before ML", size=3) + #add label for ML
+  ggplot2::annotate(geom="label", x=0, y=1420, label="Dec", size=3) + #add label for time
+  ggplot2::annotate(geom="label", x=1, y=1420, label="Jan", size=3) + #add label for time
   coord_cartesian(ylim=c(1000,1500), expand = FALSE, clip = "off") +
   scale_x_continuous(breaks=seq(-11,12,1)) +
   labs(title="Calories trend, 12 months before and after menu labeling", x="Month", y="Calories",
-       caption="Note: California account for 77% of all treated restaurants. Grey dashed line represents the month when labeling was implemented.") +
+       caption="Note: California account for 77% of all treated restaurants. Grey dashed line represents the month immediately before labeling began.") +
   scale_color_manual(name="Menu Lableing", values=c("hotpink", "skyblue", "orange", "#009E73"),
                      labels=c("CA", "Comparison restaurants for CA", "Other treated restaurants", "other comparison restaurants")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -472,22 +474,21 @@ length(unique(tmp$id[tmp$treat==0&tmp$open_month==24])) #364
 # month as relative and factor
 # set month 1 as ref group
 matched$relative.factor <- factor(matched$relative)
-matched <- within(matched, relative.factor<-relevel(relative.factor, ref="0"))
+matched <- within(matched, relative.factor<-relevel(relative.factor, ref="1"))
 summary(matched$relative)
 
 mod.factor <- lm(formula = paste0("calorie~treat+ml*relative.factor+as.factor(monthno)+",cov),
-                   data = matched, weights = weights)
+                   data = matched%>%filter(relative>=-11&relative<=12), weights = weights)
 summary(mod.factor)
 tidy_mod.factor <- tidy(mod.factor)
-#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/relative-month-as-factor.csv")
+#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/relative-month-as-factor-12mon.csv")
 
 # import coefficients and clean table
 tidy_mod.factor <- tidy_mod.factor[-c(134:252), -(3:4)]
-# fill up hte 2 months of month=0
-tidy_mod.factor[264:265, 1] <- c("0","0")
+# fill up the 2 months of month=1
+tidy_mod.factor[264:265, 1] <- c("1","1")
 tidy_mod.factor[264:265, 2] <- c(0,0)
 tidy_mod.factor[264:265, 3] <- c(NA,NA)
-
 tidy_mod.factor$intercept <- as.numeric(tidy_mod.factor[1,2]) #long to wide
 tidy_mod.factor$treat <- as.numeric(tidy_mod.factor[2,2])
 tidy_mod.factor$ml <- as.numeric(tidy_mod.factor[3,2])
@@ -498,11 +499,10 @@ colnames(tidy_mod.factor)[c(1:3)] <- c("month", "coef.month", "p")
 #convert month to numbers
 tidy_mod.factor$month <- as.integer(gsub(tidy_mod.factor$month, pattern="relative.factor|ml:",replacement = ""))
 summary(tidy_mod.factor$month)
-
 #prepare for visualization
 tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month),]
-tidy_mod.factor$coef.ml <- ifelse(tidy_mod.factor$group==1, tidy_mod.factor$coef.month, NA)
-tidy_mod.factor$coef.month[132:262] <- tidy_mod.factor$coef.month[1:131]
+#tidy_mod.factor$coef.ml <- ifelse(tidy_mod.factor$group==1, tidy_mod.factor$coef.month, NA)
+#tidy_mod.factor$coef.month[132:262] <- tidy_mod.factor$coef.month[1:131]
 tidy_mod.factor <- tidy_mod.factor[-c(252:262),]
 tidy_mod.factor <- tidy_mod.factor %>%
   mutate(calorie=case_when(group==0 ~ coef.month+intercept,
@@ -512,17 +512,22 @@ summary(tidy_mod.factor$calorie)
 tidy_mod.factor$coef.ml[1:131] <- tidy_mod.factor$coef.month[1:131]
 
 #visualize coef
+#tidy_mod.factor <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/relative-month-as-factor.csv")
 ggplot(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) + #
   geom_point() +
+  geom_point(x=0,y=1569.8745,color="orange") +
+  geom_point(x=1,y=1581.4269,color="orange") + #highlight calories for ML group in month 0 and 1
   geom_line() +
   geom_vline(xintercept = 0, color="grey", linetype="dashed", size=1) +
-  ggplot2::annotate(geom="label", x=5, y=1700, label="Ref group", size=3) + #add label for ML
-  #geom_hline(yintercept = 0, color="grey", linetype="solid", size=0.5) + #add line for ref group
-  coord_cartesian(expand = FALSE, clip = "off", ylim = c(900,1900)) + #
-  scale_y_continuous(breaks=seq(900,1900,100)) +
+  ggplot2::annotate(geom="label", x=0, y=1700, label="Month 0", size=3) + #add label for ML
+  ggplot2::annotate(geom="label", x=-44, y=950, label="Diff=25", size=3) + #add label for ML
+  ggplot2::annotate(geom="label", x=1.5, y=1525, label="Increase=13", size=3) + #add label for ML
+  geom_hline(yintercept = 0, color="grey", linetype="solid", size=0.5) + #add line for ref group
+  coord_cartesian(expand = FALSE, clip = "off", ylim = c(900,1800)) + #
+  scale_y_continuous(breaks=seq(900,1800,100)) +
   scale_x_continuous(breaks=seq(-49,81,5)) +
   labs(title="Effect of menu labeling on calories purchased", x="Month", y="Calories",
-       caption="All coefficients set the reference group as month=0 (grey dashed line), the month immediately before labeling began. \n No estimates past month 71 as there was only one restaurant.") + #
+       caption="No estimates past month 71 because there was only 1 restaurant.") + #All coefficients set the reference group as month=0 (grey dashed line), the month immediately before labeling began. \n 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16),
@@ -530,7 +535,7 @@ ggplot(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), co
         axis.title.y = element_text(size = 12),
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/coef-month-interaction-in-calories.jpeg", dpi="retina")
+ggsave("tables/analytic-model/aim1-diff-in-diff/regression/coef-month-interaction-in-calories.jpeg", dpi="retina")
 
 
 
