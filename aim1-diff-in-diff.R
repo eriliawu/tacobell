@@ -560,8 +560,6 @@ tmp <- matched %>%
 table(tmp$open_number) #6,7,8,9,10,11
 length(unique(paste0(tmp$id[tmp$open_month!=12&tmp$treat==0],tmp$match_place[tmp$open_month!=12&tmp$treat==0])))
 
-
-
 ### have relative month as factor, calorie=treat+month+treat*month ----
 matched$relative2.factor <- factor(matched$relative2)
 matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="0"))
@@ -647,48 +645,44 @@ ggplot() + #
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/calorie=month+treat+month_month+year(factor).jpeg", dpi="retina")
 
-### cal=group*month*post, month as linear, month = 0 for 1st month of labeling ----
+### cal=group*post|group*month*post, month as linear, month = 0 for 1st month of labeling ----
 # mod1, cal=group+post+group*post,
 # create relative2, so month = 0 for 1st month of labeling
 mod1.matched <- lm(formula = paste0("calorie~treat*post+", cov),
-                   data = matched, weights = weights)
-summary(mod1.matched)
-# add month fixed effects
+                   data = matched%>%filter(relative2>=-12&relative2<=11), weights = weights)
+#summary(mod1.matched)
 mod2.matched <- lm(formula = paste0("calorie~treat*post+as.factor(month)+", cov),
-                   data = matched, weights = weights)
-summary(mod2.matched)
+                   data = matched%>%filter(relative2>=-12&relative2<=11), weights = weights)
+#summary(mod2.matched)
 #add year and month FE
-mod3.matched <- lm(formula = paste0("calorie~treat*post+as.factor(month)+
-                                    as.factor(year)+", cov),
-                   data = matched, weights = weights)
-summary(mod3.matched)
+mod3.matched <- lm(formula = paste0("calorie~treat*post+as.factor(monthno)+", cov),
+                   data = matched%>%filter(relative2>=-12&relative2<=11), weights = weights)
+#summary(mod3.matched)
 # mod4, cal=group*post*month, month as linear
 mod4.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
                                     post*treat+post*relative2+post*relative2*treat+", cov),
-                   data = matched, weights = weights)
-summary(mod4.matched)
+                   data = matched%>%filter(relative2>=-12&relative2<=11), weights = weights)
+#summary(mod4.matched)
 #add month fixed effects
 mod5.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
-                                    post*treat+post*relative2+post*relative2*treat+
-                                    as.factor(month)+", cov),
-                   data = matched, weights = weights)
-summary(mod5.matched)
+                                    post*treat+post*relative2+post*relative2*treat+as.factor(month)+", cov),
+                   data = matched%>%filter(relative2>=-12&relative2<=11), weights = weights)
+#summary(mod5.matched)
 #add year and month FE
 mod6.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
-                                    post*treat+post*relative2+post*relative2*treat+
-                                    as.factor(month)+as.factor(year)+", cov),
-                   data = matched, weights = weights)
-summary(mod6.matched)
+                                    post*treat+post*relative2+post*relative2*treat++as.factor(monthno)+", cov),
+                   data = matched%>%filter(relative2>=-12&relative2<=11), weights = weights)
+#summary(mod6.matched)
 
 stargazer(mod1.matched, mod2.matched, mod3.matched, mod4.matched,mod5.matched,mod6.matched,
           type="html",
-          title="The effect of menu labeling on calories purchased",
+          title="The effect of menu labeling on calories purchased, 12 months pre- and post-labeling",
           dep.var.caption = "Dependent variable: mean calories per order",
           dep.var.labels.include = FALSE,
           model.names = FALSE,
-          keep = c("treat","post","treat:post","relative2", "treat:relative2","post:relative2","treat:post:relative2"),
-          order=c("^treat$","^post$", "^treat:post$","^relative2$","^treat:relative2$","^post:relative2$","^treat:post:relative2$"),
-          covariate.labels=c("In labeling group, β<sub>1</sub>","Post labeling, β<sub>2</sub>",
+          keep = c("Constant","treat","post","treat:post","relative2", "treat:relative2","post:relative2","treat:post:relative2"),
+          order=c("^Constant$","^treat$","^post$", "^treat:post$","^relative2$","^treat:relative2$","^post:relative2$","^treat:post:relative2$"),
+          covariate.labels=c("Intercept, β<sub>0</sub>","In labeling group, β<sub>1</sub>","Post labeling, β<sub>2</sub>",
                              "In labeling group*post labeling, β<sub>3</sub>",
                              "Month, β<sub>4</sub>","In labeling group*month, β<sub>5</sub>",
                              "Post labeling*month, β<sub>6</sub>",
@@ -700,4 +694,81 @@ stargazer(mod1.matched, mod2.matched, mod3.matched, mod4.matched,mod5.matched,mo
           notes = c("In labeling group = 1 for all treated restaurants at all times; Post labeling = 1 for both treated and comparison restaurants after", 
                     "labeling implementation for treated restaruants. All models include restaurant level and community demographic control vars."),
           notes.align = "l",
-          out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2.html")
+          out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2-12mon.html")
+
+### cal=group*month*post ----
+mod1.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
+                                    post*treat+post*relative2+post*relative2*treat+", cov),
+                   data = matched, weights = weights)
+#add month fixed effects
+mod2.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
+                                    post*treat+post*relative2+post*relative2*treat+as.factor(month)+", cov),
+                   data = matched, weights = weights)
+#add year and month FE
+mod3.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
+                                    post*treat+post*relative2+post*relative2*treat+as.factor(monthno)+", cov),
+                   data = matched, weights = weights)
+# add restaurant FE
+mod4.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
+                                    post*treat+post*relative2+post*relative2*treat+
+                                    as.factor(monthno)+as.factor(id)+", cov),
+                   data = matched, weights = weights)
+# add restaurant RE
+mod5.matched <- lme4::lmer(formula = paste0("calorie~treat+post+relative2+relative2*treat+
+                                    post*treat+post*relative2+post*relative2*treat+as.factor(monthno)+", cov,"+(1|id)"),
+                           data=matched, weights = weights)
+# add state FE
+mod6.matched <- lm(formula = paste0("calorie~treat+post+relative2+relative2*treat+
+                                    post*treat+post*relative2+post*relative2*treat+
+                                    as.factor(monthno)+as.factor(state)+", cov),
+                   data = matched, weights = weights)
+
+stargazer(mod1.matched, mod2.matched, mod3.matched,mod6.matched,mod4.matched,mod5.matched,
+          type="html",
+          title="The effect of menu labeling on calories purchased",
+          dep.var.caption = "Dependent variable: mean calories per order",
+          dep.var.labels.include = FALSE,
+          model.names = FALSE,
+          keep = c("Constant","treat","post","treat:post","relative2", "treat:relative2","post:relative2","treat:post:relative2"),
+          order=c("^Constant$","^treat$","^post$", "^treat:post$","^relative2$","^treat:relative2$","^post:relative2$","^treat:post:relative2$"),
+          covariate.labels=c("Intercept, β<sub>0</sub>","In labeling group, β<sub>1</sub>","Post labeling, β<sub>2</sub>",
+                             "In labeling group*post labeling, β<sub>3</sub>",
+                             "Month, β<sub>4</sub>","In labeling group*month, β<sub>5</sub>",
+                             "Post labeling*month, β<sub>6</sub>",
+                             "In labeling group*post labeling*month, β<sub>7</sub>"),
+          keep.stat = c("n","adj.rsq"),
+          add.lines = list(c("Model","<em>diff-in-diff</em>","<em>Month FE</em>","<em>Year+month FE</em>",
+                             "<em>State FE</em>","<em>Restaurant FE</em>","<em>Restaurant RE</em>"),
+                           c("Unique restaurants", "951", "951","951","951","951","951","951")),
+          notes = c("In labeling group = 1 for all treated restaurants at all times; Post labeling = 1 for both treated and comparison restaurants after", 
+                    "labeling implementation for treated restaruants. All models include restaurant level and community demographic control vars."),
+          notes.align = "l",
+          out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2-additional-specs.html")
+
+### model testing ----
+mod1.matched <- lm(formula = paste0("calorie~treat*post+as.factor(monthno)+", cov),
+                   data = matched, weights = weights)
+#summary(mod1.matched)
+mod2.matched <- lm(formula = paste0("calorie~treat*post+as.factor(month)*as.factor(year)+", cov),
+                   data = matched, weights = weights)
+#summary(mod2.matched)
+mod3.matched <- lm(formula = paste0("calorie~treat*post+as.factor(month)+as.factor(year)+", cov),
+                   data = matched, weights = weights)
+#summary(mod3.matched)
+stargazer(mod1.matched, mod2.matched, mod3.matched, #mod4.matched,mod5.matched,mod6.matched,
+          type="html",
+          title="The effect of menu labeling on calories purchased",
+          dep.var.caption = "Dependent variable: mean calories per order",
+          dep.var.labels.include = FALSE,
+          model.names = FALSE,
+          keep = c("Constant","treat","post","treat:post","relative2", "treat:relative2","post:relative2","treat:post:relative2"),
+          order=c("^Constant$","^treat$","^post$", "^treat:post$","^relative2$","^treat:relative2$","^post:relative2$","^treat:post:relative2$"),
+          covariate.labels=c("Intercept, β<sub>0</sub>","In labeling group, β<sub>1</sub>","Post labeling, β<sub>2</sub>",
+                             "In labeling group*post labeling, β<sub>3</sub>",
+                             "Month, β<sub>4</sub>","In labeling group*month, β<sub>5</sub>",
+                             "Post labeling*month, β<sub>6</sub>",
+                             "In labeling group*post labeling*month, β<sub>7</sub>"),
+          keep.stat = c("n","adj.rsq"),
+          add.lines = list(c("Model","<em>Calendar month dummies</em>","<em>Year*month</em>", "<em>Year and month dummies</em>"),
+                           c("Unique restaurants", "951", "951")),
+          out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/test.html")
