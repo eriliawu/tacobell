@@ -865,22 +865,22 @@ mod.factor <- lm(formula = paste0("calorie~treat*relative2.factor+as.factor(mont
 car::vif(mod.factor)
 
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                  data = pdata.frame(matched%>%filter(relative2>=-33&relative2<=56), index = c("id")),
+                  data = pdata.frame(matched%>%filter(relative2>=-33&relative2<=56&match_place=="ca"), index = c("id")),
                   weights = weights, model = "within")
 summary(mod.factor)
 tidy_mod.factor <- tidy(mod.factor)
-#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime.csv")
+#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_CA.csv")
 
 # clean data
 tidy_mod.factor <- tidy_mod.factor[, 1:2]
 colnames(tidy_mod.factor) <- c("month", "coef.month")
+tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
 tidy_mod.factor$coef.treat <- 0
 tidy_mod.factor$group <- 0
 dim(tidy_mod.factor)
-tidy_mod.factor[190:191, 1] <- "0"
-tidy_mod.factor[190:191, 2:3] <- 0
-tidy_mod.factor[190:191, 4] <- c(0, 1)
-tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
+tidy_mod.factor[179:180, 1] <- "0"
+tidy_mod.factor[179:180, 2:3] <- 0
+tidy_mod.factor[179:180, 4] <- c(0, 1)
 tidy_mod.factor[, 1] <- c(seq(-33, -1, 1),seq(1,56, 1),seq(-33, -1, 1),seq(1,56, 1),0,0)
 tidy_mod.factor$group[90:178] <- 1
 tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
@@ -908,7 +908,7 @@ ggplot() + #
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=seq(-33,56,2)) +
-  labs(title="Effect of menu labeling on calories purchased", x="Month", y="Calories",
+  labs(title="Effect of menu labeling on calories purchased, CA only", x="Month", y="Calories",
        caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -917,7 +917,7 @@ ggplot() + #
         axis.title.y = element_text(size = 12),
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_CA.jpeg", dpi="retina")
 
 ### cal=group*month*post, month as factor, limit to restaurants open for an extended time ----
 #histogram of restaurants open month
@@ -931,9 +931,49 @@ matched$open_before <- ifelse(matched$post==0, matched$open_before, matched$open
 matched$open_after <- ifelse(matched$post==1, matched$open_after, matched$open_month-matched$open_after)
 
 #create indicators for restaurants that were open for at least 6, 12, 18 and 24 months before and after ML
+tmp <- matched %>%
+  group_by(id, treat, match_place) %>%
+  filter(relative2<=5&relative2>=-6) %>%
+  mutate(n=n()) %>%
+  mutate(open6 = ifelse(n==12, 1,0)) %>%
+  dplyr::select(id, treat, match_place, open6) %>%
+  distinct()
+table(tmp$open6)
 
+tmp1 <- matched %>%
+  group_by(id, treat, match_place) %>%
+  filter(relative2<=11&relative2>=-12) %>%
+  mutate(n=n()) %>%
+  mutate(open12 = ifelse(n==24, 1,0)) %>%
+  dplyr::select(id, treat, match_place, open12) %>%
+  distinct()
+table(tmp1$open12)
 
-tmp <- matched[!duplicated(matched$id), ]
+tmp2 <- matched %>%
+  group_by(id, treat, match_place) %>%
+  filter(relative2<=17&relative2>=-18) %>%
+  mutate(n=n()) %>%
+  mutate(open18 = ifelse(n==36, 1,0)) %>%
+  dplyr::select(id, treat, match_place, open18) %>%
+  distinct()
+table(tmp2$open18)
+
+tmp3 <- matched %>%
+  group_by(id, treat, match_place) %>%
+  filter(relative2<=23&relative2>=-24) %>%
+  mutate(n=n()) %>%
+  mutate(open24 = ifelse(n==48, 1,0)) %>%
+  dplyr::select(id, treat, match_place, open24) %>%
+  distinct()
+table(tmp3$open24)
+
+tmp <- merge(tmp, tmp1, by=c("id", "treat", "match_place"))
+tmp <- merge(tmp, tmp2, by=c("id", "treat", "match_place"))
+tmp <- merge(tmp, tmp3, by=c("id", "treat", "match_place"))
+rm(tmp1, tmp2, tmp3)
+matched <- merge(matched, tmp, by=c("id", "treat", "match_place"), all = TRUE)
+
+tmp <- matched[!duplicated(matched$id, matched$treat, matched$match_place), ]
 layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
 hist(tmp$open_month, breaks = 106, xlim = c(1,120),
      main = "Histogram of restaurant open month", xlab = "# of total months open")
@@ -956,12 +996,16 @@ mod4.matched <- plm(formula = formula,data = matched%>%filter(open_month>=91),
                     index = "id",weights = weights, model = "within")
 mod5.matched <- plm(formula = formula,data = matched%>%filter(open_month>=95),
                     index = "id",weights = weights, model = "within")
-mod6.matched <- plm(formula = formula,data = matched%>%filter(open_month>=95),
+mod6.matched <- plm(formula = formula,data = matched%>%filter(open6==1),
                     index = "id",weights = weights, model = "within")
-mod7.matched <- plm(formula = formula,data = matched%>%filter(open_month>=95),
+mod7.matched <- plm(formula = formula,data = matched%>%filter(open12==1),
                     index = "id",weights = weights, model = "within")
-
+mod8.matched <- plm(formula = formula,data = matched%>%filter(open18==1),
+                    index = "id",weights = weights, model = "within")
+mod9.matched <- plm(formula = formula,data = matched%>%filter(open24==1),
+                    index = "id",weights = weights, model = "within")
 stargazer(mod1.matched, mod2.matched, mod3.matched,mod4.matched,mod5.matched,
+          mod6.matched,mod7.matched,mod8.matched,mod9.matched,
           type="html",
           title="The effect of menu labeling on calories purchased, different time frames",
           dep.var.caption = "Dependent variable: mean calories per order",
@@ -975,13 +1019,13 @@ stargazer(mod1.matched, mod2.matched, mod3.matched,mod4.matched,mod5.matched,
                              "Post labeling*month, β<sub>6</sub>",
                              "In labeling group*post labeling*month, β<sub>7</sub>"),
           keep.stat = c("n","adj.rsq"),
-          add.lines = list(c("# of months open","Any", "All months", "Median", "75%", "90%")),
+          add.lines = list(c("# of months open","Any", "All months, 106", "Median, 72", "75%, 91", "90%, 95",
+                             "Min 6 months", "Min 12 months", "Min 18 months", "Min 24 months")),
           notes = c("In labeling group = 1 for all treated restaurants at all times; Post labeling = 1 for both treated and comparison restaurants after", 
                     "labeling implementation for treated restaruants. All models include restaurant level and community demographic control vars,",
                     "as well as month fixed effects, and restaurant fixed effects."),
           notes.align = "l",
           out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2-restaurantFE-monthFE-limitOpenPeriod.html")
-
 
 
 
