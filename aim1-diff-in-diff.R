@@ -860,27 +860,32 @@ stargazer(mod1.matched, mod2.matched, mod3.matched,mod4.matched,mod5.matched,
           out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2-restaurantFE-cap-time-monthFE.html")
 
 ### cal=group*month(factor), month as factor ----
-mod.factor <- lm(formula = paste0("calorie~treat*relative2.factor+as.factor(monthno)+",cov),
+#test quarter FE, instead of month FE
+matched$quarter <- ifelse(matched$month<=3, 1,
+                          ifelse(matched$month>3&matched$month<=6, 2,
+                                 ifelse(matched$month>6&matched$month<=9, 3,4)))
+matched$quarter_year <- paste0(matched$year, "Q", matched$quarter)
+mod.factor <- lm(formula = paste0("calorie~treat*relative2.factor+factor(quarter_year)+",cov),
                  data = matched%>%filter(relative2>=-33&relative2<=56), weights = weights)
 car::vif(mod.factor)
 
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                  data = pdata.frame(matched%>%filter(relative2>=-33&relative2<=56&match_place=="ca"), index = c("id")),
-                  weights = weights, model = "within")
+                  data = matched%>%filter(relative2>=-33&relative2<=56&open12==1),
+                  index = c("id"), weights = weights, model = "within")
 summary(mod.factor)
 tidy_mod.factor <- tidy(mod.factor)
-#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_CA.csv")
+#write.csv(tidy_mod.factor, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_open12.csv")
 
 # clean data
-tidy_mod.factor <- tidy_mod.factor[, 1:2]
-colnames(tidy_mod.factor) <- c("month", "coef.month")
+tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
+colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
 tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
 tidy_mod.factor$coef.treat <- 0
 tidy_mod.factor$group <- 0
 dim(tidy_mod.factor)
 tidy_mod.factor[179:180, 1] <- "0"
-tidy_mod.factor[179:180, 2:3] <- 0
-tidy_mod.factor[179:180, 4] <- c(0, 1)
+tidy_mod.factor[179:180, c(2,4)] <- 0
+tidy_mod.factor[179:180, 5] <- c(0, 1)
 tidy_mod.factor[, 1] <- c(seq(-33, -1, 1),seq(1,56, 1),seq(-33, -1, 1),seq(1,56, 1),0,0)
 tidy_mod.factor$group[90:178] <- 1
 tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
@@ -890,6 +895,8 @@ tidy_mod.factor$calorie <- ifelse(tidy_mod.factor$group==0, tidy_mod.factor$coef
                                   tidy_mod.factor$coef.month+tidy_mod.factor$coef.treat)
 tidy_mod.factor$diff <- NA
 tidy_mod.factor$diff[1:90] <- tidy_mod.factor$calorie[91:180] - tidy_mod.factor$calorie[1:90]
+tidy_mod.factor$p.diff <- NA
+tidy_mod.factor$p.diff[1:90] <- tidy_mod.factor$p[91:180]
 
 # add year and month factor as covariate
 #tidy_mod.factor <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_month+year(factor).csv")
@@ -899,6 +906,9 @@ ggplot() + #
   geom_point(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group)), size=1) +
   geom_line(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) +
   geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff*1-300), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05),aes(x=month, y=diff*1-300), color="orange") + #highlight significant months with dots
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.01),aes(x=month, y=diff*1-300), color="red") + 
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.001),aes(x=month, y=diff*1-300), color="purple") + 
   geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
   geom_vline(xintercept = -1, color="grey", linetype="dashed", size=0.5) +
   ggplot2::annotate(geom="label", x=0, y=-100, label="Pre-label \n to label", size=3) + #add label for ML
@@ -908,8 +918,8 @@ ggplot() + #
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=seq(-33,56,2)) +
-  labs(title="Effect of menu labeling on calories purchased, CA only", x="Month", y="Calories",
-       caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
+  labs(title="Effect of menu labeling on calories purchased", x="Month", y="Calories", 
+       caption="Orange lined represents the difference between treat and comparison group. Orange dot: p<0.05, red: p<0.01, purple: p<0.001 \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
@@ -919,7 +929,7 @@ ggplot() + #
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_CA.jpeg", dpi="retina")
 
-### cal=group*month*post, month as factor, limit to restaurants open for an extended time ----
+### cal=group*month*post, limit to restaurants open for an extended time ----
 #histogram of restaurants open month
 # calculate open_month both before and after ML
 matched <- matched %>%
@@ -1026,6 +1036,7 @@ stargazer(mod1.matched, mod2.matched, mod3.matched,mod4.matched,mod5.matched,
                     "as well as month fixed effects, and restaurant fixed effects."),
           notes.align = "l",
           out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2-restaurantFE-monthFE-limitOpenPeriod.html")
+
 
 
 
