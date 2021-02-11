@@ -870,7 +870,7 @@ mod.factor <- lm(formula = paste0("calorie~treat*relative2.factor+factor(quarter
 car::vif(mod.factor)
 
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                  data = matched%>%filter(relative2>=-33&relative2<=56&open12==1),
+                  data = matched%>%filter(relative2>=-33&relative2<=56&match_place!="ca"), # &open12==1
                   index = c("id"), weights = weights, model = "within")
 summary(mod.factor)
 tidy_mod.factor <- tidy(mod.factor)
@@ -918,7 +918,7 @@ ggplot() + #
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=seq(-33,56,2)) +
-  labs(title="Effect of menu labeling on calories purchased", x="Month", y="Calories", 
+  labs(title="Effect of menu labeling on calories purchased, excl. CA", x="Month", y="Calories", 
        caption="Orange lined represents the difference between treat and comparison group. Orange dot: p<0.05, red: p<0.01, purple: p<0.001 \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -927,7 +927,7 @@ ggplot() + #
         axis.title.y = element_text(size = 12),
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_CA.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_monthFE_restaurantFE_captime_notCA.jpeg", dpi="retina")
 
 ### cal=group*month*post, limit to restaurants open for an extended time ----
 #histogram of restaurants open month
@@ -993,7 +993,7 @@ hist(tmp$open_after, breaks = 106, xlim=c(1,80),
      main = "", xlab = "# of months open after labeling")
 summary(tmp$open_month) 
 summary(tmp$open_before) 
-summary(tmp$open_after) 
+summary(tmp$open_after)
 
 formula <- "calorie~post*relative2*treat+factor(monthno)"
 mod1.matched <- plm(formula = formula,data = matched,
@@ -1036,6 +1036,99 @@ stargazer(mod1.matched, mod2.matched, mod3.matched,mod4.matched,mod5.matched,
                     "as well as month fixed effects, and restaurant fixed effects."),
           notes.align = "l",
           out="tables/analytic-model/aim1-diff-in-diff/regression/diff-intercept-pre-post/cal=treat+post+relative2-restaurantFE-monthFE-limitOpenPeriod.html")
+
+
+
+
+
+
+
+
+
+
+
+
+
+### month as factor model, by location ----
+trend <- NULL
+tmp <- data.frame(1:30)
+colnames(tmp)[1] <- "month"
+
+mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+              data = matched%>%filter(open24==1&relative2>=-33&relative2<=56&match_place=="ca"), # &open12==1
+              index = c("id"), weights = weights, model = "within")
+tidy_mod.factor <- tidy(mod.factor)
+#write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-sample-restriction_CA.csv")
+
+# clean data
+tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
+colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
+tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
+tidy_mod.factor$coef.treat <- 0
+tidy_mod.factor$group <- 0
+dim(tidy_mod.factor)
+tidy_mod.factor[179:180, 1] <- "0"
+tidy_mod.factor[179:180, c(2,4)] <- 0
+tidy_mod.factor[179:180, 5] <- c(0, 1)
+tidy_mod.factor[, 1] <- c(seq(-33, -1, 1),seq(1,56, 1),seq(-33, -1, 1),seq(1,56, 1),0,0)
+tidy_mod.factor$group[90:178] <- 1
+tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
+tidy_mod.factor$coef.treat[91:180] <- tidy_mod.factor$coef.month[91:180]
+tidy_mod.factor$coef.month[91:180] <- tidy_mod.factor$coef.month[1:90]
+tidy_mod.factor$calorie <- ifelse(tidy_mod.factor$group==0, tidy_mod.factor$coef.month,
+                                  tidy_mod.factor$coef.month+tidy_mod.factor$coef.treat)
+tidy_mod.factor$diff <- NA
+tidy_mod.factor$diff[1:90] <- tidy_mod.factor$calorie[91:180] - tidy_mod.factor$calorie[1:90]
+tidy_mod.factor$p.diff <- NA
+tidy_mod.factor$p.diff[1:90] <- tidy_mod.factor$p[91:180]
+tmp1 <- tidy_mod.factor[tidy_mod.factor$month>=-30&tidy_mod.factor$month<0&!is.na(tidy_mod.factor$diff), c(1,7)]
+tmp1 <- tmp1[order(tmp1$month, decreasing = TRUE), ]
+tmp1$pre <- cumsum(tmp1$diff)
+tmp1$month <- -tmp1$month
+tmp2 <- tidy_mod.factor[tidy_mod.factor$month>=0&tidy_mod.factor$month<=29&!is.na(tidy_mod.factor$diff), c(1,7)]
+tmp2 <- tmp2[order(tmp2$month), ]
+tmp2$post <- cumsum(tmp2$diff)
+tmp2$month <- tmp2$month+1
+tmp <- merge(tmp1, tmp2, by="month")
+tmp$open <- "open24"
+trend <- rbind(trend, tmp)
+
+table(trend$open)
+names(trend)
+trend <- trend %>%
+  #dplyr::select(-diff.x, -diff.y) %>%
+  mutate(accum = post - pre) %>% 
+  mutate(mean_accum = accum/month)
+Open <- factor(trend$open,
+               levels = c("any","median73","3rd93","90%95","all","open6","open12","open18","open24"))
+
+#trend <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
+ggplot(data=trend, aes(x=month, y=mean_accum, group=Open, color=Open)) + #
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-50,10),breaks=seq(-50,10,10)) +
+  scale_x_continuous(breaks=seq(1,30,1)) +
+  labs(title="Mean diff-in-diff per month, by different samples, CA", x="Month", y="Calories", 
+       caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
+  scale_color_manual(name="Time open",
+                     labels=c("Any month","All 106 months", "At least 90%, 95 months",
+                              "At least 75%, 91 months","At least median, 72 months",
+                              "At least 6 months pre- and post-labeling",
+                              "At least 12 months pre- and post-labeling",
+                              "At least 18 months pre- and post-labeling",
+                              "At least 24 months pre- and post-labeling"),
+                       values = c("hotpink","#F47851","#13B0E4","olivedrab3","#ffd400","grey",
+                                  "#4D8C57","purple","black")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-sample-restrictions_CA.jpeg", dpi="retina")
+
 
 
 
