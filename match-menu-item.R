@@ -698,6 +698,30 @@ sum(q1$pct[q1$category=="Freeze"|q1$category=="Other SSB"|
                  q1$category=="SSB fountain"]) #0.82
 rm(q1)
 
+# % of ssb in 2015 q1, drive-thru only, by each taxed restaurant
+q1 <- read.csv("data/from-bigpurple/sales-vol-by-product/sales_2015_Q01_by_restid.csv")
+names(q1)
+colnames(q1) <- c("restid", "product", "occasion", "qty")
+q1 <- q1[q1$occasion==2, ]
+q1 <- merge(q1, detail, by.x ="product", by.y = "p_detail")
+drinks <- drinks[!duplicated(drinks$product),]
+q1 <- merge(q1, drinks, by.x = "detail_desc", by.y = "product")
+soda <- read.csv("../soda-tax/soda-tax-list.csv")
+names(soda)
+table(soda$state)
+soda <- soda[, c(1:3,6:7)]
+soda <- merge(q1, soda, by="restid")
+soda$ssb <- ifelse(grepl("Freeze|Other SSB|SSB fountain|Vague", soda$category2), 1, 0)
+soda <- aggregate(data=soda, qty~restid+ssb, sum)
+soda <- soda[order(soda$restid),]
+tmp <- aggregate(data=soda, qty~restid, sum)
+soda <- merge(soda, tmp, by="restid")
+colnames(soda)[3:4] <- c("qty", "total")
+soda$pct <- soda$qty/soda$total
+hist(soda$pct[soda$ssb==1], breaks=68, main="Variation of SSB sales, taxed restaurants",
+     xlab = "% of drink sales from SSB", ylab = "Frequency")
+summary(soda$pct[soda$ssb==1])
+
 # % offountain drink sales in 2015 q1, ssb or otherwise
 q1 <- sales_all[sales_all$occasion==2&sales_all$year==2015&sales_all$quarter==1, ]
 q1 <- aggregate(data=q1, qty~category+fountain, sum)
@@ -731,7 +755,7 @@ ggplot(data=subset(sales_all, sales_all$occasion==2),
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-drivethru_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+#ggsave("tables/product-matching/drink-sales-drivethru_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
 ggplot(data=subset(sales_all, sales_all$occasion==1),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
@@ -747,7 +771,7 @@ ggplot(data=subset(sales_all, sales_all$occasion==1),
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-eatin_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+#ggsave("tables/product-matching/drink-sales-eatin_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
 ggplot(data=subset(sales_all, sales_all$occasion==3),
        aes(x=paste(year, "Q", quarter, sep=""), y=pct,
@@ -763,7 +787,7 @@ ggplot(data=subset(sales_all, sales_all$occasion==3),
       theme(plot.title=element_text(hjust=0.5, size=18),
             plot.caption=element_text(hjust=0, face="italic"),
             axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
+#ggsave("tables/product-matching/drink-sales-takeout_pct_size.jpeg", width=10, height=6, unit="in", dpi=600)
 
 # look at drinks sales in drive-thru only
 sales_all <- sales_all[sales_all$occasion==2&sales_all$year==2015&sales_all$quarter==1, ]
