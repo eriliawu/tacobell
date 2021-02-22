@@ -702,7 +702,7 @@ rm(q1)
 q1 <- read.csv("data/from-bigpurple/sales-vol-by-product/sales_2015_Q01_by_restid.csv")
 names(q1)
 colnames(q1) <- c("restid", "product", "occasion", "qty")
-q1 <- q1[q1$occasion==2, ]
+#q1 <- q1[q1$occasion==2, ]
 q1 <- merge(q1, detail, by.x ="product", by.y = "p_detail")
 drinks <- drinks[!duplicated(drinks$product),]
 q1 <- merge(q1, drinks, by.x = "detail_desc", by.y = "product")
@@ -711,7 +711,7 @@ names(soda)
 table(soda$state)
 soda <- soda[, c(1:3,6:7)]
 soda <- merge(q1, soda, by="restid")
-soda$ssb <- ifelse(grepl("Freeze|Other SSB|SSB fountain|Vague", soda$category2), 1, 0)
+soda$ssb <- ifelse(grepl("Freeze|Other SSB|SSB fountain", soda$category2), 1, 0)
 soda <- aggregate(data=soda, qty~restid+ssb, sum)
 soda <- soda[order(soda$restid),]
 tmp <- aggregate(data=soda, qty~restid, sum)
