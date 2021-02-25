@@ -762,3 +762,68 @@ ggplot(data=trend, aes(x=month, y=mean, group=location, color=location)) + #
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location_trim.jpeg", dpi="retina")
 
 ### make map, where treated and comparison restaurants are ----
+
+### try polynomial and/or log term for month ---- 
+#y=x^2+x, y=x^3+x^2+x, y=log(x)
+
+### for soda tax grant ----
+mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                  data = matched%>%filter(relative2>=-33&relative2<=56&extreme==0), 
+                  index = c("id"), weights = weights, model = "within")
+summary(mod.factor)
+tidy_mod.factor <- tidy(mod.factor)
+
+# get num of restaurants in each month
+# clean data
+tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
+colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
+tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
+tidy_mod.factor$coef.treat <- 0
+tidy_mod.factor$group <- 0
+dim(tidy_mod.factor)
+tidy_mod.factor[179:180, 1] <- "0"
+tidy_mod.factor[179:180, c(2,4)] <- 0
+tidy_mod.factor[179:180, 5] <- c(0, 1)
+tidy_mod.factor[, 1] <- c(seq(-33, -1, 1),seq(1,56, 1),seq(-33, -1, 1),seq(1,56, 1),0,0)
+tidy_mod.factor$group[90:178] <- 1
+tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
+tidy_mod.factor$coef.treat[91:180] <- tidy_mod.factor$coef.month[91:180]
+tidy_mod.factor$coef.month[91:180] <- tidy_mod.factor$coef.month[1:90]
+tidy_mod.factor$calorie <- ifelse(tidy_mod.factor$group==0, tidy_mod.factor$coef.month,
+                                  tidy_mod.factor$coef.month+tidy_mod.factor$coef.treat)
+tidy_mod.factor$diff <- NA
+tidy_mod.factor$diff[1:90] <- tidy_mod.factor$calorie[91:180] - tidy_mod.factor$calorie[1:90]
+tidy_mod.factor$p.diff <- NA
+tidy_mod.factor$p.diff[1:90] <- tidy_mod.factor$p[91:180]
+
+# add year and month factor as covariate
+#tidy_mod.factor <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/cal=treat+month_month+year(factor).csv")
+summary(tidy_mod.factor$calorie) #[-81,75]
+summary(tidy_mod.factor$diff) #[-62,22]
+ggplot() + #
+  geom_hline(yintercept = -300, color="grey", linetype="dashed", size=0.5) +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
+  geom_point(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group)), size=1) +
+  geom_line(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) +
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff*1-300), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05),aes(x=month, y=diff*1-300), color="hotpink") + #highlight significant months with dots
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.01),aes(x=month, y=diff*1-300), color="red") + 
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.001),aes(x=month, y=diff*1-300), color="purple") + 
+  ggplot2::annotate(geom="label", x=1, y=-100, label="Labeling \n implemented", size=4.5) + #add label for ML
+  #ggplot2::annotate(geom="label", x=20, y=-225, label="Orange line: \n difference between \n labeled and not labeled", size=4.5) + 
+  ggplot2::annotate(geom="label", x=27, y=-150, label="Blue line: labeled \n Red line: not labeled \n Orange line: difference", size=4.5) + 
+  ggplot2::annotate(geom="label", x=-18, y=-190, label="   p<0.05 \n   p<0.01 \n   p<0.001", size=4.5) + 
+  coord_cartesian(expand = FALSE, clip = "off") + #
+  scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
+                     sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
+  scale_x_continuous(breaks=seq(-32,56,4)) +
+  labs(title="Fig. 3. Using Taco Bell transaction data to show the effect \n of menu labeling policy on calories purchased", x="Month", y="Calories") + 
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 14), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 14),
+        axis.text.x = element_text(size=11),
+        axis.text.y = element_text(size=11),
+        legend.position = "none")
+#ggsave("C:/Users/wue04/Desktop/diff-figure-soda-tax.jpeg", dpi="retina")
