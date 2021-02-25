@@ -285,7 +285,7 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                              (restaurant$county=="New York"|restaurant$county=="Kings"|
                                 restaurant$county=="Bronx"|restaurant$county=="Queens"|
                                 restaurant$county=="Richmond"), 1,
-                           ifelse(restaurant$state=="WA"&restaurant$county=="King", 1,
+                           ifelse(restaurant$state=="WA"&(restaurant$county=="King"|restaurant$city=="Seattle"), 1,
                            ifelse(restaurant$state=="NY"&restaurant$county=="Albany", 1,
                            ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", 1, 
                            ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
@@ -295,12 +295,19 @@ restaurant$treat <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah", 1,
                            ifelse(restaurant$state=="CA", 1,
                            ifelse(restaurant$state=="MA", 1,
-                           ifelse(restaurant$state=="ME", 14,
+                           ifelse(restaurant$state=="ME", 1,
                            ifelse(restaurant$state=="NJ", 1,
                            ifelse(restaurant$state=="OR", 1,
                            ifelse(restaurant$state=="NY"&restaurant$county=="Ulster",1,
                            ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 1,
-                           ifelse(restaurant$state=="VT", 1, 0))))))))))))))))
+                           ifelse(restaurant$state=="VT", 1,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk",1,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady",1,
+                           ifelse(restaurant$state=="TN"&(restaurant$county=="Davidson"|restaurant$city=="Nashville"),1,0)))))))))))))))))))
+length(unique(restaurant$address[(restaurant$state=="NY"&restaurant$county=="Suffolk"&restaurant$monthno==251)])) #19 --> 17
+length(unique(restaurant$address[(restaurant$state=="NY"&restaurant$county=="Schenectady"&restaurant$monthno==248)])) #2 --> 1
+length(unique(restaurant$address[restaurant$state=="TN"&(restaurant$county=="Davidson"|restaurant$city=="Nashville")&restaurant$monthno==244])) #22 --> 20
+
 
 # mean spending per order, mean calorie, % drive-thru, % lunch/dinner
 names(restaurant)
