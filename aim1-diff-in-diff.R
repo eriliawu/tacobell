@@ -686,7 +686,7 @@ quantile(tmp$weights[tmp$treat==0&tmp$match_place!="ca"], c(.01, .99)) #ca:0.305
 tmp <- data.frame(1:30)
 colnames(tmp)[1] <- "month"
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-              data = matched%>%filter(relative2>=-33&relative2<=56&match_place!="ca"&weights>=0.00000000000564753&weights<=6.50404400000003413 ), # &open12==1
+              data = matched%>%filter(relative2>=-33&relative2<=56&extreme==0), 
               index = c("id"), weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 #write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
@@ -716,7 +716,7 @@ tidy_mod.factor$p.diff[1:90] <- tidy_mod.factor$p[91:180]
 tmp1 <- tidy_mod.factor[tidy_mod.factor$month>=-30&tidy_mod.factor$month<0&!is.na(tidy_mod.factor$diff), c(1,7)]
 tmp1 <- tmp1[order(tmp1$month, decreasing = TRUE), ]
 tmp1$month <- -tmp1$month
-tmp1$pre_mean <- ifelse(tmp1$month<=6, cumsum(tmp1$diff)/tmp1$month, sum(tmp1$diff[tmp1$month<=6])/6)
+tmp1$pre_mean <- sum(tmp1$diff[tmp1$month<=6])/6
 tmp2 <- tidy_mod.factor[tidy_mod.factor$month>=0&tidy_mod.factor$month<=29&!is.na(tidy_mod.factor$diff), c(1,7)]
 tmp2 <- tmp2[order(tmp2$month), ]
 tmp2$month <- tmp2$month+1
@@ -801,22 +801,21 @@ tidy_mod.factor$p.diff[1:90] <- tidy_mod.factor$p[91:180]
 summary(tidy_mod.factor$calorie) #[-81,75]
 summary(tidy_mod.factor$diff) #[-62,22]
 ggplot() + #
+  geom_hline(yintercept = -250, color="grey", linetype="dashed", size=0.5) +
   geom_hline(yintercept = -300, color="grey", linetype="dashed", size=0.5) +
+  geom_hline(yintercept = -350, color="grey", linetype="dashed", size=0.5) +
   geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
   geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
   geom_point(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group)), size=1) +
   geom_line(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) +
-  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff*1-300), color="orange") + #add diff between 2 groups
-  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05),aes(x=month, y=diff*1-300), color="hotpink") + #highlight significant months with dots
-  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.01),aes(x=month, y=diff*1-300), color="red") + 
-  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.001),aes(x=month, y=diff*1-300), color="purple") + 
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff*2-300), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05),aes(x=month, y=diff*2-300), color="hotpink") + #highlight significant months with dots
   ggplot2::annotate(geom="label", x=1, y=-100, label="Labeling \n implemented", size=4.5) + #add label for ML
-  #ggplot2::annotate(geom="label", x=20, y=-225, label="Orange line: \n difference between \n labeled and not labeled", size=4.5) + 
   ggplot2::annotate(geom="label", x=27, y=-150, label="Blue line: labeled \n Red line: not labeled \n Orange line: difference", size=4.5) + 
-  ggplot2::annotate(geom="label", x=-18, y=-190, label="   p<0.05 \n   p<0.01 \n   p<0.001", size=4.5) + 
+  ggplot2::annotate(geom="label", x=-20, y=-200, label="   p<0.05", size=4.5) + 
   coord_cartesian(expand = FALSE, clip = "off") + #
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
-                     sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
+                     sec.axis = sec_axis(~(.+300)/2, name="Difference", breaks = seq(-50,200,25))) +
   scale_x_continuous(breaks=seq(-32,56,4)) +
   labs(title="Fig. 3. Using Taco Bell transaction data to show the effect \n of menu labeling policy on calories purchased", x="Month", y="Calories") + 
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -826,4 +825,4 @@ ggplot() + #
         axis.text.x = element_text(size=11),
         axis.text.y = element_text(size=11),
         legend.position = "none")
-#ggsave("C:/Users/wue04/Desktop/diff-figure-soda-tax.jpeg", dpi="retina")
+ggsave("C:/Users/wue04/Desktop/diff-figure-soda-tax.jpeg", dpi="retina")
