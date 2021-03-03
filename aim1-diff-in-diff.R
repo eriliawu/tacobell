@@ -805,24 +805,28 @@ ggplot() + #
   geom_hline(yintercept = -300, color="grey", linetype="dashed", size=0.5) +
   geom_hline(yintercept = -350, color="grey", linetype="dashed", size=0.5) +
   geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
-  geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
-  geom_point(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group)), size=1) +
-  geom_line(data=tidy_mod.factor,aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) +
-  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff*2-300), color="orange") + #add diff between 2 groups
-  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05),aes(x=month, y=diff*2-300), color="hotpink") + #highlight significant months with dots
+  geom_vline(xintercept = -1, color="grey", linetype="dashed", size=0.5) +
+  geom_point(data=tidy_mod.factor%>%filter(month>=-6),aes(x=month, y=calorie,group=as.character(group), color=as.character(group)), size=1) +
+  geom_line(data=tidy_mod.factor%>%filter(month>=-6),aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) +
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)&month>=-6),aes(x=month, y=diff*2-300), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&month>=-6),aes(x=month, y=diff*2-300), color="orange", size=1) + 
   ggplot2::annotate(geom="label", x=1, y=-100, label="Labeling \n implemented", size=4.5) + #add label for ML
-  ggplot2::annotate(geom="label", x=27, y=-150, label="Blue line: labeled \n Red line: not labeled \n Orange line: difference", size=4.5) + 
-  ggplot2::annotate(geom="label", x=-20, y=-200, label="   p<0.05", size=4.5) + 
+  ggplot2::annotate(geom="label", x=27, y=-150, label="   Labeled \n        Not labeled \n      Difference", size=4.5) + 
+  geom_segment(aes(x = 22.5, y = -112, xend = 24.5, yend = -112), color="#00bfc4", size=1) +
+  geom_segment(aes(x = 22.5, y = -150, xend = 24.5, yend = -150), color="#f8766d", size=1) +
+  geom_segment(aes(x = 22.5, y = -192, xend = 24.5, yend = -192), color="orange", size=1) +
   coord_cartesian(expand = FALSE, clip = "off") + #
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/2, name="Difference", breaks = seq(-50,200,25))) +
-  scale_x_continuous(breaks=seq(-32,56,4)) +
-  labs(title="Fig. 3. Using Taco Bell transaction data to show the effect \n of menu labeling policy on calories purchased", x="Month", y="Calories") + 
+  scale_x_continuous(breaks=seq(-6,56,3)) +
+  labs(title="Figure 3. Using Taco Bell transaction data to show the \n effect of menu labeling policy on calories purchased", x="Month", y="Calories") + 
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
-        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        plot.title = element_text(hjust = 0.5, size = 16, color="black"), #position/size of title
         axis.title.x = element_text(vjust=-1, size = 14), #vjust to adjust position of x-axis
         axis.title.y = element_text(size = 14),
         axis.text.x = element_text(size=11),
         axis.text.y = element_text(size=11),
         legend.position = "none")
-ggsave("C:/Users/wue04/Desktop/diff-figure-soda-tax.jpeg", dpi="retina")
+#ggsave("C:/Users/wue04/Desktop/diff-figure-soda-tax.jpeg", dpi="retina")
+
+#tmp <- tidy_mod.factor[tidy_mod.factor$p.diff<=0.05, c(1,7,8)]
