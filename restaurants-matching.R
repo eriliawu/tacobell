@@ -728,11 +728,11 @@ formula <- treat~concept+ownership+calorie1+slope_calorie+
 time <- data.frame(c("king","nassau","philly","mont","mult","suffolk","ma","ca","or","nj","vt"),
                    c(229,239,241,247,247,251,251,253,253,254,270))
 colnames(time)[1:2] <- c("location","time")
-master <- NULL
-matched <- NULL
+master2 <- NULL
+matched2 <- NULL
 for (i in c(1:11)) {
   tryCatch({#catch groups that do not have comparison restaurants
-    subset <- subset(restaurant, (treat==1&policy==time[i,1])|treat==0)
+    subset <- subset(restaurant2, (treat==1&policy==time[i,1])|treat==0)
     subset$entry <- time[i,2]
     tmp <- subset %>%
       group_by(address) %>%
@@ -768,39 +768,56 @@ for (i in c(1:11)) {
     match$weights <- bal$weights
     match$match_place <- time[i,1]
     # combine clusters of restaurants
-    master <- rbind(master, subset)
-    matched <- rbind(matched, match)
+    master2 <- rbind(master2, subset)
+    matched2 <- rbind(matched2, match)
   }, error=function(e){cat(paste0("ERROR : ",time[i,1]),conditionMessage(e), "\n")})
 }
 rm(i,bal, time,subset, subset.match,tmp,match)
-length(unique(matched$address[matched$treat==1]))
+length(unique(paste0(matched$address[matched$treat==1],matched$match_place[matched$treat==1]))) #544,438
 
-result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,6,18:19,23,25:35,39:44,46)),
+# trim small and large weights
+summary(matched$weights)
+hist(matched$weights, breaks = 100,xlab = "Weight",main="Histogram of comparison units weights")
+tmp <- matched[matched$weights>=20,]
+restaurant2 <- restaurant %>%
+  filter(!grepl("241 S. Dupont Hwy, Dover, DE 19901|15663 127th Street, Lemont, IL 60439|3615 Mundy Mill Rd, Oakwood, GA 30566",address))
+#repeat the matching process and check large weights
+length(unique(paste0(matched2$address[matched2$treat==0],matched2$match_place[matched2$treat==0]))) #544,441
+summary(matched2$weights)
+par(mfrow=c(2,1))
+hist(matched$weights[matched$treat==0], breaks = 100,xlab = "Weight",main="Histogram of comparison units weights")
+hist(matched2$weights[matched$treat==0], breaks = 100,xlab = "Weight",main="After trimming")
+
+result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,18:19,23,25:35,39:44,47:50)),
                           treat = master$treat,
-                          std = TRUE, bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))),
-                col_w_smd(mat=subset(matched, select = c(3:4,6,18:19,23,25:35,39:44,46)),
+                          std = TRUE, bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)),
+                col_w_smd(mat=subset(matched, select = c(3:4,18:19,23,25:35,39:44,47:50)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE, 3), rep(FALSE, 21))))
-colnames(result)[1:6] <- c("pre", "ps_weight", "ps_entrp", "ps_sbw", "mahal_entrp", "mahal_sbw")
+                          std = TRUE,bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)),
+                col_w_smd(mat=subset(matched2, select = c(3:4,18:19,23,25:35,39:44,47:50)),
+                          weights = matched2$weights, treat = matched2$treat, s.weights = matched2$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)))
+colnames(result)[1:3] <- c("pre", "ps_weight","ps_weight_trim")
 result <- cbind(result,
                 data.frame(old=row.names(result),
-                           new=c("Joint brand", "Ownership", "Has drive through",
+                           new=c("Ownership", "Joint brand",
                                  "% drive-thru transactions", "% lunch/dinner transactions",
                                  "% male", "Total population","% white", "% Black", "% Asian",
                                  "% Hispanic", "Household median income", "Income per capita",
                                  "% without HS degree", "% has college degree and up",
-                                 "% under 18", "% above 65","Mean calorie, t-1",
-                                 "# of transactions, t-1","Mean spending per order, t-1",  
-                                 "Mean spending per order trend", "# of transactions trend", "Mean calorie trend", 
+                                 "% under 18", "% above 65","# of transactions, t-1","Mean spending per order, t-1","Mean calorie, t-1",
+                                 "Mean spending per order trend", "# of transactions trend", "Mean calorie trend",
+                                 "Has 12-mon pre-data","Has 18-mon pre-data","Has 24-mon pre-data",
                                  "Distance")))
 names(result)
 result <- reshape(result, direction = "long",
-                  varying = list(names(result)[1:6]), v.names = "score",
+                  varying = list(names(result)[1:3]), v.names = "score",
                   idvar = c("old", "new"),
-                  timevar = "method", times = c("pre","ps_weight", "ps_entrp", "ps_sbw", "mahal_entrp", "mahal_sbw"))
+                  timevar = "method", times = c("pre","ps_weight","ps_weight_trim"))
 
 # replicate love.plot
-result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has drive through","Ownership",
+result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Ownership",
+                                            "Has 12-mon pre-data","Has 18-mon pre-data","Has 24-mon pre-data",
                                             "Mean calorie, t-1", "Mean calorie trend",
                                             "# of transactions, t-1", "# of transactions trend",
                                             "Mean spending per order, t-1", "Mean spending per order trend",
@@ -809,7 +826,7 @@ result$label <- factor(result$new, levels=c("Distance", "Joint brand", "Has driv
                                             "% Hispanic", "Household median income", "Income per capita",
                                             "% without HS degree", "% has college degree and up",
                                             "% under 18", "% above 65"))
-result$method <- factor(result$method, levels = c("pre","ps_weight", "ps_entrp", "ps_sbw", "mahal_entrp", "mahal_sbw"))
+result$method <- factor(result$method, levels = c("pre","ps_weight","ps_weight_trim"))
 
 ggplot(data = result,
        mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
@@ -822,9 +839,8 @@ ggplot(data = result,
   labs(title="Covariate balance, overall comparisons",
        y="Standardized mean differences", x="",
        caption="Note: no transformations on any variables.") +
-  scale_color_manual(name="Sample", labels=c("Unmatched","PS+IPTW", "PS+Entropy", "PS+SBW",
-                                             "Mahalanobis+Entropy", "Mahalanobis+SBW"),
-                     values =c("orange", "aquamarine3", "red", "blueviolet", "skyblue", "grey")) +
+  scale_color_manual(name="Sample", labels=c("Unmatched","PS+IPTW", "PS+IPTW, trimmed"),
+                     values =c("orange", "aquamarine3","violet")) +
   theme_bw() +
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
