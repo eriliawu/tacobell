@@ -28,6 +28,9 @@ library(tableone)
 library(broom)
 #install.packages("car")
 library(car)
+#install.packages("usmap") #show state abbr in ggplot map
+library(usmap)
+library(maps)
 ### matched data, preparing data ----
 matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed.csv", stringsAsFactors = FALSE)
 matched$tract_num <- substr(matched$tract_num, 2, 12)
@@ -398,14 +401,14 @@ hist(coords$weights[coords$treat==0],
 ggplot(data=coords%>%filter(treat==0&match_place!="ca")) + coord_fixed() +
   geom_polygon(data=map_data("state"),aes(x=long, y=lat, group=group), color="grey", fill="skyblue", size=0.1, alpha=0.5) +
   geom_point(aes(x=lon, y=lat,color=match_place,size=weights),shape=1) +
-  #geom_text(data=stannote, aes(long, lat, label = stateabbr), color = "blue", size=3) +
+  geom_text(data=data.frame(state.center, state.abb), aes(x,y, label = state.abb, size=3),color="grey",show_guide=FALSE) + #add state abbr to map
   labs(title="Locations of comparison restaruants, others",x="",y="",
        caption="3 restaruants in Delaware, Illinois and Goergia were omitted in the matching process.") +
   scale_color_manual(name="Matched to",
                      labels=c("King county, WA","MA","Montgomery county, MD","Multnomah county, OR",
                               "Nassau county, NY","NJ","OR","Suffolk county, NY"),
-                     values =c("navy", "aquamarine3","violet","grey","green","purple",
-                               "red","orange")) +
+                     values =c("navy","orange","violet","grey","green","purple",
+                               "red","aquamarine3")) +
   scale_size_continuous(name = "Weights",breaks = seq(0,5,1)) +
   theme(plot.title=element_text(hjust=0.5, size=18),
         panel.grid.major = element_blank(),
@@ -421,7 +424,8 @@ ggplot(data=coords%>%filter(treat==0&match_place!="ca")) + coord_fixed() +
 ggplot(data=coords%>%filter(treat==0&match_place=="ca")) + coord_fixed() +
   geom_polygon(data=map_data("state"),aes(x=long, y=lat, group=group),
                color="grey", fill="skyblue", size=0.1, alpha=0.5) +
-  geom_point(aes(x=lon, y=lat, color=match_place, size=weights), shape=1) +
+  geom_text(data=data.frame(state.center, state.abb), aes(x,y, label = state.abb, size=3),color="grey",show_guide=FALSE) + #add state abbr to map
+  geom_point(aes(x=lon, y=lat, size=weights), shape=1,color="orange") +
   labs(title="Locations of comparison restaruants, CA",x="",y="",
        caption="3 restaruants in Delaware, Illinois and Goergia were omitted in the matching process.") +
   scale_size_continuous(name = "Weights",breaks = seq(1,10,2)) +
