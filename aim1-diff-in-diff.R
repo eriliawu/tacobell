@@ -439,3 +439,4 @@ ggplot(data=coords%>%filter(treat==0&match_place=="ca")) + coord_fixed() +
         axis.text.y=element_blank(),
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/results/map-comparison-restaurants_CA.jpeg", dpi="retina")
+rm(coords)
