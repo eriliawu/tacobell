@@ -216,72 +216,28 @@ rm(tmp1, tmp2, drive)
 restaurant <- restaurant[!duplicated(restaurant), ]
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$ownership, restaurant$monthno), ]
 
+rm(acs, calorie, time)
 ### add timeline for menu labeling in city/state ----
 #C:\Users\wue04\NYU Langone Health\Elbel, Brian - Taco Bell labeling R01\PROPOSAL\Menu Labeling Legislation Research
-restaurant$ml <- ifelse(restaurant$state=="NY"&
-                          (restaurant$county=="New York"|restaurant$county=="Kings"|
-                             restaurant$county=="Bronx"|restaurant$county=="Queens"|
-                             restaurant$county=="Richmond")&
-                          ((restaurant$year>=2008&restaurant$month>=5)|
-                             restaurant$year>=2009), 1,
-                        ifelse(restaurant$state=="WA"&restaurant$county=="King"&
-                                 restaurant$year>=2009, 1,
-                        ifelse(restaurant$state=="NY"&restaurant$county=="Albany"&
-                                 ((restaurant$year>=2010&restaurant$month>=2)|
-                                  restaurant$year>=2011), 1,
-                        ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia"&
-                                 restaurant$year>=2010, 1, 
-                        ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
-                                  restaurant$county=="San Francisco")&
-                                 (restaurant$year>=2009|(restaurant$year==2008&restaurant$month>=10)), 1,
-                        ifelse(restaurant$state=="NY"&restaurant$county=="Westchester"&
-                                 (restaurant$year>=2010|(restaurant$year==2009&restaurant$month>=5)), 1,
-                        ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery"&
-                                 (restaurant$year>=2011|(restaurant$year==2010&restaurant$month>=7)), 1,
-                        ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah"&
-                                 (restaurant$year>=2011|(restaurant$year==2010&restaurant$month>=7)), 1,
-                        ifelse(restaurant$state=="CA"&restaurant$year>=2011, 1,
-                        ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk"&
-                                 (restaurant$year>=2011|(restaurant$year==2010&restaurant$month>=11)),1,
-                        ifelse(restaurant$state=="MA"&(restaurant$year>=2011|
-                                  (restaurant$year==2010&restaurant$month>=11)), 1,
-                        ifelse(restaurant$state=="ME"&(restaurant$year>=2012|
-                                  (restaurant$year==2011&restaurant$month>=2)), 1,
-                        ifelse(restaurant$state=="NJ"&(restaurant$year>=2012|
-                                  (restaurant$year==2011&restaurant$month>=2)), 1,
-                        ifelse(restaurant$state=="OR"&restaurant$year>=2011, 1,
-                        ifelse(restaurant$state=="NY"&restaurant$county=="Ulster"&
-                                 (restaurant$year>=2010|(restaurant$year==2009&
-                                  restaurant$month>=10)),1,
-                        ifelse(restaurant$state=="NY"&restaurant$county=="Nassau"&
-                                 ((restaurant$year>=2010)|((restaurant$year==2009)&
-                                 restaurant$month>=11)), 1,
-                        ifelse(restaurant$state=="VT"&(restaurant$year>=2013|
-                                (restaurant$year==2012&restaurant$month>=6)), 1, 0)))))))))))))))))
-rm(acs, calorie, time)
-table(restaurant$state[restaurant$ml==1])
-
 restaurant$entry <- ifelse(restaurant$state=="NY"&
                              (restaurant$county=="New York"|restaurant$county=="Kings"|
                                 restaurant$county=="Bronx"|restaurant$county=="Queens"|
                                 restaurant$county=="Richmond"), 221,
                            ifelse(restaurant$state=="WA"&restaurant$county=="King", 229,
-                                  ifelse(restaurant$state=="NY"&restaurant$county=="Albany", 242,
-                                         ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", 241, 
-                                                ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
-                                                                                 restaurant$county=="San Francisco"), 226,
-                                                       ifelse(restaurant$state=="NY"&restaurant$county=="Westchester", 233,
-                                                              ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery", 247,
-                                                                     ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah", 247,
-                                                                            ifelse(restaurant$state=="CA", 253,
-                                                                                   ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk",251,
-                                                                                          ifelse(restaurant$state=="MA", 251,
-                                                                                                 ifelse(restaurant$state=="ME", 254,
-                                                                                                        ifelse(restaurant$state=="NJ", 254,
-                                                                                                               ifelse(restaurant$state=="OR", 253,
-                                                                                                                      ifelse(restaurant$state=="NY"&restaurant$county=="Ulster",238,
-                                                                                                                             ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 239,
-                                                                                                                                    ifelse(restaurant$state=="VT", 270, NA)))))))))))))))))
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Albany", 243,
+                           ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", 241, 
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Westchester", 233,
+                           ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery", 253,
+                           ifelse(restaurant$state=="CA", 253,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk",251,
+                           ifelse(restaurant$state=="MA", 251,
+                           ifelse(restaurant$state=="ME", 254,
+                           ifelse(restaurant$state=="NJ", 254,
+                           ifelse(restaurant$state=="OR", 253,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Ulster",238,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 244,
+                           ifelse(restaurant$state=="VT", 270,
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady",249,NA))))))))))))))))
 restaurant$treat <- ifelse(!is.na(restaurant$entry),1,0)
 
 ### prepare data for matching ----
@@ -298,40 +254,29 @@ restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17:19)]/restaurant$count
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
   group_by(address, tract_num, concept, ownership) %>%
-  mutate(across(c(count,dollar), ~ lag(., 1), .names = "{col}1")) %>%
-  mutate(calorie1=dplyr::lag(calorie,1,default = NA)) %>%
-  mutate(calorie2=dplyr::lag(calorie,2,default = NA)) %>%
-  mutate(calorie3=dplyr::lag(calorie,3,default = NA)) %>%
-  mutate(calorie4=dplyr::lag(calorie,4,default = NA)) %>%
-  mutate(calorie5=dplyr::lag(calorie,5,default = NA)) %>%
-  mutate(calorie6=dplyr::lag(calorie,6,default = NA)) %>%
-  mutate(calorie7=dplyr::lag(calorie,7,default = NA)) %>%
-  mutate(calorie8=dplyr::lag(calorie,8,default = NA)) %>%
-  mutate(calorie9=dplyr::lag(calorie,9,default = NA)) %>%
-  mutate(calorie10=dplyr::lag(calorie,10,default = NA)) %>%
-  mutate(calorie11=dplyr::lag(calorie,11,default = NA)) %>%
-  mutate(calorie12=dplyr::lag(calorie,12,default = NA)) 
+  mutate(across(c(count,dollar,calorie), ~ lag(., 3), .names = "{col}3")) 
+  #mutate(calorie1=dplyr::lag(calorie,1,default = NA)) %>%
 
 ### estimating individual slopes ----
 master <- NULL
-for (i in c(221,229,242,241,226,233,247,253,251,254,238,239,270)) {
+for (i in c(221,229,233,238,244,241,243,253,251,254,270,249)) {
     dollar <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
-      filter(monthno>=i-6 & monthno<i) %>%
+      filter(monthno>=i-8 & monthno<=i-3) %>%
       do(tidy(lm(dollar~monthno, data = .))) %>%
       filter(!is.na(estimate)&term=="monthno") %>%
       dplyr::select(address:concept, estimate) %>%
       rename(slope_dollar = estimate) 
     count <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
-      filter(monthno>=i-6 & monthno<i) %>%
+      filter(monthno>=i-8 & monthno<=i-3) %>%
       do(tidy(lm(count~monthno, data = .))) %>%
       filter(!is.na(estimate)&term=="monthno") %>%
       dplyr::select(address:concept, estimate) %>%
       rename(slope_count = estimate) 
     calorie <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
-      filter(monthno>=i-6 & monthno<i) %>%
+      filter(monthno>=i-8 & monthno<=i-3) %>%
       do(tidy(lm(calorie~monthno, data = .))) %>%
       filter(!is.na(estimate)&term=="monthno") %>%
       dplyr::select(address:concept, estimate) %>%
@@ -355,11 +300,8 @@ restaurant$policy <- ifelse(restaurant$state=="NY"&
                             ifelse(restaurant$state=="WA"&restaurant$county=="King", "king",
                             ifelse(restaurant$state=="NY"&restaurant$county=="Albany", "albany",
                             ifelse(restaurant$state=="PA"&restaurant$city=="Philadelphia", "philly", 
-                            ifelse(restaurant$state=="CA"&(restaurant$city=="San Francisco"|
-                                                             restaurant$county=="San Francisco"), "sf",
                             ifelse(restaurant$state=="NY"&restaurant$county=="Westchester", "westchester",
                             ifelse(restaurant$state=="MD"&restaurant$county=="Montgomery", "mont",
-                            ifelse(restaurant$state=="OR"&restaurant$county=="Multnomah", "mult",
                             ifelse(restaurant$state=="CA", "ca",
                             ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk", "suffolk",
                             ifelse(restaurant$state=="MA", "ma",
@@ -368,27 +310,17 @@ restaurant$policy <- ifelse(restaurant$state=="NY"&
                             ifelse(restaurant$state=="OR", "or",
                             ifelse(restaurant$state=="NY"&restaurant$county=="Ulster","ulster",
                             ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", "nassau",
-                            ifelse(restaurant$state=="VT", "vt", "none")))))))))))))))))
+                            ifelse(restaurant$state=="VT", "vt",
+                            ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady","schc","none"))))))))))))))))
 restaurant$concept <- ifelse(restaurant$concept=="TBC", 1, 0)
 restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY", 1, 0)
 #export unmatched data
 #write.csv(restaurant, "data/calorie-aims/unmatched-restaurants.csv", row.names = FALSE)
 
-### label missing data in treated restaurants ----
-tmp <- restaurant %>%
-  filter(treat==1) %>%
-  group_by(address) %>%
-  mutate(relative=monthno-entry) %>%
-  filter(relative<=5&relative>=-6) %>%
-  mutate(n=n()) %>%
-  mutate(open6 = ifelse(n==12, 1,0)) %>%
-  filter(monthno==entry)
-table(tmp$open6)
-
 ### finalize diff matching+weighting, no caliper ----
 # ps+iptw, mahal+entrp,mahal+sbw, entrp only
-formula <- treat~concept+ownership+calorie1+slope_calorie+
-  count1+slope_count+dollar1+slope_dollar+drive+meal+
+formula <- treat~concept+ownership+calorie3+slope_calorie+
+  count3+slope_count+dollar3+slope_dollar+drive+meal+
   total+male+white+black+asian+hisp+median_income+capital_income+
   hsbelow+collegeup+under18+above65
 
@@ -489,17 +421,17 @@ table(matched$match_place)
 #export table for aim 1 analysis
 # identify comparison units that were matched to multiple restaurants
 master_all <- NULL
-for (i in c("albany","ca","king","ma","mont","mult","nassau","nj","or","philly")) {
+for (i in c("ca","king","ma","mont","mult","nassau","nj","or","suffolk")) {
   tmp <- matched %>%
     filter(match_place==i) %>%
     dplyr::select(address, monthno, tract_num, ownership, concept, distance, s.weights, weights, match_place) %>%
     rename(match_to = monthno) %>%
     left_join(restaurant, by=c("address", "tract_num", "ownership", "concept")) %>%
-    arrange(address, tract_num, monthno) %>%
-    dplyr::select(address:treat)
+    arrange(address, tract_num, monthno) #%>%
+    #dplyr::select(address:treat)
   master_all <- rbind(master_all, tmp)
 }
-#write.csv(master_all, "data/calorie-aims/matched-restaurants.csv", row.names = FALSE)
+#write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed.csv", row.names = FALSE)
 rm(master_all, i)
 
 #summary stats
@@ -721,81 +653,123 @@ ggplot(data = result,
 #ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-nolog.jpeg", dpi="retina")
 
 ### ps matching + iptw weighting, trim extrem weights ----
-formula <- treat~concept+ownership+calorie1+slope_calorie+
-  count1+slope_count+dollar1+slope_dollar+drive+meal+
+#ignore 2 months leading to ML
+#match on months t-9 to t-3
+names(restaurant)
+formula <- treat~concept+ownership+calorie3+slope_calorie+
+  count3+slope_count+dollar3+slope_dollar+drive+meal+
   total+male+white+black+asian+hisp+median_income+capital_income+
   hsbelow+collegeup+under18+above65+open12+open18+open24
-time <- data.frame(c("king","nassau","philly","mont","mult","suffolk","ma","ca","or","nj","vt"),
-                   c(229,239,241,247,247,251,251,253,253,254,270))
+set.seed(5)
+time <- data.frame(c("king","nassau","philly","albany","mont","suffolk","ma","ca","or","nj","vt","schc"),
+                   c(229,244,241,243,253,251,251,253,253,254,270,249))
 colnames(time)[1:2] <- c("location","time")
-master2 <- NULL
-matched2 <- NULL
-for (i in c(1:11)) {
+master <- NULL
+matched <- NULL
+for (i in c(1:12)) {
   tryCatch({#catch groups that do not have comparison restaurants
-    subset <- subset(restaurant2, (treat==1&policy==time[i,1])|treat==0)
+    subset <- subset(restaurant, (treat==1&policy==time[i,1])|treat==0)
     subset$entry <- time[i,2]
-    tmp <- subset %>%
-      group_by(address) %>%
-      mutate(relative = monthno - entry) %>%
-      filter(relative<0&relative>=-24) %>%
-      mutate(n=n()) %>%
-      mutate(open24 = ifelse(n==24, 1,0)) %>%
-      filter(relative<0&relative>=-18) %>%
-      mutate(n=n()) %>%
-      mutate(open18 = ifelse(n==18, 1,0)) %>%
-      filter(relative<0&relative>=-12) %>%
-      mutate(n=n()) %>%
-      mutate(open12 = ifelse(n==12, 1,0)) %>%
-      filter(relative<0&relative>=-6) %>%
-      mutate(n=n()) %>%
-      mutate(open6 = ifelse(n==6, 1,0)) %>%
-      dplyr::select(address,open6,open12,open18,open24) %>% #
-      distinct()
+    tmp <- subset %>% group_by(address) %>% mutate(relative = monthno - entry) %>%
+      filter(relative<0&relative>=-24) %>% mutate(n=n()) %>% mutate(open24 = ifelse(n==24, 1,0)) %>%
+      filter(relative<0&relative>=-18) %>% mutate(n=n()) %>% mutate(open18 = ifelse(n==18, 1,0)) %>%
+      filter(relative<0&relative>=-12) %>% mutate(n=n()) %>% mutate(open12 = ifelse(n==12, 1,0)) %>%
+      filter(relative<0&relative>=-8) %>% mutate(n=n()) %>% mutate(open8 = ifelse(n==8, 1,0)) %>%
+      dplyr::select(address,open8,open12,open18,open24) %>% distinct()
     subset <- merge(subset,tmp,by="address")
-    #table(subset$open6, subset$treat)
-    subset <- subset(subset, open6==1&monthno==time[i,2], select=-c(calorie2:calorie12)) 
+    subset <- subset(subset, open8==1&monthno==time[i,2]) 
     #matching
     subset <- subset[complete.cases(subset), ]
-    subset.match <- matchit(data=subset, formula = formula, 
-                            distance="logit", method="nearest", #caliper=0.5,
-                            replace=TRUE, ratio=3)
+    subset.match <- matchit(data=subset,formula = formula,distance="logit",method="nearest",replace=TRUE,ratio=3)
     match <- match.data(subset.match, distance="distance", weights = "s.weights") 
     #add distance to unmatched data
     subset$distance <- subset.match$distance
     #add ps balance
-    bal <- weightit(data=match, formula = formula, method = "ps",
-                    estimand = "ATT", s.weights = "s.weights")
+    bal <- weightit(data=match, formula = formula, method = "ps",estimand = "ATT", s.weights = "s.weights")
     match$weights <- bal$weights
     match$match_place <- time[i,1]
     # combine clusters of restaurants
-    master2 <- rbind(master2, subset)
-    matched2 <- rbind(matched2, match)
+    master <- rbind(master, subset)
+    matched <- rbind(matched, match)
   }, error=function(e){cat(paste0("ERROR : ",time[i,1]),conditionMessage(e), "\n")})
 }
-rm(i,bal, time,subset, subset.match,tmp,match)
-length(unique(paste0(matched$address[matched$treat==1],matched$match_place[matched$treat==1]))) #544,438
+master.original <- master
+matched.original <- matched
+restaurant2 <- restaurant
 
 # trim small and large weights
-summary(matched$weights)
-hist(matched$weights, breaks = 100,xlab = "Weight",main="Histogram of comparison units weights")
-tmp <- matched[matched$weights>=20,]
-restaurant2 <- restaurant %>%
-  filter(!grepl("241 S. Dupont Hwy, Dover, DE 19901|15663 127th Street, Lemont, IL 60439|3615 Mundy Mill Rd, Oakwood, GA 30566",address))
-#repeat the matching process and check large weights
-length(unique(paste0(matched2$address[matched2$treat==0],matched2$match_place[matched2$treat==0]))) #544,441
-summary(matched2$weights)
-par(mfrow=c(2,1))
-hist(matched$weights[matched$treat==0], breaks = 100,xlab = "Weight",main="Histogram of comparison units weights")
-hist(matched2$weights[matched$treat==0], breaks = 100,xlab = "Weight",main="After trimming")
+while(max(matched$weights)>=0.025*length(unique(paste0(matched$address[matched$treat==0],matched$match_place[matched$treat==0])))) {
+  tmp <- matched[matched$weights>=0.025*length(unique(paste0(matched$address[matched$treat==0],matched$match_place[matched$treat==0]))),]
+  restaurant2 <- anti_join(restaurant2,tmp,by="address")
+  matched <- NULL
+  master <- NULL
+  for (i in c(1:12)) {
+    tryCatch({#catch groups that do not have comparison restaurants
+      subset <- subset(restaurant2, (treat==1&policy==time[i,1])|treat==0)
+      subset$entry <- time[i,2]
+      tmp <- subset %>% group_by(address) %>% mutate(relative = monthno - entry) %>%
+        filter(relative<0&relative>=-24) %>% mutate(n=n()) %>% mutate(open24 = ifelse(n==24, 1,0)) %>%
+        filter(relative<0&relative>=-18) %>% mutate(n=n()) %>% mutate(open18 = ifelse(n==18, 1,0)) %>%
+        filter(relative<0&relative>=-12) %>% mutate(n=n()) %>% mutate(open12 = ifelse(n==12, 1,0)) %>%
+        filter(relative<0&relative>=-8) %>% mutate(n=n()) %>% mutate(open8 = ifelse(n==8, 1,0)) %>%
+        dplyr::select(address,open8,open12,open18,open24) %>% distinct()
+      subset <- merge(subset,tmp,by="address")
+      subset <- subset(subset, open8==1&monthno==time[i,2]) 
+      #matching
+      subset <- subset[complete.cases(subset), ]
+      subset.match <- matchit(data=subset,formula = formula,distance="logit",method="nearest",replace=TRUE,ratio=3)
+      match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+      #add distance to unmatched data
+      subset$distance <- subset.match$distance
+      #add ps balance
+      bal <- weightit(data=match, formula = formula, method = "ps",estimand = "ATT", s.weights = "s.weights")
+      match$weights <- bal$weights
+      match$match_place <- time[i,1]
+      # combine clusters of restaurants
+      master <- rbind(master, subset)
+      matched <- rbind(matched, match)
+    }, error=function(e){cat(paste0("ERROR : ",time[i,1]),conditionMessage(e), "\n")})
+  }
+}
+rm(i,bal, time,subset, subset.match,tmp,match)
 
-result <- cbind(col_w_smd(mat=subset(master,select = c(3:4,18:19,23,25:35,39:44,47:50)),
-                          treat = master$treat,
+table(matched$match_place[matched$treat==1])
+length(unique(paste0(matched$address[matched$treat==0],matched$match_place[matched$treat==0]))) #538,439
+length(unique(paste0(master$address[master$treat==0],master$match_place[master$treat==0]))) #538,1937
+
+summary(matched$weights[matched$treat==0])
+summary(matched.original$weights[matched.original$treat==0])
+par(mfrow=c(2,1))
+hist(matched.original$weights[matched.original$treat==0], breaks = 500,xlab = "Weight",main="Histogram of comparison units weights",ylim = c(0,80))
+hist(matched$weights[matched$treat==0], breaks = 500,xlab = "Weight",main="After trimming",xlim = c(0,14),ylim = c(0,60))
+
+#export results in matched2, combine with all months of restaurant data
+names(matched)
+length(unique(matched$address)) #some comparison restaurants were matched to multiple treated restaurants
+table(matched$match_place)
+master_all <- NULL
+for (i in c("ca","king","ma","mont","mult","nassau","nj","or","suffolk")) {
+  tmp <- matched %>%
+    filter(match_place==i) %>%
+    dplyr::select(address, monthno, tract_num, ownership, concept, distance, s.weights, weights, match_place) %>%
+    rename(entry = monthno) %>%
+    left_join(restaurant, by=c("address", "tract_num", "ownership", "concept")) %>%
+    arrange(address, tract_num, monthno) %>%
+    dplyr::select(c(address:ml,treat:calorie1,policy)) %>%
+    rename(entry = entry.x)
+  master_all <- rbind(master_all, tmp)
+}
+#write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed.csv", row.names = FALSE)
+rm(master_all, i,tmp)
+
+result <- cbind(col_w_smd(mat=subset(master.original,select = c(3:4,18:19,23,25:35,39:44,47:50)),
+                          treat = master.original$treat,
                           std = TRUE, bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)),
+                col_w_smd(mat=subset(matched.original, select = c(3:4,18:19,23,25:35,39:44,47:50)),
+                          weights = matched.original$weights, treat = matched.original$treat, s.weights = matched.original$s.weights,
+                          std = TRUE,bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)),
                 col_w_smd(mat=subset(matched, select = c(3:4,18:19,23,25:35,39:44,47:50)),
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
-                          std = TRUE,bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)),
-                col_w_smd(mat=subset(matched2, select = c(3:4,18:19,23,25:35,39:44,47:50)),
-                          weights = matched2$weights, treat = matched2$treat, s.weights = matched2$s.weights,
                           std = TRUE,bin.vars = c(rep(TRUE,2),rep(FALSE,20),rep(TRUE,3),FALSE)))
 colnames(result)[1:3] <- c("pre", "ps_weight","ps_weight_trim")
 result <- cbind(result,
@@ -833,11 +807,10 @@ ggplot(data = result,
   geom_point() +
   geom_hline(yintercept = 0.1, color = "red", size = 0.5, linetype="dashed") +
   geom_hline(yintercept = -0.1, color = "red", size = 0.5, linetype="dashed") +
-  geom_vline(xintercept = 23.5) +
+  geom_vline(xintercept = 25.5) +
   geom_hline(yintercept = 0, color = "black", size = 0.1) +
   coord_flip() +
-  labs(title="Covariate balance, overall comparisons",
-       y="Standardized mean differences", x="",
+  labs(title="Covariate balance", y="Standardized mean differences", x="",
        caption="Note: no transformations on any variables.") +
   scale_color_manual(name="Sample", labels=c("Unmatched","PS+IPTW", "PS+IPTW, trimmed"),
                      values =c("orange", "aquamarine3","violet")) +
@@ -845,4 +818,5 @@ ggplot(data = result,
   theme(legend.key = element_blank(),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
-#ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-nolog.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-after-trim.jpeg", dpi="retina")
+
