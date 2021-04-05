@@ -232,12 +232,10 @@ restaurant$entry <- ifelse(restaurant$state=="NY"&
                            ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk",251,
                            ifelse(restaurant$state=="MA", 251,
                            ifelse(restaurant$state=="ME", 254,
-                           ifelse(restaurant$state=="NJ", 254,
                            ifelse(restaurant$state=="OR", 253,
                            ifelse(restaurant$state=="NY"&restaurant$county=="Ulster",238,
-                           ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", 244,
                            ifelse(restaurant$state=="VT", 270,
-                           ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady",249,NA))))))))))))))))
+                           ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady",249,NA))))))))))))))
 restaurant$treat <- ifelse(!is.na(restaurant$entry),1,0)
 
 ### prepare data for matching ----
@@ -259,7 +257,7 @@ restaurant <- restaurant %>%
 
 ### estimating individual slopes ----
 master <- NULL
-for (i in c(221,229,233,238,244,241,243,253,251,254,270,249)) {
+for (i in c(221,229,233,238,241,243,253,251,254,270,249)) {
     dollar <- restaurant %>% 
       group_by(address, tract_num, ownership, concept) %>%
       filter(monthno>=i-8 & monthno<=i-3) %>%
@@ -306,12 +304,10 @@ restaurant$policy <- ifelse(restaurant$state=="NY"&
                             ifelse(restaurant$state=="NY"&restaurant$county=="Suffolk", "suffolk",
                             ifelse(restaurant$state=="MA", "ma",
                             ifelse(restaurant$state=="ME", "me",
-                            ifelse(restaurant$state=="NJ", "nj",
                             ifelse(restaurant$state=="OR", "or",
                             ifelse(restaurant$state=="NY"&restaurant$county=="Ulster","ulster",
-                            ifelse(restaurant$state=="NY"&restaurant$county=="Nassau", "nassau",
                             ifelse(restaurant$state=="VT", "vt",
-                            ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady","schc","none"))))))))))))))))
+                            ifelse(restaurant$state=="NY"&restaurant$county=="Schenectady","schc","none"))))))))))))))
 restaurant$concept <- ifelse(restaurant$concept=="TBC", 1, 0)
 restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY", 1, 0)
 #export unmatched data
@@ -661,8 +657,8 @@ formula <- treat~concept+ownership+calorie3+slope_calorie+
   total+male+white+black+asian+hisp+median_income+capital_income+
   hsbelow+collegeup+under18+above65+open12+open18+open24
 set.seed(5)
-time <- data.frame(c("king","nassau","philly","albany","mont","suffolk","ma","ca","or","nj","vt","schc"),
-                   c(229,244,241,243,253,251,251,253,253,254,270,249))
+time <- data.frame(c("king","philly","albany","mont","suffolk","ma","ca","or","vt","schc"),
+                   c(229,241,243,253,251,251,253,253,270,249))
 colnames(time)[1:2] <- c("location","time")
 master <- NULL
 matched <- NULL
@@ -707,7 +703,7 @@ while(max(matched$weights)>=0.05*length(unique(paste0(matched$address[matched$tr
   restaurant2 <- anti_join(restaurant2,tmp,by="address")
   matched <- NULL
   master <- NULL
-  for (i in c(1:12)) {
+  for (i in c(1:10)) {
     tryCatch({#catch groups that do not have comparison restaurants
       subset <- subset(restaurant2, (treat==1&policy==time[i,1])|treat==0)
       subset$entry <- time[i,2]
@@ -755,7 +751,7 @@ names(matched)
 length(unique(matched$address)) #some comparison restaurants were matched to multiple treated restaurants
 table(matched$match_place)
 master_all <- NULL
-for (i in c("ca","king","ma","mont","nassau","nj","or","suffolk")) {
+for (i in c("ca","king","ma","mont","or","suffolk")) {
   tmp <- matched %>%
     filter(match_place==i) %>%
     dplyr::select(address, monthno, tract_num, ownership, concept, distance, s.weights, weights, match_place) %>%
@@ -766,7 +762,7 @@ for (i in c("ca","king","ma","mont","nassau","nj","or","suffolk")) {
     rename(entry = entry.x)
   master_all <- rbind(master_all, tmp)
 }
-write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed.csv", row.names = FALSE)
+#write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed.csv", row.names = FALSE)
 rm(master_all, i,tmp)
 
 result <- cbind(col_w_smd(mat=subset(master.original,select = c(3:4,18:19,23,25:35,38:43,46:49)),
@@ -827,21 +823,3 @@ ggplot(data = result,
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-after-trim.jpeg", dpi="retina")
 
-### test entropy balance weighting ----
-subset <- subset(restaurant, (treat==1&policy=="ma")|treat==0)
-subset$entry <- 251
-tmp <- subset %>% group_by(address) %>% mutate(relative = monthno - entry) %>%
-  filter(relative<0&relative>=-24) %>% mutate(n=n()) %>% mutate(open24 = ifelse(n==24, 1,0)) %>%
-  filter(relative<0&relative>=-18) %>% mutate(n=n()) %>% mutate(open18 = ifelse(n==18, 1,0)) %>%
-  filter(relative<0&relative>=-12) %>% mutate(n=n()) %>% mutate(open12 = ifelse(n==12, 1,0)) %>%
-  filter(relative<0&relative>=-8) %>% mutate(n=n()) %>% mutate(open8 = ifelse(n==8, 1,0)) %>%
-  dplyr::select(address,open8,open12,open18,open24) %>% distinct()
-subset <- merge(subset,tmp,by="address")
-subset <- subset(subset, open8==1&monthno==251) 
-#matching
-subset <- subset[complete.cases(subset), ]
-subset.match <- matchit(data=subset,formula = formula,distance="logit",method="nearest",replace=TRUE,ratio=3)
-match <- match.data(subset.match, distance="distance", weights = "s.weights") 
-#add ps balance
-bal <- weightit(data=subset.match, formula = formula, method = "ps",estimand = "ATT", s.weights = "s.weights")
-match$weights <- bal$weights
