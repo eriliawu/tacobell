@@ -828,7 +828,6 @@ ggplot(data = result,
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-after-trim.jpeg", dpi="retina")
 
-
 ### ps matching + iptw weighting, trim extrem weights, use absolute values instead of slope ----
 #ignore 2 months leading to ML
 #match on months t-9 to t-3
@@ -1010,4 +1009,6 @@ ggplot(data = result,
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/ps-matching/finalize/covariate-balance-after-trim-abs-value.jpeg", dpi="retina")
+
+
 
