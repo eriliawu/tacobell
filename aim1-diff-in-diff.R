@@ -253,7 +253,7 @@ dim(tidy_mod.factor)
 tidy_mod.factor[201:202, 1] <- "0" #add 2 rows for month 0
 tidy_mod.factor[201:202, c(2,4)] <- 0 #add coef.month and coef.treat
 tidy_mod.factor[201:202, 5] <- c(0, 1) #add treat=0 and treat=1
-tidy_mod.factor[, 1] <- c(seq(-48,-3,1),seq(2,55,1),seq(-48,-3, 1),seq(2,55, 1),-49,-49) #change month numbers
+tidy_mod.factor[, 1] <- c(seq(-49,-4,1),seq(2,55,1),seq(-49,-4, 1),seq(2,55, 1),-3,-3) #change month numbers
 tidy_mod.factor$group[101:200] <- 1 #change group to treat=1
 tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
 tidy_mod.factor$coef.treat[102:202] <- tidy_mod.factor$coef.month[102:202]
@@ -283,7 +283,7 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=2),aes(x=month, y=calorie,
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=c(seq(-48,-3,3),seq(2,55,3))) + #select which months to display
-  labs(title="Effect of menu labeling on calories purchased, matching abs value", x="Month", y="Calories", 
+  labs(title="Effect of menu labeling on calories purchased, matching abs values", x="Month", y="Calories", 
        caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -298,7 +298,7 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=2),aes(x=month, y=calorie,
 trend <- NULL
 tmp <- data.frame(3:30)
 colnames(tmp)[1] <- "month"
-#matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
+matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))&match_place!="ca"), #
                   index = c("id"), weights = weights, model = "within")
@@ -316,7 +316,7 @@ dim(tidy_mod.factor)
 tidy_mod.factor[201:202, 1] <- "0" #add 2 rows for month 0
 tidy_mod.factor[201:202, c(2,4)] <- 0 #add coef.month and coef.treat
 tidy_mod.factor[201:202, 5] <- c(0, 1) #add treat=0 and treat=1
-tidy_mod.factor[, 1] <- c(seq(-48,-3,1),seq(2,55,1),seq(-48,-3, 1),seq(2,55, 1),-49,-49) #change month numbers
+tidy_mod.factor[, 1] <- c(seq(-49,-4,1),seq(2,55,1),seq(-49,-4, 1),seq(2,55, 1),-3,-3) #change month numbers
 tidy_mod.factor$group[101:200] <- 1 #change group to treat=1
 tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
 tidy_mod.factor$coef.treat[102:202] <- tidy_mod.factor$coef.month[102:202]
@@ -350,13 +350,13 @@ location <- factor(trend$loc,levels = c("all", "ca", "other"))
 #trend <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
 ggplot(data=trend, aes(x=month, y=mean, group=location, color=location)) + #
   geom_line() + geom_point() +
-  #ggplot2::annotate(geom="label", x=11, y=10, label="All groups follow similar \n trends. Restaurants open for \n longer periods of time \n are different in magnitude", size=3) + 
+  #ggplot2::annotate(geom="label", x=11, y=10, label="Post-period month 14 diff - pre-period mean", size=3) + 
   #ggplot2::annotate(geom="label", x=11, y=-7, label="The overall trend also \n explains the inconsistent \n coefficients in linear models", size=3) + 
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
   coord_cartesian(expand = FALSE, clip = "off") + 
   scale_y_continuous(limits=c(-70,30),breaks=seq(-70,30,10)) +
   scale_x_continuous(breaks=seq(1,30,1)) +
-  labs(title="Mean diff-in-diff per month, by location", x="Month", y="Calories", 
+  labs(title="Diff-in-diff analysis, by location", x="Month", y="Calories", 
        caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
   scale_color_manual(name="Location", labels=c("All", "CA", "Others"),
                      values = c("hotpink","olivedrab3","#13B0E4")) +
