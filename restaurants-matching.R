@@ -252,13 +252,14 @@ restaurant[, c(10:15,17:19)] <- restaurant[, c(10:15,17:19)]/restaurant$count
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$monthno), ]
 restaurant <- restaurant %>%
   group_by(address, tract_num, concept, ownership) %>%
-  mutate(across(c(count,dollar,calorie), ~ lag(., 3), .names = "{col}3")) %>%
-  mutate(across(c(count,dollar,calorie), ~ lag(., 4), .names = "{col}4")) %>%
-  mutate(across(c(count,dollar,calorie), ~ lag(., 5), .names = "{col}5")) %>%
-  mutate(across(c(count,dollar,calorie), ~ lag(., 6), .names = "{col}6")) %>%
-  mutate(across(c(count,dollar,calorie), ~ lag(., 7), .names = "{col}7")) %>%
-  mutate(across(c(count,dollar,calorie), ~ lag(., 8), .names = "{col}8")) 
+  mutate(across(c(count,dollar,calorie), ~ dplyr::lag(., 3), .names = "{col}3")) %>%
+  mutate(across(c(count,dollar,calorie), ~ dplyr::lag(., 4), .names = "{col}4")) %>%
+  mutate(across(c(count,dollar,calorie), ~ dplyr::lag(., 5), .names = "{col}5")) %>%
+  mutate(across(c(count,dollar,calorie), ~ dplyr::lag(., 6), .names = "{col}6")) %>%
+  mutate(across(c(count,dollar,calorie), ~ dplyr::lag(., 7), .names = "{col}7")) %>%
+  mutate(across(c(count,dollar,calorie), ~ dplyr::lag(., 8), .names = "{col}8")) 
   #mutate(calorie1=dplyr::lag(calorie,1,default = NA)) %>%
+tmp <- restaurant[,c(1:7,10,40,43,46,49,52,55)]
 
 ### estimating individual slopes ----
 master <- NULL
@@ -655,7 +656,7 @@ ggplot(data = result,
 
 ### ps matching + iptw weighting, trim extrem weights ----
 #ignore 2 months leading to ML
-#match on months t-9 to t-3
+#match on months t-8 to t-3
 names(restaurant)
 formula <- treat~concept+ownership+calorie3+slope_calorie+
   count3+slope_count+dollar3+slope_dollar+drive+meal+
@@ -830,7 +831,7 @@ ggplot(data = result,
 
 ### ps matching + iptw weighting, trim extrem weights, use absolute values instead of slope ----
 #ignore 2 months leading to ML
-#match on months t-9 to t-3
+#match on months t-8 to t-3
 names(restaurant)
 formula <- treat~concept+ownership+calorie3+calorie4+calorie5+calorie6+calorie7+calorie8+
   count3+count4+count5+count6+count7+count8+dollar3+dollar4+dollar5+dollar6+dollar7+dollar8+
