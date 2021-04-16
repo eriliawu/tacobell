@@ -31,8 +31,9 @@ library(car)
 #install.packages("usmap") #show state abbr in ggplot map
 library(usmap)
 library(maps)
+library(car) #testing joint significance
 ### matched data, preparing data ----
-matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed.csv", stringsAsFactors = FALSE)
+matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-abs-values.csv", stringsAsFactors = FALSE)
 matched$tract_num <- substr(matched$tract_num, 2, 12)
 matched$holiday <- ifelse(matched$month==12, 1, 0)
 matched <- matched %>%
@@ -253,7 +254,7 @@ dim(tidy_mod.factor)
 tidy_mod.factor[201:202, 1] <- "0" #add 2 rows for month 0
 tidy_mod.factor[201:202, c(2,4)] <- 0 #add coef.month and coef.treat
 tidy_mod.factor[201:202, 5] <- c(0, 1) #add treat=0 and treat=1
-tidy_mod.factor[, 1] <- c(seq(-49,-4,1),seq(2,55,1),seq(-49,-4, 1),seq(2,55, 1),-3,-3) #change month numbers
+tidy_mod.factor[, 1] <- c(seq(-49,-4,1),seq(3,56,1),seq(-49,-4, 1),seq(3,56, 1),-3,-3) #change month numbers
 tidy_mod.factor$group[101:200] <- 1 #change group to treat=1
 tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
 tidy_mod.factor$coef.treat[102:202] <- tidy_mod.factor$coef.month[102:202]
@@ -268,23 +269,23 @@ tidy_mod.factor$p.diff[1:101] <- tidy_mod.factor$p[102:202]
 # add year and month factor as covariate
 summary(tidy_mod.factor$calorie) #[-81,75]
 summary(tidy_mod.factor$diff) #[-62,22]
-ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=2),aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) + #
+ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) + #
   geom_hline(yintercept = -300, color="grey", linetype="dashed", size=0.5) +
   geom_hline(yintercept = -275, color="grey", linetype="dashed", size=0.5) +
   geom_hline(yintercept = -325, color="grey", linetype="dashed", size=0.5) +
   geom_point(size=1) + geom_line() +
-  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)&(month<=-3|month>=2)),aes(x=month, y=diff*1-300), color="orange") + #add diff between 2 groups
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)&(month<=-3|month>=3)),aes(x=month, y=diff*1-300), color="orange") + #add diff between 2 groups
   geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05&(month<=-3|month>=3)),aes(x=month, y=diff*1-300), color="orange") + #highlight significant months with dots
-  ggplot2::annotate("rect", xmin = -3, xmax = 2, ymin = -400, ymax = 100, fill = "grey") + #add shaded area
+  ggplot2::annotate("rect", xmin = -3, xmax = 3, ymin = -400, ymax = 100, fill = "grey") + #add shaded area
   ggplot2::annotate(geom="label", x=0, y=-150, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
   ggplot2::annotate(geom="label", x=-15, y=-225, label="   P<0.05", size=3) + 
   geom_point(aes(x=-18,y=-225),color="orange",size=1) +
   coord_cartesian(expand = FALSE, clip = "off") + 
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
-  scale_x_continuous(breaks=c(seq(-48,-3,3),seq(2,55,3))) + #select which months to display
-  labs(title="Effect of menu labeling on calories purchased, matching abs values", x="Month", y="Calories", 
-       caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
+  scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
+  labs(title="Effect of menu labeling on calories purchased, matching trend", x="Month", y="Calories", 
+       caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
@@ -292,7 +293,19 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=2),aes(x=month, y=calorie,
         axis.title.y = element_text(size = 12),
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE-abs-value.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE.jpeg", dpi="retina")
+
+# hypothesis testing
+presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
+for (s in c(0.001,0.01,0.05)) {
+  for (i in 2:30) {
+    if (linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",i))[2,4]>=s) {
+      print(paste0("month ",i+1," not significant at ", s))
+    }
+  }
+  
+}
+sum(abs(tidy_mod.factor$diff[42:46]))
 
 ### cal=group*month(factor), month as factor, detect trend using diff-in-diff ----
 trend <- NULL
@@ -300,7 +313,7 @@ tmp <- data.frame(3:30)
 colnames(tmp)[1] <- "month"
 matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                  data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))&match_place!="ca"), #
+                  data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))), #&match_place=="ca"
                   index = c("id"), weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 #write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
@@ -338,26 +351,28 @@ tmp2$month <- tmp2$month+1
 colnames(tmp2)[2] <- "post_mean"
 tmp <- merge(tmp1, tmp2, by="month", all=TRUE)
 tmp$mean <- tmp$post_mean - tmp$pre_mean
-tmp$loc <- "other"
+tmp$loc <- "all"
 tmp$diff <- NULL
+#hypothesis testing
+tmp$p <- 0
+for (i in 2:29) {
+  tmp$p[i-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",i))[2,4]
+}
 trend <- rbind(trend, tmp)
 rm(tmp1,tmp2,tmp)
 
-names(trend)
-table(trend$loc)
-location <- factor(trend$loc,levels = c("all", "ca", "other"))
-
 #trend <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
-ggplot(data=trend, aes(x=month, y=mean, group=location, color=location)) + #
-  geom_line() + geom_point() +
-  #ggplot2::annotate(geom="label", x=11, y=10, label="Post-period month 14 diff - pre-period mean", size=3) + 
-  #ggplot2::annotate(geom="label", x=11, y=-7, label="The overall trend also \n explains the inconsistent \n coefficients in linear models", size=3) + 
+ggplot() + 
+  geom_line(data=trend, aes(x=month, y=mean, group=loc, color=loc)) +
+  geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, group=loc, color=loc)) +
+  ggplot2::annotate(geom="label", x=6, y=-30, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=-30),color="black",size=1) +
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
   coord_cartesian(expand = FALSE, clip = "off") + 
   scale_y_continuous(limits=c(-70,30),breaks=seq(-70,30,10)) +
-  scale_x_continuous(breaks=seq(1,30,1)) +
-  labs(title="Diff-in-diff analysis, by location", x="Month", y="Calories", 
-       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(factor) + treat*month(factor) + ∑month + ∑restaurant") + 
+  scale_x_continuous(breaks=seq(3,30,1)) +
+  labs(title="Diff-in-diff analysis, by location, matching trend", x="Month", y="Calories", 
+       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
   scale_color_manual(name="Location", labels=c("All", "CA", "Others"),
                      values = c("hotpink","olivedrab3","#13B0E4")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -367,6 +382,31 @@ ggplot(data=trend, aes(x=month, y=mean, group=location, color=location)) + #
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/mean-diff-in-diff-by-location.jpeg", dpi="retina")
+
+# collapse impact by 6-month chunks
+trend$time <- ifelse(trend$month<=6,6,
+                     ifelse(trend$month>6&trend$month<=12,12,
+                     ifelse(trend$month>12&trend$month<=18,18,
+                     ifelse(trend$month>18&trend$month<=24,24,30))))
+trend.collapse <- aggregate(data=trend, mean~time+loc,sum)
+trend.collapse$mean <- ifelse(trend.collapse$time==6, trend.collapse$mean/4, trend.collapse$mean/6)
+ggplot(data=trend.collapse, aes(x=time, y=mean, group=loc, color=loc)) + 
+  geom_line() + geom_point() +
+  #geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  #coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-50,0),breaks=seq(-50,0,10)) +
+  scale_x_continuous(breaks=seq(6,30,6)) +
+  labs(title="Mean impact by 6-month periods, matching abs value", x="Month", y="Calories", 
+       caption="Impact is mean of each 6-month period sum. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  scale_color_manual(name="Location", labels=c("All", "CA", "Others"),
+                     values = c("hotpink","olivedrab3","#13B0E4")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/mean-diff-6mon.jpeg", dpi="retina")
 
 ### try polynomial and/or log term for month ---- 
 #y=x^2+x, y=x^3+x^2+x, y=log(x)
