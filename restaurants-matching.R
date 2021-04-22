@@ -109,10 +109,8 @@ for (i in 2007:2015) {
         sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_",
                                   i,"_Q",j,".csv"),
                            stringsAsFactors = FALSE,
-                           col.names=c("restid", "year", "month",
-                                       "calorie", "fat", "sat_fat",
-                                       "carb", "protein", "sodium",
-                                       "count", "dollar"))
+                           col.names=c("restid", "year", "month", "calorie", "fat", "sat_fat",
+                                       "carb", "protein", "sodium", "count", "dollar"))
         calorie <- rbind(calorie, sample)
       }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
     )
@@ -209,7 +207,7 @@ tmp1 <- tmp1[order(tmp1$state, tmp1$address), ]
 #tmp2 <- restaurant[, c(2:3, 5:8, 28:39)]
 tmp2 <- restaurant[, c(2:4,6:8,24:36)]
 tmp2 <- aggregate(data=tmp2,
-                  .~tract_num+address+concept+drive_thru+ownership+year+month+yearno+monthno,
+                  .~tract_num+address+concept+ownership+year+month+yearno+monthno,
                   sum)
 restaurant <- merge(tmp2, tmp1, by=c("address", "tract_num"))
 rm(tmp1, tmp2, drive)
@@ -768,7 +766,7 @@ for (i in c("ca","king","ma","mont","or","suffolk")) {
     rename(entry = entry.x)
   master_all <- rbind(master_all, tmp)
 }
-#write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed.csv", row.names = FALSE)
+write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed.csv", row.names = FALSE)
 rm(master_all, i,tmp)
 
 result <- cbind(col_w_smd(mat=subset(master.original,select = c(3:4,18:19,23,25:35,38:40,56:58,61:64)),
@@ -944,7 +942,7 @@ for (i in c("ca","king","ma","mont","or","suffolk")) {
     rename(entry = entry.x)
   master_all <- rbind(master_all, tmp)
 }
-#write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed-abs-values.csv", row.names = FALSE)
+write.csv(master_all, "data/calorie-aims/matched-restaurants-trimmed-abs-values.csv", row.names = FALSE)
 rm(master_all, i,tmp)
 
 names(matched)
