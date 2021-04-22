@@ -32,8 +32,11 @@ library(car)
 library(usmap)
 library(maps)
 library(car) #testing joint significance
+#install.packages("zoo") #fill in NAs with the first non-NA value in a column
+library(zoo)
+
 ### matched data, preparing data ----
-matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-abs-values.csv", stringsAsFactors = FALSE)
+matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed.csv", stringsAsFactors = FALSE)
 matched$tract_num <- substr(matched$tract_num, 2, 12)
 matched$holiday <- ifelse(matched$month==12, 1, 0)
 matched <- matched %>%
@@ -82,22 +85,29 @@ matched$open_after <- ifelse(matched$post==1, matched$open_after, matched$open_m
 #create indicators for restaurants that were open for at least 6, 12, 18 and 24 months before and after ML
 tmp <- matched %>%
   group_by(id, treat, match_place) %>%
-  filter(relative2<=23&relative2>=-24) %>%
-  mutate(n=n()) %>%
-  mutate(open24 = ifelse(n==48, 1,0)) %>%
-  filter(relative2<=17&relative2>=-18) %>%
-  mutate(n=n()) %>%
-  mutate(open18 = ifelse(n==36, 1,0)) %>%
-  filter(relative2<=11&relative2>=-12) %>%
-  mutate(n=n()) %>%
-  mutate(open12 = ifelse(n==24, 1,0)) %>%
-  filter(relative2<=5&relative2>=-6) %>%
-  mutate(n=n()) %>%
-  mutate(open6 = ifelse(n==12, 1,0)) %>%
-  dplyr::select(id, treat, match_place, open6,open12,open18,open24) %>%
+  filter(relative2<=23&relative2>=0) %>% mutate(n=n()) %>% mutate(after24 = ifelse(n==24, 1,0)) %>%
+  filter(relative2<=17&relative2>=0) %>% mutate(n=n()) %>% mutate(after18 = ifelse(n==18, 1,0)) %>%
+  filter(relative2<=11&relative2>=0) %>% mutate(n=n()) %>% mutate(after12 = ifelse(n==12, 1,0)) %>%
+  filter(relative2<=5&relative2>=0) %>% mutate(n=n()) %>% mutate(after6 = ifelse(n==6, 1,0)) %>%
+  dplyr::select(id, treat, match_place, after6,after12,after18,after24) %>%
   distinct()
 matched <- merge(matched, tmp, by=c("id", "treat", "match_place"), all = TRUE)
+tmp <- matched %>%
+  group_by(id, treat, match_place) %>%
+  filter(relative2<0&relative2>= -24) %>% mutate(n=n()) %>% mutate(before24 = ifelse(n==24, 1,0)) %>%
+  filter(relative2<0&relative2>= -18) %>% mutate(n=n()) %>% mutate(before18 = ifelse(n==18, 1,0)) %>%
+  filter(relative2<0&relative2>= -12) %>% mutate(n=n()) %>% mutate(before12 = ifelse(n==12, 1,0)) %>%
+  filter(relative2<0&relative2>= -6) %>% mutate(n=n()) %>% mutate(before6 = ifelse(n==6, 1,0)) %>%
+  dplyr::select(id, treat, match_place, before6,before12,before18,before24) %>%
+  distinct()
+matched <- merge(matched, tmp, by=c("id", "treat", "match_place"), all = TRUE)
+matched$open6 <- ifelse(matched$before6==1&matched$after6==1,1,0)
+matched$open12 <- ifelse(matched$before12==1&matched$after12==1,1,0)
+matched$open18 <- ifelse(matched$before18==1&matched$after18==1,1,0)
+matched$open24 <- ifelse(matched$before24==1&matched$after24==1,1,0)
 rm(tmp)
+
+matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
 
 ### working off matched data only, summary stats, pick pre- data for all restaurants, regardless of actual time ----
 table1::table1(data=matched %>% filter(relative==-3) %>% mutate(nonwhite=black+asian+hisp) %>% mutate(rev=count*dollar),
@@ -236,9 +246,8 @@ length(unique(tmp$id[tmp$treat==0&tmp$open_month==24])) #364
 ### cal=group*month(factor), month as factor ----
 # get num of restaurants in each month
 #ignore results 2 months before and after ML
-matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                  data = matched%>%filter(relative2<=-3|(relative2>=2&relative2<=55)), 
+                  data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))&open24==1), 
                   index = c("id"), weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 #write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
@@ -284,7 +293,7 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
-  labs(title="Effect of menu labeling on calories purchased, matching trend", x="Month", y="Calories", 
+  labs(title="Effect of menu labeling on calories purchased, min 24 months after labeling", x="Month", y="Calories", 
        caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -293,7 +302,7 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,
         axis.title.y = element_text(size = 12),
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE-24mon.jpeg", dpi="retina")
 
 # hypothesis testing
 presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
@@ -360,13 +369,16 @@ for (i in 2:29) {
 }
 trend <- rbind(trend, tmp)
 rm(tmp1,tmp2,tmp)
+trend <- trend %>%
+  arrange(month) %>%
+  mutate(mean3 = zoo::rollmean(mean,k=3,fill=mean))
 
 #trend <- read.csv("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
 ggplot() + 
-  geom_line(data=trend, aes(x=month, y=mean, group=loc, color=loc)) +
-  geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, group=loc, color=loc)) +
-  ggplot2::annotate(geom="label", x=6, y=-30, label="   p<0.05", size=3) + 
-  geom_point(aes(x=5.35,y=-30),color="black",size=1) +
+  geom_line(data=trend, aes(x=month, y=mean3, group=1)) + #, group=loc, color=loc
+  #geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, group=loc, color=loc)) +
+  #ggplot2::annotate(geom="label", x=6, y=-30, label="   p<0.05", size=3) + 
+  #geom_point(aes(x=5.35,y=-30),color="black",size=1) +
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
   coord_cartesian(expand = FALSE, clip = "off") + 
   scale_y_continuous(limits=c(-70,30),breaks=seq(-70,30,10)) +
@@ -469,3 +481,136 @@ ggplot(data=coords%>%filter(treat==0&match_place=="ca")) + coord_fixed() +
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/results/map-comparison-restaurants_CA.jpeg", dpi="retina")
 rm(coords)
+### fill in missing transaction data, sensitivity check ----
+# fill in all the temp closings within 24 months after labeling
+monthno <- data.frame(c(204:309)) %>% setNames("monthno")
+#check the 36 months immediately after labeling
+# filter out the ones that didn't have 24 months consecutively after ML
+# omit restaurants with gaps larger than 4 months, only fill in gaps between 1 and 3 months
+tmp <- matched %>%
+  group_by(id,treat,match_place) %>%
+  filter(monthno>=entry&relative2<=29) %>%
+  dplyr::select(id,treat,match_place,address,entry,monthno,relative2,open_after,calorie) %>%
+  arrange(relative2, .by_group=TRUE) %>%
+  mutate(n=n()) %>%
+  mutate(gap = ifelse(relative2==0,1,relative2 - dplyr::lag(relative2,1))) %>%
+  mutate(max_gap = max(gap)) %>%
+  filter(gap>=2 & gap<=4) %>%
+  dplyr::select(id,treat,match_place) %>% distinct() 
+monthno <- merge(tmp,monthno,all=TRUE)
+
+# num of restaurants that has gaps between 2 to 4 months within the 30 months after labeling
+length(unique(paste0(tmp$id,tmp$match_place))) #80 restaurants
+#isolate those restaurants and add calorie info
+tmp <- merge(tmp,matched,by=c("id","treat","match_place"))
+tmp <- tmp %>%
+  group_by(id,treat,match_place) %>%
+  filter(monthno>=entry&relative2<=35) %>%
+  arrange(relative2, .by_group=TRUE) %>%
+  mutate(gap = ifelse(relative2==0,1,relative2 - dplyr::lag(relative2,1))) 
+tmp <- merge(tmp,monthno,all=TRUE)
+tmp <- tmp %>%
+  group_by(id,treat,match_place) %>%
+  mutate(entry = entry[!is.na(entry)][1L]) %>% #fill in the missing entry dates
+  mutate(treat = treat[!is.na(treat)][1L]) %>% 
+  mutate(weights = weights[!is.na(weights)][1L]) %>% 
+  mutate(relative2 = ifelse(is.na(relative2), monthno-entry, relative2)) %>%
+  filter(monthno>=entry&relative2<=35) %>%
+  arrange(relative2, .by_group=TRUE) %>%
+  mutate(max = max(monthno[!is.na(calorie)])) %>%
+  filter(!(is.na(calorie)&monthno>max)) %>% #omit open ended consecutive missing months
+  dplyr::select(-max) %>%
+  mutate(gap2 = zoo::na.locf(gap,na.rm = FALSE, fromLast = TRUE)) %>%
+  filter(gap2<=6) %>%
+  filter((is.na(dplyr::lead(gap,1))&!is.na(gap))|gap2>1) %>%
+  mutate(cal_after = zoo::na.locf(calorie,na.rm = FALSE, fromLast = TRUE)) %>%
+  mutate(cal_before = zoo::na.locf(calorie,na.rm = FALSE))%>%
+  filter(is.na(calorie)) %>%
+  group_by(id,treat,match_place,gap2) %>%
+  mutate(ratio = row_number()) %>%
+  mutate(calorie_imputed = cal_before*(ratio/gap2)+cal_after*((gap2-ratio)/gap2)) %>%
+  ungroup() %>%
+  dplyr::select(-c(ratio,gap,gap2,cal_before,cal_after,year,month))
+
+#fill in the proper seasonal year and month
+time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
+time <- time[, c(7,38)] %>% setNames(c("monthno","time")) %>%
+  mutate(year = as.integer(substr(time,1,4))) %>%
+  mutate(month = as.integer(substr(time,6,7))) %>%
+  filter(monthno>=204) %>%
+  arrange(monthno) %>%
+  dplyr::select(-time) %>% distinct()
+tmp <- merge(tmp,time,by="monthno",all.x=TRUE) %>%
+  relocate(year,month)
+
+### assemble matched data with imputed calorie ----
+imputed <- matched
+imputed$calorie_imputed <- imputed$calorie
+imputed <- rbind(imputed,tmp)
+imputed <- imputed[order(imputed$id,imputed$match_place,imputed$monthno),]
+tmp <- imputed %>% dplyr::select(id,treat,match_place,calorie,calorie_imputed,relative2.factor,month,weights)
+tmp <- tmp[complete.cases(tmp),]
+
+#rm(monthno,tmp,time)
+
+imputed$relative2.factor <- factor(imputed$relative2)
+imputed <- within(imputed, relative2.factor<-relevel(relative2.factor, ref="-3"))
+mod.factor <- plm(formula = calorie_imputed~treat*relative2.factor+as.factor(month),
+                  data = imputed%>%filter(relative2<=-3|(relative2>=2&relative2<=55)), 
+                  index = c("id"), weights = weights, model = "within")
+tidy_mod.factor <- tidy(mod.factor)
+#write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
+
+# clean data
+tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
+colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
+tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
+tidy_mod.factor$coef.treat <- 0
+tidy_mod.factor$group <- 0
+dim(tidy_mod.factor)
+#tidy_mod.factor <- tidy_mod.factor[-c(115:129),]
+tidy_mod.factor[201:202, 1] <- "0" #add 2 rows for month 0
+tidy_mod.factor[201:202, c(2,4)] <- 0 #add coef.month and coef.treat
+tidy_mod.factor[201:202, 5] <- c(0, 1) #add treat=0 and treat=1
+tidy_mod.factor[, 1] <- c(seq(-49,-4,1),seq(3,56,1),seq(-49,-4, 1),seq(3,56, 1),-3,-3) #change month numbers
+tidy_mod.factor$group[101:200] <- 1 #change group to treat=1
+tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
+tidy_mod.factor$coef.treat[102:202] <- tidy_mod.factor$coef.month[102:202]
+tidy_mod.factor$coef.month[102:202] <- tidy_mod.factor$coef.month[1:101]
+tidy_mod.factor$calorie <- ifelse(tidy_mod.factor$group==0, tidy_mod.factor$coef.month,
+                                  tidy_mod.factor$coef.month+tidy_mod.factor$coef.treat)
+tidy_mod.factor$diff <- NA
+tidy_mod.factor$diff[1:101] <- tidy_mod.factor$calorie[102:202] - tidy_mod.factor$calorie[1:101]
+tidy_mod.factor$p.diff <- NA
+tidy_mod.factor$p.diff[1:101] <- tidy_mod.factor$p[102:202]
+
+# add year and month factor as covariate
+summary(tidy_mod.factor$calorie) #[-81,75]
+summary(tidy_mod.factor$diff) #[-62,22]
+ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,group=as.character(group), color=as.character(group))) + #
+  geom_hline(yintercept = -300, color="grey", linetype="dashed", size=0.5) +
+  geom_hline(yintercept = -275, color="grey", linetype="dashed", size=0.5) +
+  geom_hline(yintercept = -325, color="grey", linetype="dashed", size=0.5) +
+  geom_point(size=1) + geom_line() +
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)&(month<=-3|month>=3)),aes(x=month, y=diff*1-300), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(p.diff)&p.diff<0.05&(month<=-3|month>=3)),aes(x=month, y=diff*1-300), color="orange") + #highlight significant months with dots
+  ggplot2::annotate("rect", xmin = -3, xmax = 3, ymin = -400, ymax = 100, fill = "grey") + #add shaded area
+  ggplot2::annotate(geom="label", x=0, y=-150, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
+  ggplot2::annotate(geom="label", x=-15, y=-225, label="   P<0.05", size=3) + 
+  geom_point(aes(x=-18,y=-225),color="orange",size=1) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
+                     sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
+  scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
+  labs(title="Effect of menu labeling on calories purchased, matching trend, imputed calorie", x="Month", y="Calories", 
+       caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE-imputed.jpeg", dpi="retina")
+
+
