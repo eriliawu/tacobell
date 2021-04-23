@@ -614,3 +614,60 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE-imputed.jpeg", dpi="retina")
 
 
+
+### subset sample of which restaurants to include ----
+#restaurants open for at least 12, 15, 18, 21, 24 months after labeling
+tidy_mod.factor_all <- NULL
+for (i in c(12,15,18,21,24,27,30)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))&open_after>=i), 
+                    index = c("id"), weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor)
+  tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
+  colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
+  tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
+  tidy_mod.factor$coef.treat <- 0
+  tidy_mod.factor$group <- 0
+  dim(tidy_mod.factor)
+  tidy_mod.factor[201:202, 1] <- "0" #add 2 rows for month 0
+  tidy_mod.factor[201:202, c(2,4)] <- 0 #add coef.month and coef.treat
+  tidy_mod.factor[201:202, 5] <- c(0, 1) #add treat=0 and treat=1
+  tidy_mod.factor[, 1] <- c(seq(-49,-4,1),seq(3,56,1),seq(-49,-4, 1),seq(3,56, 1),-3,-3) #change month numbers
+  tidy_mod.factor$group[101:200] <- 1 #change group to treat=1
+  tidy_mod.factor <- tidy_mod.factor[order(tidy_mod.factor$group,tidy_mod.factor$month), ]
+  tidy_mod.factor$coef.treat[102:202] <- tidy_mod.factor$coef.month[102:202]
+  tidy_mod.factor$coef.month[102:202] <- tidy_mod.factor$coef.month[1:101]
+  tidy_mod.factor$calorie <- ifelse(tidy_mod.factor$group==0, tidy_mod.factor$coef.month,
+                                    tidy_mod.factor$coef.month+tidy_mod.factor$coef.treat)
+  tidy_mod.factor$diff <- NA
+  tidy_mod.factor$diff[1:101] <- tidy_mod.factor$calorie[102:202] - tidy_mod.factor$calorie[1:101]
+  tidy_mod.factor$p.diff <- NA
+  tidy_mod.factor$p.diff[1:101] <- tidy_mod.factor$p[102:202]
+  tidy_mod.factor <- tidy_mod.factor[1:101,c(1,5,7:8)]
+  tidy_mod.factor$time <- i
+  tidy_mod.factor_all <- rbind(tidy_mod.factor_all,tidy_mod.factor)
+}
+
+# add year and month factor as covariate
+summary(tidy_mod.factor_all$diff) #[-60,19]
+ggplot(data=tidy_mod.factor_all%>%filter(month<=-3|month>=3),aes(x=month, y=diff,group=as.character(time), color=as.character(time))) + #
+  geom_point(size=1) + geom_line() +
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate("rect", xmin=-3, xmax=3, ymin=-75, ymax=25, fill = "grey") + #add shaded area
+  ggplot2::annotate(geom="label", x=0, y=-50, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-75,25),breaks=seq(-75,25,5)) +
+  scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
+  labs(title="Effect of menu labeling on calories purchased, by open time after ML", x="Month", y="Calories in difference", 
+       caption="calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  scale_color_manual(name="Open after labeling", labels=c("12 months","15 months","18 months","21 months","24 months","27 months","30 months"),
+                       values=c("hotpink","olivedrab3","red","orange","grey","purple","#13B0E4")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE-by-open-time.jpeg", dpi="retina")
+
+
