@@ -36,7 +36,7 @@ library(car) #testing joint significance
 library(zoo)
 
 ### matched data, preparing data ----
-matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-splitCA.csv", stringsAsFactors = FALSE)
+matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed.csv", stringsAsFactors = FALSE)
 matched$tract_num <- substr(matched$tract_num, 2, 12)
 matched$holiday <- ifelse(matched$month==12, 1, 0)
 matched <- matched %>%
@@ -548,7 +548,6 @@ imputed <- rbind(imputed,tmp)
 imputed <- imputed[order(imputed$id,imputed$match_place,imputed$monthno),]
 tmp <- imputed %>% dplyr::select(id,treat,match_place,calorie,calorie_imputed,relative2.factor,month,weights)
 tmp <- tmp[complete.cases(tmp),]
-
 #rm(monthno,tmp,time)
 
 imputed$relative2.factor <- factor(imputed$relative2)
@@ -600,8 +599,8 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,
   scale_y_continuous(limits=c(-400,100),breaks=seq(-400,100,50),
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
-  labs(title="Effect of menu labeling on calories purchased, matching trend, imputed calorie", x="Month", y="Calories", 
-       caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  labs(title="Effect of menu labeling on calories purchased, imputed calorie", x="Month", y="Calories", 
+       caption="Orange lined represents the difference between treat and comparison group. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant \nCalories are imputed for less than 4 months of consecutive missing.") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
@@ -610,8 +609,6 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/cal=treat+month_monthFE_restaurantFE-imputed.jpeg", dpi="retina")
-
-
 
 ### analysis by restaurant open time after labeling ----
 #restaurants open for at least 12, 15, 18, 21, 24 months after labeling
@@ -808,4 +805,60 @@ ggplot() +
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/mean-diff-in-diff-by-location-splitCA.jpeg", dpi="retina")
+
+
+time <- data.frame(c(1:30),c(rep(0,90))) %>% setNames(c("month","num"))
+for (i in c(0:29)) {
+  time[i+1,2] <- length(unique(paste0(matched$id[matched$relative2==i],matched$match_place[matched$relative2==i])))
+  time[i+31,2] <- length(unique(matched$id[matched$relative2==i&matched$treat==1]))
+  time[i+61,2] <- length(unique(paste0(matched$id[matched$relative2==i&matched$treat==0],matched$match_place[matched$relative2==i&matched$treat==0])))
+}
+time$group <- "all"
+time$group[31:60] <- "treat"
+time$group[61:90] <- "comp"
+time$pct <- 0
+time$pct[1:30] <- time$num[1:30]/time$num[1]
+time$pct[31:60] <- time$num[31:60]/time$num[31]
+time$pct[61:90] <- time$num[61:90]/time$num[61]
+
+ggplot(data=time, aes(x=month, y=pct, group=group,color=group)) + 
+  geom_line() + geom_point() +
+  geom_vline(xintercept = 12, color="grey", linetype="dashed", size=0.5) +
+  geom_vline(xintercept = 13, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=13, y=1.07, label="N comparison \nrestaurants decreased \nby 57, 50 of which \nare matched to \n CA restaurants.", size=3) + 
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(0.5,1.2),breaks=seq(0.5,1.2,0.1),labels = scales::percent) +
+  scale_x_continuous(breaks=seq(1,30,1)) +
+  labs(title="Number of restaurants post labeling", x="Month", y="", 
+       caption="These comp restaurants have a median weight of 0.1, much higher than the median of 0.04 with the full sample. \n38 of those unique restaurants are located in TX.") + 
+  scale_color_discrete(name="Group",labels=c("All","Comparison","Treatment")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/num-restaurants-over-time.jpeg", dpi="retina")
+
+#invetigate large number of drop in comp restaurants between months 12 and 13
+tmp <- matched %>% filter(treat==0 & (relative2==11|relative2==12)) %>%
+  dplyr::select(id,match_place,address,entry,weights,relative2) %>%
+  arrange(desc(weights),relative2) %>%
+  group_by(id,match_place) %>%
+  mutate(n=n()) %>%
+  filter(n==1)
+length(unique(tmp$address)) #51
+length(unique(tmp$address[tmp$match_place=="ca"])) #50
+length(unique(tmp$address[grepl("TX ", tmp$address)])) #38
+median(tmp$weights)
+table(tmp$match_place)
+tmp[tmp$match_place!="ca",]
+
+tmp <- matched %>% filter(treat==1 & relative2>=5 & relative2<=7) %>%
+  dplyr::select(id,match_place,address,weights,relative2) %>%
+  arrange(id,relative2) %>%
+  group_by(id,match_place) %>%
+  mutate(n=n()) %>%
+  filter(n==1)
+table(tmp$match_place)
 
