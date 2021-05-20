@@ -108,6 +108,7 @@ matched$open24 <- ifelse(matched$before24==1&matched$after24==1,1,0)
 rm(tmp)
 
 matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
+matched$id_match <- paste0(matched$id, matched$match_place)
 
 ### working off matched data only, summary stats, pick pre- data for all restaurants, regardless of actual time ----
 table1::table1(data=matched %>% filter(relative==-3) %>% mutate(nonwhite=black+asian+hisp) %>% mutate(rev=count*dollar),
@@ -248,7 +249,7 @@ length(unique(tmp$id[tmp$treat==0&tmp$open_month==24])) #364
 #ignore results 2 months before and after ML
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = matched%>%filter(relative2<=-3|(relative2>=2&relative2<=55)), 
-                  index = c("id"), weights = weights, model = "within")
+                  index = "id_match", weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 #write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
 
@@ -259,7 +260,6 @@ tidy_mod.factor <- tidy_mod.factor[!grepl("as.factor", tidy_mod.factor$month), ]
 tidy_mod.factor$coef.treat <- 0
 tidy_mod.factor$group <- 0
 dim(tidy_mod.factor)
-#tidy_mod.factor <- tidy_mod.factor[-c(115:129),]
 tidy_mod.factor[201:202, 1] <- "0" #add 2 rows for month 0
 tidy_mod.factor[201:202, c(2,4)] <- 0 #add coef.month and coef.treat
 tidy_mod.factor[201:202, 5] <- c(0, 1) #add treat=0 and treat=1
@@ -323,7 +323,7 @@ colnames(tmp)[1] <- "month"
 matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))), #&match_place=="ca"
-                  index = c("id"), weights = weights, model = "within")
+                  index = "id_match", weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 #write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
 
@@ -554,7 +554,7 @@ imputed$relative2.factor <- factor(imputed$relative2)
 imputed <- within(imputed, relative2.factor<-relevel(relative2.factor, ref="-3"))
 mod.factor <- plm(formula = calorie_imputed~treat*relative2.factor+as.factor(month),
                   data = imputed%>%filter(relative2<=-3|(relative2>=2&relative2<=55)), 
-                  index = c("id"), weights = weights, model = "within")
+                  index = "id_match", weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 #write.csv(trend, row.names = FALSE,"tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor/mean-diff-in-diff-by-location.csv")
 
@@ -616,7 +616,7 @@ tidy_mod.factor_all <- NULL
 for (i in c(12,15,18,21,24,27,30)) {
   mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                     data = matched%>%filter((relative2<=-3|(relative2>=2&relative2<=55))&open_after>=i), 
-                    index = c("id"), weights = weights, model = "within")
+                    index = "id_match", weights = weights, model = "within")
   tidy_mod.factor <- tidy(mod.factor)
   tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
   colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
@@ -668,7 +668,7 @@ ggplot(data=tidy_mod.factor_all%>%filter(month<=-3|month>=3),aes(x=month, y=diff
 trend <- NULL
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = matched%>%filter(relative2<=-3|(relative2>=2&relative2<=55)), 
-                  index = c("id"), weights = weights, model = "within")
+                  index = "id_match", weights = weights, model = "within")
 tidy_mod.factor <- tidy(mod.factor)
 tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
 colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
@@ -713,7 +713,7 @@ trend <- rbind(trend,tmp)
 for (i in c("cen-cal","north-cal","s-valley","south-cal","west-cal","ma","or","suffolk")) {
   mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                     data = matched%>%filter(((relative2<=-3&relative2>=-47)|(relative2>=2&relative2<=55))&match_place==i), 
-                    index = c("id"), weights = weights, model = "within")
+                    index = "id_match", weights = weights, model = "within")
   tidy_mod.factor <- tidy(mod.factor)
   tidy_mod.factor <- tidy_mod.factor[, c(1:2,5)]
   colnames(tidy_mod.factor) <- c("month", "coef.month", "p")
@@ -806,7 +806,7 @@ ggplot() +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/mean-diff-in-diff-by-location-splitCA.jpeg", dpi="retina")
 
-
+# number of restaurants open for each month post labeling
 time <- data.frame(c(1:30),c(rep(0,90))) %>% setNames(c("month","num"))
 for (i in c(0:29)) {
   time[i+1,2] <- length(unique(paste0(matched$id[matched$relative2==i],matched$match_place[matched$relative2==i])))
@@ -840,25 +840,102 @@ ggplot(data=time, aes(x=month, y=pct, group=group,color=group)) +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/num-restaurants-over-time.jpeg", dpi="retina")
 
-#invetigate large number of drop in comp restaurants between months 12 and 13
+### investigate data anomolies during month 12-14, in comp restaurants ----
+#identify comp restaurants that dropped off in month 13
 tmp <- matched %>% filter(treat==0 & (relative2==11|relative2==12)) %>%
   dplyr::select(id,match_place,address,entry,weights,relative2) %>%
-  arrange(desc(weights),relative2) %>%
-  group_by(id,match_place) %>%
-  mutate(n=n()) %>%
-  filter(n==1)
-length(unique(tmp$address)) #51
-length(unique(tmp$address[tmp$match_place=="ca"])) #50
-length(unique(tmp$address[grepl("TX ", tmp$address)])) #38
-median(tmp$weights)
-table(tmp$match_place)
-tmp[tmp$match_place!="ca",]
+  arrange(desc(weights),relative2) %>% group_by(id,match_place) %>%
+  mutate(n=n()) %>% filter(n==1) %>% dplyr::select(id,match_place) %>%
+  anti_join(x=matched, by=c("id","match_place"))
 
-tmp <- matched %>% filter(treat==1 & relative2>=5 & relative2<=7) %>%
-  dplyr::select(id,match_place,address,weights,relative2) %>%
-  arrange(id,relative2) %>%
+# plot mean calorie over time by location
+ggplot(data=matched%>%filter(relative>=1&relative<=30),aes(x=relative, y=calorie)) + 
+  stat_summary(fun.y=mean,geom="line",lwd=0.5,aes(color=match_place,linetype=factor(treat,levels = c(1,0))))+
+  geom_vline(xintercept=12,linetype="dashed",color="grey") +
+  geom_vline(xintercept=14,linetype="dashed",color="grey") +
+  ggplot2::annotate("rect", xmin=12, xmax=14, ymin=1150, ymax=1600, fill = "grey",alpha=0.4) + #add shaded area
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  #scale_y_continuous(limits=c(1200,1500),breaks=seq(1200,1500,50)) +
+  scale_x_continuous(breaks=seq(1,30,1)) + #select which months to display
+  labs(title="Mean calorie over time, by location", x="Month", y="Calories", 
+       caption="") + 
+  scale_color_manual(name="Location", labels=c("CA","King county, WA","MA","Montgomery county, MD","OR","Suffolk county, NY"),
+                     values=c("hotpink","olivedrab3","purple","orange","#13B0E4","grey")) +
+  scale_linetype_discrete(name="Labeling", labels=c("Yes","No")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/investigate-data-anomaly/mean-cal-byLoc-overTime.jpeg", dpi="retina")
+
+#understand calorie change between month 12-14
+tmp <- matched %>%
   group_by(id,match_place) %>%
-  mutate(n=n()) %>%
-  filter(n==1)
-table(tmp$match_place)
+  mutate(calorie_last = dplyr::lag(calorie,2)) %>%
+  mutate(pct = (calorie-calorie_last)/calorie_last) %>%
+  filter(relative==14) %>% ungroup() %>%
+  arrange(desc(pct)) %>% dplyr::select(address,match_place,calorie,calorie_last,pct,weights,treat)
+
+ggplot(tmp, aes(x=pct, color=factor(treat,levels = c(1,0)),fill=factor(treat,levels = c(1,0)))) +
+  geom_histogram(bins=100,alpha=0.5,position="identity") +
+  geom_vline(aes(xintercept=mean(pct), color=factor(treat,levels = c(1,0)),group=factor(treat,levels = c(1,0))),linetype="dashed") +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_color_discrete(name="Menu labeling",labels=c("Yes","No")) +
+  scale_fill_discrete(name="Menu labeling",labels=c("Yes","No")) +
+  labs(title="% change in calorie between month 12 and 14",x="% change",y="Number of restaurants") +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/investigate-data-anomaly/pct-change-calorie.jpeg", dpi="retina")
+
+tmp <- matched %>%
+  group_by(id,match_place) %>%
+  mutate(calorie_last = dplyr::lag(calorie,2)) %>%
+  mutate(pct = (calorie-calorie_last)/calorie_last) %>%
+  filter(relative==14 & treat==0 &!is.na(pct) & weights>=0.19825 & pct>=0.029895) %>% ungroup() %>%
+  mutate(tag=1) %>% dplyr::select(id,match_place,tag) 
+tmp <- merge(tmp,matched,by=c("id","match_place"),all=TRUE)
+tmp$tag[is.na(tmp$tag)] <- 0
+
+ggplot(data=tmp%>%filter(relative>=1&relative<=30&!grepl("king|mont",match_place)),aes(x=relative, y=calorie)) + 
+  stat_summary(fun.y=mean,geom="line",lwd=0.5,aes(color=match_place,linetype=factor(tag,levels = c(1,0))))+
+  ggplot2::annotate("rect", xmin=12, xmax=14, ymin=1150, ymax=1600, fill = "grey",alpha=0.4) + #add shaded area
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  #scale_y_continuous(limits=c(1200,1500),breaks=seq(1200,1500,50)) +
+  scale_x_continuous(breaks=seq(1,30,1)) + #select which months to display
+  labs(title="Comparison restaurants mean calorie change", x="Month", y="Calories") + 
+  scale_color_manual(name="Location", labels=c("CA","MA","OR","Suffolk county, NY"),
+                     values=c("hotpink","olivedrab3","orange","#13B0E4")) +
+  scale_linetype_discrete(name="High % change comp restaurants", labels=c("Yes","No")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/investigate-data-anomaly/comp-restaurant-cal-change.jpeg", dpi="retina")
+
+# exclude high impact restaurants
+tmp <- matched %>%
+  group_by(id,match_place) %>%
+  mutate(calorie_last = dplyr::lag(calorie,2)) %>%
+  mutate(pct = (calorie-calorie_last)/calorie_last) %>%
+  filter(relative==14 & treat==0 &!is.na(pct) & weights>=0.19825 & pct>=0.029895) %>% ungroup() 
+tmp <- anti_join(x=matched,y=tmp,by=c("id","match_place")) 
+# run the same model and make figure from here
+
+
+
+
+
+
+
+
+
+
 
