@@ -842,33 +842,12 @@ ggplot(data=time, aes(x=month, y=pct, group=group,color=group)) +
 
 ### investigate data anomolies during month 12-14, in comp restaurants ----
 #identify comp restaurants that dropped off in month 13
+# plot mean calorie over time by location
 tmp <- matched %>% filter(treat==0 & (relative2==11|relative2==12)) %>%
   dplyr::select(id,match_place,address,entry,weights,relative2) %>%
   arrange(desc(weights),relative2) %>% group_by(id,match_place) %>%
   mutate(n=n()) %>% filter(n==1) %>% dplyr::select(id,match_place) %>%
   anti_join(x=matched, by=c("id","match_place"))
-
-# plot mean calorie over time by location
-ggplot(data=matched%>%filter(relative>=1&relative<=30),aes(x=relative, y=calorie)) + 
-  stat_summary(fun.y=mean,geom="line",lwd=0.5,aes(color=match_place,linetype=factor(treat,levels = c(1,0))))+
-  geom_vline(xintercept=12,linetype="dashed",color="grey") +
-  geom_vline(xintercept=14,linetype="dashed",color="grey") +
-  ggplot2::annotate("rect", xmin=12, xmax=14, ymin=1150, ymax=1600, fill = "grey",alpha=0.4) + #add shaded area
-  coord_cartesian(expand = FALSE, clip = "off") + 
-  #scale_y_continuous(limits=c(1200,1500),breaks=seq(1200,1500,50)) +
-  scale_x_continuous(breaks=seq(1,30,1)) + #select which months to display
-  labs(title="Mean calorie over time, by location", x="Month", y="Calories", 
-       caption="") + 
-  scale_color_manual(name="Location", labels=c("CA","King county, WA","MA","Montgomery county, MD","OR","Suffolk county, NY"),
-                     values=c("hotpink","olivedrab3","purple","orange","#13B0E4","grey")) +
-  scale_linetype_discrete(name="Labeling", labels=c("Yes","No")) +
-  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
-        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
-        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
-        axis.title.y = element_text(size = 12),
-        legend.text=element_text(size=10),
-        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/investigate-data-anomaly/mean-cal-byLoc-overTime.jpeg", dpi="retina")
 
 #understand calorie change between month 12-14
 tmp <- matched %>%
@@ -877,48 +856,7 @@ tmp <- matched %>%
   mutate(pct = (calorie-calorie_last)/calorie_last) %>%
   filter(relative==14) %>% ungroup() %>%
   arrange(desc(pct)) %>% dplyr::select(address,match_place,calorie,calorie_last,pct,weights,treat)
-
-ggplot(tmp, aes(x=pct, color=factor(treat,levels = c(1,0)),fill=factor(treat,levels = c(1,0)))) +
-  geom_histogram(bins=100,alpha=0.5,position="identity") +
-  geom_vline(aes(xintercept=mean(pct), color=factor(treat,levels = c(1,0)),group=factor(treat,levels = c(1,0))),linetype="dashed") +
-  coord_cartesian(expand = FALSE, clip = "off") + 
-  scale_color_discrete(name="Menu labeling",labels=c("Yes","No")) +
-  scale_fill_discrete(name="Menu labeling",labels=c("Yes","No")) +
-  labs(title="% change in calorie between month 12 and 14",x="% change",y="Number of restaurants") +
-  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
-        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
-        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
-        axis.title.y = element_text(size = 12),
-        legend.text=element_text(size=10),
-        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/investigate-data-anomaly/pct-change-calorie.jpeg", dpi="retina")
-
-tmp <- matched %>%
-  group_by(id,match_place) %>%
-  mutate(calorie_last = dplyr::lag(calorie,2)) %>%
-  mutate(pct = (calorie-calorie_last)/calorie_last) %>%
-  filter(relative==14 & treat==0 &!is.na(pct) & weights>=0.19825 & pct>=0.029895) %>% ungroup() %>%
-  mutate(tag=1) %>% dplyr::select(id,match_place,tag) 
-tmp <- merge(tmp,matched,by=c("id","match_place"),all=TRUE)
-tmp$tag[is.na(tmp$tag)] <- 0
-
-ggplot(data=tmp%>%filter(relative>=1&relative<=30&!grepl("king|mont",match_place)),aes(x=relative, y=calorie)) + 
-  stat_summary(fun.y=mean,geom="line",lwd=0.5,aes(color=match_place,linetype=factor(tag,levels = c(1,0))))+
-  ggplot2::annotate("rect", xmin=12, xmax=14, ymin=1150, ymax=1600, fill = "grey",alpha=0.4) + #add shaded area
-  coord_cartesian(expand = FALSE, clip = "off") + 
-  #scale_y_continuous(limits=c(1200,1500),breaks=seq(1200,1500,50)) +
-  scale_x_continuous(breaks=seq(1,30,1)) + #select which months to display
-  labs(title="Comparison restaurants mean calorie change", x="Month", y="Calories") + 
-  scale_color_manual(name="Location", labels=c("CA","MA","OR","Suffolk county, NY"),
-                     values=c("hotpink","olivedrab3","orange","#13B0E4")) +
-  scale_linetype_discrete(name="High % change comp restaurants", labels=c("Yes","No")) +
-  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
-        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
-        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
-        axis.title.y = element_text(size = 12),
-        legend.text=element_text(size=10),
-        plot.caption=element_text(hjust=0, vjust=-15, face="italic")) 
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/investigate-data-anomaly/comp-restaurant-cal-change.jpeg", dpi="retina")
+#make histogram, by treatment status
 
 # exclude high impact restaurants
 tmp <- matched %>%
@@ -926,7 +864,6 @@ tmp <- matched %>%
   mutate(calorie_last = dplyr::lag(calorie,2)) %>%
   mutate(pct = (calorie-calorie_last)/calorie_last) %>%
   filter(relative==14 & treat==0 &!is.na(pct) & weights>=0.19825 & pct>=0.029895) %>% ungroup() 
-tmp <- anti_join(x=matched,y=tmp,by=c("id","match_place")) 
 # run the same model and make figure from here
 
 
