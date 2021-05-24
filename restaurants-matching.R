@@ -204,7 +204,6 @@ tmp1 <- tmp1[!duplicated(tmp1), ]
 length(unique(paste0(restaurant$address, restaurant$tract_num)))
 tmp1 <- tmp1[order(tmp1$state, tmp1$address), ]
 
-#tmp2 <- restaurant[, c(2:3, 5:8, 28:39)]
 tmp2 <- restaurant[, c(2:4,6:8,24:36)]
 tmp2 <- aggregate(data=tmp2,
                   .~tract_num+address+concept+ownership+year+month+yearno+monthno,
