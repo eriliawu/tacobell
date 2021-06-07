@@ -44,7 +44,7 @@ strings$original[strings$original=="02-Jan"] <- "1/2"
 # first, break product names into separate substrings in their own columns
 # second, merge each column with the replacement strings
 menu <- menu %>%
-      separate(item_name, c("item_name1", "item_name2", "item_name3", "item_name4",
+      dplyr::separate(item_name, c("item_name1", "item_name2", "item_name3", "item_name4",
                             "item_name5", "item_name6", "item_name7", "item_name8",
                             "item_name9", "item_name10", "item_name11", "item_name12",
                             "item_name13"), " ")
@@ -111,13 +111,13 @@ menu$full <- tolower(menu$full)
 ### re-categorize food, add indicator for drinks ----
 menu$cat <- ifelse(grepl("salad", menu$full), "salad",
                    ifelse(grepl("sauce|dressing|salsa", menu$full), "sauce",
-                          ifelse(grepl("taco|chalupa|gordita|tostada", menu$full), "taco",
-                                 ifelse(grepl("burrito|quesarito|griller|crunchwrap|enchirito|taquito", menu$full), "burrito",
-                                        ifelse(grepl("quesadilla|flatbread|pizza|doubledilla|meximelt", menu$full), "quesadilla",
-                                               ifelse(grepl("nacho", menu$full), "nacho",
-                                                      ifelse(grepl("cinnamon|cinnabon|cookie|brownie|churro|caramel apple empanada", menu$full), "dessert",
-                                                             ifelse(menu$category=="Beverages"|grepl("beverages", menu$full), "drink",
-                                                                    ifelse(grepl("bowl", menu$full), "bowl", "other")))))))))
+                   ifelse(grepl("taco|chalupa|gordita|tostada", menu$full), "taco",
+                   ifelse(grepl("burrito|quesarito|griller|crunchwrap|enchirito|taquito", menu$full), "burrito",
+                   ifelse(grepl("quesadilla|flatbread|pizza|doubledilla|meximelt", menu$full), "quesadilla",
+                   ifelse(grepl("nacho", menu$full), "nacho",
+                   ifelse(grepl("cinnamon|cinnabon|cookie|brownie|churro|caramel apple empanada", menu$full), "dessert",
+                   ifelse(menu$category=="Beverages"|grepl("beverages", menu$full), "drink",
+                   ifelse(grepl("bowl", menu$full), "bowl", "other")))))))))
 table(menu$cat)
 menu$drink <- ifelse(menu$category=="Beverages", 1, 0)
 
@@ -272,4 +272,5 @@ mean(abs(testing$calories[testing$cat=="taco"] - testing$pred.calorie[testing$ca
 
 # try AIC, BIC
 # try interactions with binary predictors
+
 
