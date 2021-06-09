@@ -114,4 +114,13 @@ product$dw_category <- ifelse(product$category=="beverage",1,ifelse(product$cate
                               ifelse(product$category=="taco",9,10)))))))))
 table(product$dw_category)
 names(product) <- toupper(names(product))
-#write.csv(product,"data/upload-to-bigpurple/product-category.csv")
+product <- product[,-5]
+#write.csv(product,"data/upload-to-bigpurple/product-category.csv",row.names = FALSE)
+### check early output ----
+result <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2010_Q1.csv",
+                   stringsAsFactors = FALSE)
+result$mean_cal <- result$cal/result$count
+for (i in 1:10) {
+  print(paste0("category ",i))
+  print(summary(result$mean_cal[result$DW_CATEGORY==i]))
+}
