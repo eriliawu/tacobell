@@ -147,6 +147,7 @@ ggplot(data=tidy_mod.factor,aes(x=month, y=calorie,color=as.character(group))) +
        caption="Orange lined represents the difference between treat and comparison group. \n calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        panel.grid.minor = element_blank(),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
         axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
         axis.title.y = element_text(size = 12),
