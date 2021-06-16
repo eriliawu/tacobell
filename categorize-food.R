@@ -14,6 +14,18 @@ library(stringr)
 library(ggplot2)
 library(tm)
 library(reshape2)
+library(lme4)
+library(plm)
+library(lmerTest)
+library(stargazer)
+library(table1)
+library(tableone)
+library(broom)
+library(car)
+library(usmap)
+library(maps)
+library(car) #testing joint significance
+library(zoo)
 
 ### import taco bell data, product and group ----
 product <- read.csv("data/from-bigpurple/product_dim.csv",sep = ";", header = FALSE, quote = "\"'",stringsAsFactors = FALSE,
@@ -116,14 +128,6 @@ table(product$dw_category)
 names(product) <- toupper(names(product))
 product <- product[,-5]
 #write.csv(product,"data/upload-to-bigpurple/product-category.csv",row.names = FALSE)
-### check early output ----
-result <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2010_Q1.csv",
-                   stringsAsFactors = FALSE)
-result$mean_cal <- result$cal/result$count
-for (i in 1:10) {
-  print(paste0("category ",i))
-  print(summary(result$mean_cal[result$DW_CATEGORY==i]))
-}
 ### clean order-type data ----
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
                        stringsAsFactors = FALSE,
@@ -237,7 +241,7 @@ category$id_match <- paste0(category$id, category$match_place)
 tidy_mod.factor_all <- NULL
 for (i in c(1,2,4:6,9)) {
   mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                    data = category%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&category==6), 
+                    data = category%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&category==i), 
                     index = "id_match", weights = weights, model = "within")
   tidy_mod.factor <- tidy(mod.factor)
   tidy_mod.factor <- tidy_mod.factor %>%
@@ -257,7 +261,7 @@ for (i in c(1,2,4:6,9)) {
   tidy_mod.factor_all <- tidy_mod.factor_all[!is.na(tidy_mod.factor_all$diff),]
 }
 
-ggplot(data=tidy_mod.factor_all,aes(x=month,y=diff,group=factor(category),color=factor(category))) + #
+ggplot(data=tidy_mod.factor_all,aes(x=month,y=diff,group=as.character(category),color=as.character(category))) + #
   geom_point(size=1) + geom_line() +
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
   ggplot2::annotate("rect", xmin=-3, xmax=3, ymin=-100, ymax=50, fill = "grey") + #add shaded area
@@ -266,7 +270,7 @@ ggplot(data=tidy_mod.factor_all,aes(x=month,y=diff,group=factor(category),color=
   scale_y_continuous(limits=c(-100,50),breaks=seq(-100,50,10)) +
   scale_x_continuous(breaks=c(seq(-30,-3,3),seq(3,30,3))) + #select which months to display
   labs(title="Effect of menu labeling on calories purchased, by food category", x="Month", y="Calories in difference", 
-       caption="calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+       caption="calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant \nNot included in the analysis: condiments, desserts, side dishes and foods that could not be categorized.") + 
   scale_color_manual(name="Category",labels=c("Beverage","Burrito","Nacho","Other entry","Salad","Taco"),
                      values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -279,41 +283,111 @@ ggplot(data=tidy_mod.factor_all,aes(x=month,y=diff,group=factor(category),color=
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/main-effect-by-category.jpeg", dpi="retina")
 
 ### detect trend using diff-in-diff, order type ----
-tmp1 <- tidy_mod.factor %>% 
-  filter(month>=-30&month<0&!is.na(diff)) %>% dplyr::select(month, diff) %>%
+tmp1 <- tidy_mod.factor_all %>% group_by(category) %>%
+  filter(month>=-30&month<0) %>% dplyr::select(month, diff,category) %>%
   mutate(month = -month) %>% arrange(month) %>% mutate(pre_mean = sum(diff[1:6])/6)
-tmp2 <- tidy_mod.factor %>% 
-  filter(month>=1&month<=30&!is.na(diff)) %>% dplyr::select(month, diff) %>%
+tmp2 <- tidy_mod.factor_all %>% 
+  filter(month>=1&month<=30) %>% dplyr::select(month, diff,category) %>%
   arrange(month) %>% rename(post_mean = diff)
-trend <- merge(tmp1,tmp2,by="month") %>% group_by(month) %>% arrange(month) %>%
+trend <- merge(tmp1,tmp2,by=c("month","category")) %>% group_by(category,month) %>% arrange(category,month) %>%
   mutate(mean = post_mean - pre_mean) %>% dplyr::select(-diff)
 rm(tmp1,tmp2)
 #hypothesis testing
-tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
-for (i in 4:29) {
-  tmp$p[i-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",i))[2,4]
+presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
+p <- NULL
+for (i in c(1,2,4:6,9)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = category%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&category==i), 
+                    index = "id_match", weights = weights, model = "within")
+  tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
+  for (j in 4:29) {
+    tmp$p[j-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",j))[2,4]
+  }
+  p <- rbind(p,tmp)
 }
-trend <- cbind(trend, tmp)
+trend <- cbind(trend, p)
+rm(i,j,tmp,p,presum)
 
 ggplot() + 
   geom_line(data=trend, aes(x=month, y=mean, color=factor(category))) + 
-  #geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color="hotpink", group=1)) +
-  #ggplot2::annotate(geom="label", x=6, y=-30, label="   p<0.05", size=3) + 
-  #geom_point(aes(x=5.35,y=-30),color="hotpink",size=1) +
+  geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color=factor(category))) +
+  ggplot2::annotate(geom="label", x=6, y=-50, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=-50),color="black",size=1) +
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
   coord_cartesian(expand = FALSE, clip = "off") + 
-  scale_y_continuous(limits=c(-100,100),breaks=seq(-100,100,20)) +
+  scale_y_continuous(limits=c(-100,50),breaks=seq(-100,50,25)) +
   scale_x_continuous(breaks=seq(3,30,1)) +
-  labs(title="Diff-in-diff analysis, by otder type", x="Month", y="Calories", 
-       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant") + 
-  scale_color_manual(name="Ordery type", labels=c("Eat-in","Drive-through","Takeout"),
-                     values = c("hotpink","olivedrab3","#13B0E4")) +
+  labs(title="Diff-in-diff analysis, by food category", x="Month", y="Calories", 
+       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Nacho","Other entry","Salad","Taco"),
+                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        panel.grid.minor = element_blank(),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
         axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
         axis.title.y = element_text(size = 12),
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/mealtime-orderType/diff-in-diff-orderType.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/diff-in-diff-by-category.jpeg", dpi="retina")
 
+
+
+### calorie trend by category ----
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("yearno", "monthno","restid","category","occasion","calorie","count"))
+sample07q1$calorie <- sample07q1$calorie/2 
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("yearno", "monthno","restid","category","occasion","calorie","count"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+calorie <- calorie %>%
+  mutate(calorie = calorie/count) %>%
+  filter(occasion==2) %>%
+  group_by(monthno,category) %>%
+  summarise(mean_cal = mean(calorie),mean_count=mean(count)) %>%
+  filter(!is.na(category))
+
+time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
+time <- time %>% dplyr::select(7,17,38) %>% setNames(c("monthno", "year", "month")) %>%
+  mutate(year = as.integer(substr(year, 2, 5))) %>%
+  mutate(month = as.integer(substr(month, 6, 7))) %>%
+  filter(year>=2006)
+calorie <- merge(calorie,time,by="monthno")
+calorie <- calorie[!duplicated(calorie),]
+rm(time)
+
+ggplot(data=calorie%>%filter(!grepl("3|7|8|10",category)),
+       aes(x=interaction(year,month,lex.order = TRUE), y=mean_cal,color=factor(category),group=factor(category))) +
+  geom_line() + 
+  ggplot2::annotate(geom="text",x=1:106,y=185,label=c(NA,rep(c(1,NA,3,NA,5,NA,7,NA,9,NA,11,NA),8),c(1,NA,3,NA,5,NA,7,NA,9)),size = 2) + 
+  ggplot2::annotate(geom="text",x=c(1,7+12*(0:8)),y=160,label=unique(calorie$year),size=3) +
+  geom_vline(xintercept = )
+  coord_cartesian(ylim=c(200,1000), expand = FALSE, clip = "off") + #important to have ylim set to what i actually want to display
+  scale_y_continuous(limits=c(0,1000),breaks=seq(0,1000,100)) + #important to set ylim here to include text labels
+  labs(title="Mean calorie per order, by food category",x="",y="Calories",
+       caption="Categories not included: Desserts, condiments, substitutions and foods that do not fall into any category.") + 
+  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Nacho","Other entry","Salad","Taco"),
+                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.y = element_text(size = 12),
+        axis.title.x = element_text(vjust = -15, size = 12),
+        axis.text.x = element_blank(), #turn off default x axis label
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/mean-calorie-trend-by-category.jpeg", dpi="retina")
 
