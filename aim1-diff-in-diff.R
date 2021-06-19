@@ -382,7 +382,7 @@ ggplot() +
   scale_y_continuous(limits=c(-70,30),breaks=seq(-70,30,10)) +
   scale_x_continuous(breaks=seq(3,30,1)) +
   labs(title="Diff-in-diff analysis", x="Month", y="Calories", 
-       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant") + 
   scale_color_manual(name="Location", labels=c("All", "CA", "Others"),
                      values = c("hotpink","olivedrab3","#13B0E4")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -407,7 +407,7 @@ ggplot(data=trend.collapse, aes(x=time, y=mean, group=loc, color=loc)) +
   scale_y_continuous(limits=c(-50,0),breaks=seq(-50,0,10)) +
   scale_x_continuous(breaks=seq(6,30,6)) +
   labs(title="Mean impact by 6-month periods, matching abs value", x="Month", y="Calories", 
-       caption="Impact is mean of each 6-month period sum. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+       caption="Impact is mean of each 6-month period sum. \ncalorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant") + 
   scale_color_manual(name="Location", labels=c("All", "CA", "Others"),
                      values = c("hotpink","olivedrab3","#13B0E4")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -600,7 +600,7 @@ ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month, y=calorie,
                      sec.axis = sec_axis(~(.+300)/1, name="Difference")) +
   scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
   labs(title="Effect of menu labeling on calories purchased, imputed calorie", x="Month", y="Calories", 
-       caption="Orange lined represents the difference between treat and comparison group. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant \nCalories are imputed for less than 4 months of consecutive missing.") + 
+       caption="Orange lined represents the difference between treat and comparison group. \ncalorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant \nCalories are imputed for less than 4 months of consecutive missing.") + 
   scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
@@ -653,7 +653,7 @@ ggplot(data=tidy_mod.factor_all%>%filter(month<=-3|month>=3),aes(x=month, y=diff
   scale_y_continuous(limits=c(-75,25),breaks=seq(-75,25,5)) +
   scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
   labs(title="Effect of menu labeling on calories purchased, by open time after ML", x="Month", y="Calories in difference", 
-       caption="calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+       caption="calorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant") + 
   scale_color_manual(name="Open after labeling", labels=c("12 months","15 months","18 months","21 months","24 months","27 months","30 months"),
                        values=c("hotpink","olivedrab3","red","orange","grey","purple","#13B0E4")) +
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
@@ -767,7 +767,7 @@ ggplot(data=trend,aes(x=month, y=diff,group=loc, color=loc)) + #
   scale_y_continuous(limits=c(-120,70),breaks=seq(-120,70,10)) +
   scale_x_continuous(breaks=c(seq(-48,-3,3),seq(3,56,3))) + #select which months to display
   labs(title="Effect of menu labeling on calories purchased, by location, split CA", x="Month", y="Calories in difference", 
-       caption="calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant \nKing county, Montgomery county and the hypothetical state of Jefferson do not have separate analyses for each having N=3.") + 
+       caption="calorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant \nKing county, Montgomery county and the hypothetical state of Jefferson do not have separate analyses for each having N=3.") + 
   scale_color_manual(name="Location",
                      labels=c("All (N=506)","Central California (N=84)","North California (N=68)",
                               "Silicon Valley (N=47)","South California (N=125","West California (N=85)",
@@ -792,7 +792,7 @@ ggplot() +
   scale_y_continuous(limits=c(-125,75),breaks=seq(-125,75,25)) +
   scale_x_continuous(breaks=seq(3,30,1)) +
   labs(title="Diff-in-diff analysis, by location", x="Month", y="Calories", 
-       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+       caption="Pre-period difference is the mean of accumulated difference between month -3 and -8. \nPost-period difference is the difference between treatment and comparison groups of that month. \ncalorie = treat + month(relative) + treat*month(relative) + âmonth_1-12 + ârestaurant") + 
   scale_color_manual(name="Location",
                      labels=c("All (N=506)","Central California (N=84)","North California (N=68)",
                               "Silicon Valley (N=47)","South California (N=125","West California (N=85)",
@@ -866,13 +866,91 @@ tmp <- matched %>%
   filter(relative==14 & treat==0 &!is.na(pct) & weights>=0.19825 & pct>=0.029895) %>% ungroup() 
 # run the same model and make figure from here
 
+### alternative outcomes: # of transactions, mean spending per order ----
+# total # of transactions as outcome
+mod.factor <- plm(formula = count~treat*relative2.factor+as.factor(month),
+                  data = matched%>%filter((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29)), 
+                  index = "id_match", weights = weights, model = "within")
+tidy_mod.factor <- tidy(mod.factor)
+tidy_mod.factor <- tidy_mod.factor %>%
+  dplyr::select(term,estimate,p.value) %>%
+  rename(month=term,coef.month=estimate,p=p.value) %>%
+  filter(!grepl("as.factor|calorie", month)) %>%
+  mutate(group=c(rep(0,55),rep(1,55))) %>%
+  add_row(month="-3",coef.month=0,group=0) %>%
+  add_row(month="-3",coef.month=0,group=1) %>%
+  mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+  mutate(month=ifelse(month>0,month+1,month)) %>%
+  arrange(group,month) %>%
+  mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+  mutate(count=ifelse(group==0,coef.month,coef.month+coef.month[1:56]))
 
+summary(tidy_mod.factor$count) #[-4374,1111]
+summary(tidy_mod.factor$diff) #[-558,2002]
+ggplot(data=tidy_mod.factor%>%filter(month<=-3|month>=3),aes(x=month,y=count,color=as.character(group))) + #
+  geom_point(size=1) + geom_line() +
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)&(month<=-3|month>=3)),aes(x=month, y=diff*1-8000), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(diff)&(month<=-3|month>=3)),aes(x=month, y=diff*1-8000), color="orange",size=1) + 
+  geom_hline(yintercept = -8000, color="grey", linetype="dashed") +
+  ggplot2::annotate("rect", xmin=-3, xmax=3, ymin=-9000, ymax=2000, fill = "grey") + #add shaded area
+  ggplot2::annotate(geom="label", x=0, y=-5000, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-9000,2000),breaks=seq(-9000,2000,1000),
+                     sec.axis = sec_axis(~(.+8000)/1, name="Difference")) + 
+  scale_x_continuous(breaks=c(seq(-30,-3,3),seq(3,30,3))) + #select which months to display
+  labs(title="Effect of menu labeling on number of transactions per store", x="Month", y="Number of transactions", 
+       caption="Orange lined represents the difference between treat and comparison group. \nnum_transactions = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/count=treat+month_monthFE_restaurantFE.jpeg", dpi="retina")
 
+# total # of transactions as outcome
+mod.factor <- plm(formula = spending~treat*relative2.factor+as.factor(month),
+                  data = matched%>%filter((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))%>%mutate(spending=count*dollar), 
+                  index = "id_match", weights = weights, model = "within")
+tidy_mod.factor <- tidy(mod.factor)
+tidy_mod.factor <- tidy_mod.factor %>%
+  dplyr::select(term,estimate,p.value) %>%
+  rename(month=term,coef.month=estimate,p=p.value) %>%
+  filter(!grepl("as.factor|calorie", month)) %>%
+  mutate(group=c(rep(0,55),rep(1,55))) %>%
+  add_row(month="-3",coef.month=0,group=0) %>%
+  add_row(month="-3",coef.month=0,group=1) %>%
+  mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+  mutate(month=ifelse(month>0,month+1,month)) %>%
+  arrange(group,month) %>%
+  mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+  mutate(dollar=ifelse(group==0,coef.month,coef.month+coef.month[1:56])) %>%
+  filter(month<=-3|month>=3) %>%
+  mutate(dollar_k=dollar/1000) %>%
+  mutate(diff_k = diff/1000)
 
-
-
-
-
-
-
-
+summary(tidy_mod.factor$dollar_k) #[-25,6]
+summary(tidy_mod.factor$diff_k) #[-4,12.5]
+ggplot(data=tidy_mod.factor,aes(x=month,y=dollar_k,color=as.character(group))) + #
+  geom_point(size=1) + geom_line() +
+  geom_line(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff_k*1-40), color="orange") + #add diff between 2 groups
+  geom_point(data=tidy_mod.factor%>%filter(!is.na(diff)),aes(x=month, y=diff_k*1-40), color="orange",size=1) + 
+  geom_hline(yintercept = -40, color="grey", linetype="dashed") +
+  ggplot2::annotate("rect", xmin=-3, xmax=3, ymin=-50, ymax=10, fill = "grey") + #add shaded area
+  ggplot2::annotate(geom="label", x=0, y=-32, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-50,10),breaks=seq(-50,10,10),
+                     sec.axis = sec_axis(~(.+40)/1, name="Difference")) + 
+  scale_x_continuous(breaks=c(seq(-30,-3,3),seq(3,30,3))) + #select which months to display
+  labs(title="Effect of menu labeling on revenue per store", x="Month", y="Revenue (thousand $)", 
+       caption="Orange lined represents the difference between treat and comparison group. \nrevenue = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
+  scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/revenue=treat+month_monthFE_restaurantFE.jpeg", dpi="retina")
+ 
