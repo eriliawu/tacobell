@@ -111,15 +111,15 @@ matched$id_match <- paste0(matched$id, matched$match_place)
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = matched%>%filter((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29)), 
                   index = "id_match", weights = weights, model = "within")
-tidy_mod.factor <- tidy(mod.factor)
+tidy_mod.factor <- tidy(mod.factor,conf.level = 0.95,conf.int = TRUE)
 # clean data
 tidy_mod.factor <- tidy_mod.factor %>%
-  dplyr::select(term,estimate,p.value) %>%
-  rename(month=term,coef.month=estimate,p=p.value) %>%
+  dplyr::select(term,estimate,p.value,conf.low,conf.high) %>%
+  rename(month=term,coef.month=estimate,p=p.value,low=conf.low,high=conf.high) %>%
   filter(!grepl("as.factor|calorie", month)) %>%
   mutate(group=c(rep(0,55),rep(1,55))) %>%
-  add_row(month="-3",coef.month=0,group=0) %>%
-  add_row(month="-3",coef.month=0,group=1) %>%
+  add_row(month="-3",coef.month=0,group=0,low=0,high=0) %>%
+  add_row(month="-3",coef.month=0,group=1,low=0,high=0) %>%
   mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
   mutate(month=ifelse(month>0,month+1,month)) %>%
   arrange(group,month) %>%
@@ -167,28 +167,30 @@ for (s in c(0.001,0.01,0.05)) {
 }
 
 ### cal=group*month(factor), month as factor, detect trend using diff-in-diff ----
-tidy_mod.factor <- tidy(mod.factor)
 tidy_mod.factor <- tidy_mod.factor %>%
-  dplyr::select(term,estimate,p.value) %>%
-  rename(month=term,coef.month=estimate,p=p.value) %>%
+  dplyr::select(term,estimate,p.value,conf.low,conf.high) %>%
+  rename(month=term,coef.month=estimate,p=p.value,low=conf.low,high=conf.high) %>%
   filter(!grepl("as.factor|calorie", month)) %>%
   mutate(group=c(rep(0,55),rep(1,55))) %>%
-  add_row(month="-3",coef.month=0,group=0) %>%
-  add_row(month="-3",coef.month=0,group=1) %>%
+  add_row(month="-3",coef.month=0,group=0,low=0,high=0) %>%
+  add_row(month="-3",coef.month=0,group=1,low=0,high=0) %>%
   mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
   mutate(month=ifelse(month>0,month+1,month)) %>%
   arrange(group,month) %>%
   mutate(diff = ifelse(group==1,coef.month,NA)) %>%
   mutate(calorie=ifelse(group==0,coef.month,coef.month+coef.month[1:56]))
 tmp1 <- tidy_mod.factor %>% 
-  filter(month>=-30&month<0&!is.na(diff)) %>% dplyr::select(month, diff) %>%
-  mutate(month = -month) %>% arrange(month) %>% mutate(pre_mean = sum(diff[1:6])/6)
+  filter(month>=-30&month<0&!is.na(diff)) %>% dplyr::select(month,diff,low,high) %>%
+  mutate(month = -month) %>% arrange(month) %>%
+  mutate(pre_mean = sum(diff[1:6])/6, pre_low=sum(low[1:6])/6, pre_high = sum(high[1:6])/6)
 tmp2 <- tidy_mod.factor %>% 
-  filter(month>=1&month<=30&!is.na(diff)) %>% dplyr::select(month, diff) %>%
-  arrange(month) %>% rename(post_mean = diff)
+  filter(month>=1&month<=30&!is.na(diff)) %>% dplyr::select(month,diff,low,high) %>%
+  arrange(month) %>% rename(post_mean = diff, post_low=low, post_high=high)
 trend <- merge(tmp1,tmp2,by="month") %>% group_by(month) %>% arrange(month) %>%
-  mutate(mean = post_mean - pre_mean) %>% dplyr::select(-diff)
+  mutate(mean = post_mean - pre_mean, low=post_low-pre_low, high=post_high-pre_high) %>%
+  dplyr::select(month,mean,low,high)
 rm(tmp1,tmp2)
+
 #hypothesis testing
 tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
 for (i in 4:29) {
@@ -198,7 +200,9 @@ trend <- cbind(trend, tmp)
 
 ggplot() + 
   geom_line(data=trend, aes(x=month, y=mean, group=1, color="hotpink")) + 
-  geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color="hotpink", group=1)) +
+  geom_line(data=trend, aes(x=month, y=low, group=1, color="hotpink",linetype="dashed")) + 
+  geom_line(data=trend, aes(x=month, y=high, group=1, color="hotpink",linetype="dashed")) + 
+  #geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color="hotpink", group=1)) +
   ggplot2::annotate(geom="label", x=6, y=-30, label="   p<0.05", size=3) + 
   geom_point(aes(x=5.35,y=-30),color="hotpink",size=1) +
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
@@ -351,3 +355,5 @@ ggplot() +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
         panel.grid.minor = element_blank())
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/mean-diff-in-diff-by-location.jpeg", dpi="retina")
+
+
