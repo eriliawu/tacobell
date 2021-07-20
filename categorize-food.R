@@ -38,24 +38,6 @@ product <- merge(product, group, by="dw_productgroup") %>%
    filter(!grepl("AWR| AW|AW,|AW |BYB|KFC|LJS|PH |PIZZA HUT|TCBY|ICBIY|KRYSTAL|* NEW PRODCT ADDED BY|COMBO|FRANCHISE LOCAL MENU|SPECIAL PROMOTION|NEW ITEM|TB I'M ALL EARS|DO NOT ALTER THIS ITEM|BORDER SWEAT SHIRT|TB I'M THINKING YOU ME|CFM DOWNLOAD 1|TB HELLO FRIEND|CANADA BATMAN CUP INDIVIDUAL|DELETED ITEM, DO NOT USE|CLEV INDIANS/TB BANDANNA 1.4|CFM DOWNLOAD 2|TB I'M THINKING YOU ME DINNER|CANADA BATMAN CUP W/PURCHASE|TB HELLO FRIENDGC REFUND|TB EAT IN CAR",product)&!grepl("AW|BYB|KFC|LJS|PH |PIZZA HUT|KRYSTAL|ICBIY (YOGURT)|TCBY (YOGURT)|N/A|COMBOS|NON-FOOD SALES",group))
 rm(group)
 
-### extract unique substrings in tb data, for non-drinks and non-smoothies ----
-#strings <- as.data.frame(unlist(strsplit(product$product[product$group!="DRINKS"|product$group!="SMOOTHIES"], split=" ")))
-#colnames(strings)[1] <- "original"
-#class(strings$original)
-#strings$original <- as.character(strings$original)
-
-# measure substring length
-#strings$length <- nchar(strings$original)
-
-# frequency, how often does a substring show up in product name
-#strings <- strings %>%
-#      group_by(original) %>%
-#      mutate(count=n())
-#strings <- strings[!duplicated(strings), ]
-#strings <- strings[order(strings$count, decreasing = TRUE), ]
-#write.csv(strings, "data/menu-matching/product-names_unique_substrings_bow_nodrinks.csv",
-#          row.names = FALSE)
-
 ### read corrected string file, fill abbreviation and fix typo, also remove meaningless numbers ----
 strings <- read.csv("data/menu-matching/product-names_unique_substrings_bow_corrected.csv",
                     stringsAsFactors = FALSE)
@@ -427,7 +409,7 @@ time <- time %>% dplyr::select(7,17,38) %>% setNames(c("monthno", "year", "month
 sales <- merge(sales, time, by="monthno") %>% filter(complete.cases(.))
 rm(time)
 
-ggplot(data=sales%>%filter(!grepl("3|7|8|10",category)),
+ggplot(data=sales%>%filter(category<=5|category==9),
        aes(x=interaction(year,month,lex.order = TRUE), y=pct,color=factor(category),group=factor(category))) +
   geom_line() + 
   ggplot2::annotate(geom="text",x=1:106,y=-0.01,label=c(NA,rep(c(1,NA,3,NA,5,NA,7,NA,9,NA,11,NA),8),c(1,NA,3,NA,5,NA,7,NA,9)),size = 2) + 
@@ -437,9 +419,9 @@ ggplot(data=sales%>%filter(!grepl("3|7|8|10",category)),
   coord_cartesian(ylim=c(0,0.5), expand = FALSE, clip = "off") + #important to have ylim set to what i actually want to display
   scale_y_continuous(limits=c(-0.1,0.5),breaks=seq(-0.1,0.5,0.05),labels=scales::percent) + #important to set ylim here to include text labels
   labs(title="Sales by food category, drive-thru only",x="",y="Percent of sales",
-       caption="Categories not included: Desserts, condiments, substitutions and foods that do not fall into any category. \nSales is measured by the number of items sold.") + 
-  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Nacho","Other entry","Salad","Taco"),
-                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
+       caption="Categories not included: condiments, substitutions and foods that do not fall into any category. \nSales is measured by the number of items sold.") + 
+  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Dessert","Nacho","Other entree","Taco"),
+                     values=c("hotpink","olivedrab3","#13B0E4","orange","purple","red")) + 
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
         axis.title.y = element_text(size = 12),
@@ -453,3 +435,5 @@ ggplot(data=sales%>%filter(!grepl("3|7|8|10",category)),
 
 
 
+
+### something new ----

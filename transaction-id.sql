@@ -1,8 +1,12 @@
 /* -- access tacobell database
-srun  --time=8-00:01:00 --pty --mem-per-cpu=64G bash 
-module load mariadb/5.5.64
+srun  --time=1-00:01:00 --pty --mem-per-cpu=64G bash 
+module load mariadb/10.4.6
 mysql -p -h db -P 33061 -u wue04 tacobell
 
+--- run jobs on hpc
+sbatch tacobell/ssb-sales-2015-q1.sh
+ll -rt
+squeue -u wue04
 
 -- run SQL squirrel on HPC
 -- launch Xming first
@@ -890,29 +894,6 @@ select y.DW_YEAR, y.DW_MONTH,
     left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
     left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
     group by DW_YEAR, DW_MONTH
-+-------------+--------------------------+
-| DW_LINEITEM | LINEITEMDESC             |
-+-------------+--------------------------+
-|          -1 | N/A                      |0
-|           1 | COMBO-ITEM               |1
-|           2 | NON-COMBO-ITEM           |1
-|           3 | COMBO-DETAIL             |1
-|           4 | COMBO-DETAIL-REPLS-PLUS  |1
-|           5 | COMBO-DETAIL-REPLS-MINUS |1
-|           6 | COMBO-DETAIL-REPLS-EQL   |1
-|           7 | COMBO-MOD-INGRD-ADD      |1
-|           8 | COMBO-MOD-INGRD-MINUS    |-1
-|           9 | COMBO-MOD-INGRD-EASY     |0.5
-|          10 | NON-COMBO-M-INGRD-ADD    |1
-|          11 | NON-COMBO-M-INGRD-MINUS  |-1
-|          12 | NON-COMBO-M-INGRD-EASY   |0.5
-|          13 | DISCOUNT-LINE            |1
-|          14 | TAX-LINE                 |0
-|          15 | COMBO-MOD-INGRD-ONLY     |1
-|          16 | NON-COMBO-M-INGRD-ONLY   |1
-+-------------+--------------------------+
-    left join TIME_MINUTE_DIM m using(DW_MINUTE)
-    left join TIME_DAYPART_DET p using(DW_DAYPART)
 
 insert into LINEITEM_DIM(DW_LINEITEM, ITEMMOD) values (-1,0),(1,1),(2,1),(3,1),(4,1),(5,1),(6,1),(7,1),(8,-1),(9,0.5),(10,1),(11,-1),(12,0.5),(13,1),(14,0),(15,1),(16,1)
 on duplicate key update DW_LINEITEM=VALUES(DW_LINEITEM), ITEMMOD=VALUES(ITEMMOD);
@@ -953,6 +934,232 @@ order by ADDRESS_LINE_1
 LIMIT 10;
 
 
+select t.DW_RESTID, t.DW_PRODUCT, p.PRODUCTDESC from TLD_FACT_2008_Q02 t
+left join PRODUCT_DIM p using(DW_PRODUCT)
+where DW_RESTID=35251
+order by DW_GC_HEADER
+limit 20;
+
+
+
+select t.DW_GC_HEADER,  sum(*t.ACTQTYSOLD) as ssb from TLD_FACT_2015_Q01 t
+	left join nutrition n on n.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	left join TIME_DAY_DIM d using(DW_DAY)
+	left join TIME_MINUTE_DIM m using(DW_MINUTE)
+where n.DW_PRODUCTGROUP=16 and d.DW_FISCALWEEK=1308
+group by DW_GC_HEADER
+order by DW_RESTID, DW_MINUTE;
+
+select t.DW_GC_HEADER as transaction_id, d.BUSIDAYNAME, d.BUSIDAYDT, m.MINUTETM,
+	t.DW_RESTID as restaurant_id, t.DW_PRODUCTDETAIL as beverage_id, det.PRODUCTDESC as beverage_name,
+	n.CALORIES as cal, t.ACTQTYSOLD as quantity
+FROM TLD_FACT_2015_Q01 t
+	left join PRODUCT_DETAIL_DIM_V1 det using(DW_PRODUCTDETAIL)
+	left join nutrition n on n.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	left join TIME_DAY_DIM d using(DW_DAY)
+	left join TIME_MINUTE_DIM m using(DW_MINUTE)
+where det.DW_PRODUCTGROUP=16 and d.DW_FISCALWEEK=1308 and t.ACTQTYSOLD>0
+order by DW_RESTID, DW_DAY, DW_MINUTE
+limit 20;
+
++--------------+-----------------+------------+------------------------+------------------+-------------------------+------------+
+| DW_GC_HEADER | DW_PRODUCTGROUP | DW_PRODUCT | prod                   | DW_PRODUCTDETAIL | detail                  | ACTQTYSOLD |
++--------------+-----------------+------------+------------------------+------------------+-------------------------+------------+
+|   6823766137 |              -1 |         -1 | N/A                    |               -1 | N/A                     |       0.00 |
+|   6823766138 |              29 |       1680 | COMBO 1                |             1680 | COMBO 1                 |       1.00 |
+|   6823766138 |              11 |       3361 | NACHOS                 |             3361 | NACHOS                  |       1.00 |
+|   6823766138 |              29 |       1680 | COMBO 1                |             4787 | LARGE BEVERAGE          |       1.00 |
+|   6823766138 |              29 |       1680 | COMBO 1                |             4457 | CRUNCHY TACO SUPREME BF |       1.00 |
+|   6823766138 |              29 |       1680 | COMBO 1                |              635 | BURRITO SUPREME BEEF    |       1.00 |
+|   6823766139 |              29 |       1680 | COMBO 1                |             1680 | COMBO 1                 |       1.00 |
+|   6823766139 |              29 |       1680 | COMBO 1                |              635 | BURRITO SUPREME BEEF    |       1.00 |
+|   6823766139 |              29 |       1680 | COMBO 1                |             4787 | LARGE BEVERAGE          |       1.00 |
+|   6823766139 |              29 |       1680 | COMBO 1                |             4457 | CRUNCHY TACO SUPREME BF |       1.00 |
++--------------+-----------------+------------+------------------------+------------------+-------------------------+------------+
+
+select DW_RESTID, ADDRESS_LINE_1, CITYNAME, STATENAME, OPENEDDT, TEMPCLOSEDDT, REOPENDT, CLOSEDDT
+from ALIGN_DIM
+where ADDRESS_LINE_1="3000 ISLAND AVE";
+
+select count(distinct DW_GC_HEADER) from TLD_FACT_2007_Q01
+where DW_RESTID=35251;
+
+select count(distinct t.DW_GC_HEADER), d.BUSIDAYDT from TLD_FACT_2009_Q03 t
+	left join TIME_DAY_DIM d using(DW_DAY)
+where DW_RESTID=35251
+group by d.BUSIDAYDT
+order by d.BUSIDAYDT
+limit 10;
+
+select count(distinct t.DW_GC_HEADER), d.BUSIDAYDT from TLD_FACT_2011_Q01 t
+	left join TIME_DAY_DIM d using(DW_DAY)
+	left join ALIGN_DIM a using(DW_RESTID)
+where a.STATENAME="ME"
+group by d.BUSIDAYDT
+order by d.BUSIDAYDT
+limit 100;
+
+select DW_RESTID, ADDRESS_LINE_1, CITYNAME, STATENAME, OPENEDDT, TEMPCLOSEDDT, REOPENDT, CLOSEDDT
+FROM ALIGN_DIM
+WHERE STATENAME="ME" and OPENEDDT<="2010-12-31" and (CLOSEDDT="0000-00-00" or CLOSEDDT>="2010-12-31")
+order by OPENEDDT;
+
+
+
+--- create new table for calorie info
+--- make sure every cell value is enclosed by "", incl numeric values
+create table calorietest (
+	DW_PRODUCT int not null,
+	DW_PRODUCTGROUP int not null,
+	PRODUCTDESC varchar(255) not null,
+	FULLDESC varchar(255) null,
+	CALORIES decimal(10, 2) null,
+	TOTAL_FAT decimal(10, 2) null,
+	SAT_FAT decimal(10, 2) null,
+	TRANS_FAT decimal(10, 2) null,	
+	CHOLESTEROL decimal(10, 2) null,
+	SODIUM decimal(10, 2) null,
+	POTASSIUM decimal(10, 2) null,
+	CARB decimal(10, 2) null,
+	FIBER decimal(10, 2) null,
+	SUGAR decimal(10, 2) null,
+	PROTEIN decimal(10, 2) null,
+	primary key (DW_PRODUCT)
+);
+
+load data infile '/gpfs/home/wue04/tb-data/menu-matching-to-bigpurple/PRODUCT_CALORIE_DIM.csv'
+into table calorietest
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS
+(DW_PRODUCT,DW_PRODUCTGROUP,PRODUCTDESC,@vFULLDESC,@vCALORIES,@vTOTAL_FAT,@vSAT_FAT,@vTRANS_FAT,@vCHOLESTEROL,@vSODIUM,@vPOTASSIUM,@vCARB,@vFIBER,@vSUGAR,@vPROTEIN) 
+set
+FULLDESC=NULLIF(@vFULLDESC, ''),
+CALORIES=NULLIF(@vCALORIES, ''),
+TOTAL_FAT=NULLIF(@vTOTAL_FAT, ''),
+SAT_FAT=NULLIF(@vSAT_FAT, ''),
+TRANS_FAT=NULLIF(@vTRANS_FAT, ''),
+CHOLESTEROL=NULLIF(@vCHOLESTEROL, ''),
+SODIUM=NULLIF(@vSODIUM, ''),
+POTASSIUM=NULLIF(@vPOTASSIUM, ''),
+CARB=NULLIF(@vCARB, ''),
+FIBER=NULLIF(@vFIBER, ''),
+SUGAR=NULLIF(@vSUGAR, ''),
+PROTEIN=NULLIF(@vPROTEIN, '')
+;
+
+
+---- product category; for by food group analysis
+create table product_category (
+	DW_PRODUCT int not null,
+	CATEGORY varchar(255) not null,
+	DW_PRODUCTGROUP int not null,
+	PRODUCT varchar(255) not null,
+	DW_CATEGORY int not null,
+	primary key (DW_PRODUCT)
+);
+load data infile '/gpfs/home/wue04/tb-data/product-category-to-bigpurple/product-category.csv'
+into table product_category
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS;
+
+select y.DW_YEAR, y.DW_MONTH, t.DW_RESTID, c.DW_CATEGORY, t.DW_OCCASION,
+    sum(coalesce(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal,
+	count(distinct t.DW_GC_HEADER) as count
+    from TLD_FACT_2007_Q02 t
+	left join LINEITEM_DIM l using(DW_LINEITEM)
+	left join TIME_DAY_DIM y using(DW_DAY)
+    left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+    left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+	left join product_category c on t.DW_PRODUCTDETAIL=c.DW_PRODUCT
+    group by DW_YEAR, DW_MONTH, DW_RESTID, DW_CATEGORY, DW_OCCASION
+	
+
+select t.DW_GC_HEADER, l.LINEITEMDESC, l.ITEMMOD,
+        t.DW_PRODUCT, p.PRODUCTDESC, 
+        t.DW_PRODUCTDETAIL, d.PRODUCTDESC, t.ACTQTYSOLD, n1.CALORIES,
+        t.DW_PRODUCTMOD, m.PRODUCTDESC, n2.CALORIES, t.ACTMODQTY
+    from TLD_FACT_2007_Q02 t
+	left join LINEITEM_DIM l on l.DW_LINEITEM=t.DW_LINEITEM
+	left join PRODUCT_DETAIL_DIM_V1 d on t.DW_PRODUCTDETAIL=d.DW_PRODUCTDETAIL
+	left join PRODUCT_DIM p on t.DW_PRODUCT=p.DW_PRODUCT
+	left join PRODUCT_MODIFICATION_DIM_V1 m on t.DW_PRODUCTMOD=m.DW_PRODUCTMOD
+	left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+    left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+	where DW_GC_HEADER=2267915567
+	order by DW_GC_HEADER, t.DW_LINEITEM;
++--------------+---------------------+---------+------------+-------------+------------+------------------+--------------------+---------------+------------------------+-----------+
+| DW_GC_HEADER | LINEITEMDESC        | ITEMMOD | DW_PRODUCT | PRODUCTDESC | ACTQTYSOLD | DW_PRODUCTDETAIL | PRODUCTDESC        | DW_PRODUCTMOD | PRODUCTDESC            | ACTMODQTY |
++--------------+---------------------+---------+------------+-------------+------------+------------------+--------------------+---------------+------------------------+-----------+
+|   2267915567 | COMBO-ITEM          |     1.0 |       1692 | COMBO 7     |       1.00 |             1692 | COMBO 7            |            -1 | N/A                    |       0.0 |
+|   2267915567 | NON-COMBO-ITEM      |     1.0 |       3649 | LARGE PEPSI |       1.00 |             3649 | LARGE PEPSI        |            -1 | N/A                    |       0.0 |
+|   2267915567 | COMBO-DETAIL        |     1.0 |       1692 | COMBO 7     |       1.00 |             3844 | QUESADILLA CHICKEN |            -1 | N/A                    |       0.0 |
+|   2267915567 | COMBO-DETAIL        |     1.0 |       1692 | COMBO 7     |       1.00 |             4450 | CRUNCHY TACO BEEF  |            -1 | N/A                    |       0.0 |
+|   2267915567 | COMBO-MOD-INGRD-ADD |     1.0 |       1692 | COMBO 7     |       0.00 |             4450 | CRUNCHY TACO BEEF  |          4160 | SUB SOFT FOR HARD TACO |       1.0 |
+|   2267915567 | TAX-LINE            |     0.0 |         -1 | N/A         |       0.00 |               -1 | N/A                |            -1 | N/A                    |       0.0 |
++--------------+---------------------+---------+------------+-------------+------------+------------------+--------------------+---------------+------------------------+-----------+
+
+create table restaurant_in_use_match_drive_thru (
+	address varchar(255) not null,
+	DW_RESTID int not null,
+	primary key (DW_RESTID)
+);
+load data infile '/gpfs/home/wue04/tb-data/upload-to-bigpurple/restaurants-in-use-matching-drive-thru.csv'
+into table restaurant_in_use_match_drive_thru
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS;
+
+
+select t.DW_GC_HEADER, t.DW_PRODUCT, p.PRODUCTDESC, t.DW_PRODUCTDETAIL, d.PRODUCTDESC, t.ACTQTYSOLD
+    from TLD_FACT_2007_Q02 t
+	left join PRODUCT_DETAIL_DIM_V1 d on t.DW_PRODUCTDETAIL=d.DW_PRODUCTDETAIL
+	left join PRODUCT_DIM p on t.DW_PRODUCT=p.DW_PRODUCT
+	where t.DW_PRODUCT=1688
+	order by DW_GC_HEADER, DW_PRODUCT
+	limit 50;
+select y.DW_YEAR, y.DW_MONTH,  c.DW_CATEGORY, t.DW_OCCASION,
+    sum(t.ACTQTYSOLD) as sales
+    from TLD_FACT_2007_Q02 t
+    left join TIME_DAY_DIM y using(DW_DAY)
+    left join product_category c on t.DW_PRODUCTDETAIL=c.DW_PRODUCT
+    group by DW_YEAR, DW_MONTH, DW_CATEGORY, DW_OCCASION;
+
+
+create table consistent_for_sale_product_2010_onward (
+	DW_PRODUCT int not null,
+	primary key (DW_PRODUCT)
+);
+load data infile '/gpfs/home/wue04/tb-data/upload-to-bigpurple/consistent-sales-2010onward-forCA.csv'
+into table consistent_for_sale_product_2010_onward
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS;
+
+
+select y.DW_YEAR, y.DW_MONTH, t.DW_RESTID, c.DW_CATEGORY,
+    sum(coalesce(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal,
+	count(distinct t.DW_GC_HEADER) as count
+    from TLD_FACT_2007_Q02 t
+	inner join consistent_for_sale_product_2010_onward s on s.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	left join LINEITEM_DIM l using(DW_LINEITEM)
+	left join TIME_DAY_DIM y using(DW_DAY)
+    left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+    left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+	left join product_category c on t.DW_PRODUCTDETAIL=c.DW_PRODUCT
+	where DW_OCCASION=2
+    group by DW_YEAR, DW_MONTH, DW_RESTID, DW_CATEGORY;
+
+select y.DW_YEAR, y.DW_MONTH, c.DW_CATEGORY, count(distinct t.DW_GC_HEADER) as total_num_orders, sum(t.ACTQTYSOLD) as qty_sold
+from TLD_FACT_2007_Q02 t
+left join TIME_DAY_DIM y using(DW_DAY)
+left join product_category c on t.DW_PRODUCTDETAIL=c.DW_PRODUCT
+group by DW_YEAR, DW_MONTH, DW_CATEGORY;
 
 
 
@@ -975,6 +1182,49 @@ LIMIT 10;
 
 
 
+
+
+
+
+
+
+
+select *
+from (select *, rank() over (partition by full_table.DW_RESTID, full_table.DW_MONTH order by full_table.qty desc) as ranking
+from (select t.DW_RESTID, y.DW_MONTH, sum(t.ACTQTYSOLD) as qty, t.DW_PRODUCTDETAIL
+    from TLD_FACT_2007_Q02 t
+	left join TIME_DAY_DIM y using(DW_DAY)
+	inner join restaurant_in_use_match_drive_thru r on r.DW_RESTID=t.DW_RESTID
+	left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	where n1.calorie is not NULL
+	group by DW_RESTID, DW_MONTH, DW_PRODUCTDETAIL
+) as full_table
+) as ranked_table
+where ranking<=20;
+
+
+select t.DW_RESTID, y.DW_MONTH, sum(t.ACTQTYSOLD) as qty, t.DW_PRODUCTDETAIL
+    from TLD_FACT_2007_Q02 t
+	left join TIME_DAY_DIM y using(DW_DAY)
+	inner join restaurant_in_use_match_drive_thru r on r.DW_RESTID=t.DW_RESTID
+	left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	where n1.CALORIES is not NULL
+	group by DW_RESTID, DW_MONTH, DW_PRODUCTDETAIL
+
+
+select distinct(t.DW_PRODUCTDETAIL) as product
+from TLD_FACT_2007_Q01 t
+inner join restaurant_in_use_match_drive_thru r on r.DW_RESTID=t.DW_RESTID
+left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+where n1.CALORIES is not NULL
+group by DW_PRODUCTDETAIL;
+
+select count(DW_GC_HEADER) from GC_HEADER_DIM_2012_Q03;
+select count(DISTINCT DW_GC_HEADER) from TLD_FACT_2012_Q03;
+select count(distinct DW_GC_HEADER)
+    from TLD_FACT_2012_Q03 t
+	left join TIME_DAY_DIM y using(DW_DAY)
+	where DW_MONTH=272;
 
 
 
