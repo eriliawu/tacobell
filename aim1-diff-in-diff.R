@@ -954,3 +954,4 @@ ggplot(data=tidy_mod.factor,aes(x=month,y=dollar_k,color=as.character(group))) +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-rematched/revenue=treat+month_monthFE_restaurantFE.jpeg", dpi="retina")
  
+

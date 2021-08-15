@@ -1,5 +1,5 @@
 /* -- access tacobell database
-srun  --time=1-00:01:00 --pty --mem-per-cpu=64G bash 
+srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash 
 module load mariadb/10.4.6
 mysql -p -h db -P 33061 -u wue04 tacobell
 
@@ -1167,6 +1167,18 @@ group by DW_YEAR, DW_MONTH, DW_CATEGORY;
 
 
 
+create table test_occasion (
+	dw_occasion int not null,
+	occasioncd varchar(3),
+	occasiondesc varchar(30),
+	primary key (dw_occasion)
+);
+load data infile '/gpfs/data/elbellab/tb-bi-prod-user-data/OCCASION_DIM.csv'
+into table test_occasion
+FIELDS TERMINATED BY '|' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS;
 
 
 
@@ -1226,5 +1238,14 @@ select count(distinct DW_GC_HEADER)
 	left join TIME_DAY_DIM y using(DW_DAY)
 	where DW_MONTH=272;
 
+
+
+
+
+select sum(t.ACTQTYSOLD) as total_qty 
+    from TLD_FACT_2007_Q02 t
+	inner join restaurant_in_use_match_drive_thru r on r.DW_RESTID=t.DW_RESTID
+	left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	where n1.CALORIES is not NULL and n1.TOTAL_FAT is not null;
 
 

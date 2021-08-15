@@ -468,15 +468,15 @@ result <- cbind(col_w_smd(mat=subset(master.original,select = c(3:4,15:16,20,22:
                           weights = matched$weights, treat = matched$treat, s.weights = matched$s.weights,
                           std = TRUE,bin.vars = c(rep(TRUE,2),rep(FALSE,26),rep(TRUE,3),FALSE)))
 colnames(result)[1:3] <- c("pre", "ps_weight","ps_weight_trim")
-result <- data.frame(cbind(result,label=c("Ownership", "Joint brand","% drive-thru transactions", "% lunch/dinner transactions",
+result <- data.frame(cbind(result,label=c("Ownership", "Joint brand","% drive-through transactions", "% lunch/dinner transactions",
                              "% male", "Total population","% white", "% Black", "% Asian",
                              "% Hispanic", "Household median income", "Income per capita",
                              "% without HS degree", "% has college degree and up","% under 18","% above 65",
-                             "# of drive-thru transactions, t-3","Drive-thru mean spending, t-3","Drive-thru mean calorie, t-3",
+                             "# of drive-through transactions, t-3","Drive-through mean spending, t-3","Drive-through mean calorie, t-3",
                              "# of transactions, t-3","Mean spending, t-3","Mean calorie, t-3",
-                             "Drive-thru mean spending trend", "# of drive-thru transactions trend", "Drive-thru mean calorie trend",
+                             "Drive-through mean spending trend", "# of drive-through transactions trend", "Drive-through mean calorie trend",
                              "Mean spending trend", "# of transactions trend", "Mean calorie trend",
-                             "Has 12-mon pre-data","Has 18-mon pre-data","Has 24-mon pre-data","Distance")))
+                             "Has 12-month baseline data","Has 18-month baseline data","Has 24-month baseline data","Distance")))
 result <- reshape(result, direction = "long",
                   varying = list(names(result)[1:3]), v.names = "score",
                   idvar = "label",
@@ -484,13 +484,13 @@ result <- reshape(result, direction = "long",
 result$score <- as.numeric(result$score)
 
 result$label <- factor(result$label,
-                       levels=c("Distance","Ownership", "Joint brand","Has 12-mon pre-data","Has 18-mon pre-data","Has 24-mon pre-data",
-                                "# of drive-thru transactions, t-3","Drive-thru mean spending, t-3","Drive-thru mean calorie, t-3",
+                       levels=c("Distance","Ownership", "Joint brand","Has 12-month baseline data","Has 18-month baseline data","Has 24-month baseline data",
+                                "# of drive-through transactions, t-3","Drive-through mean spending, t-3","Drive-through mean calorie, t-3",
                                 "# of transactions, t-3","Mean spending, t-3","Mean calorie, t-3",
-                                "Drive-thru mean spending trend", "# of drive-thru transactions trend", "Drive-thru mean calorie trend",
+                                "Drive-through mean spending trend", "# of drive-through transactions trend", "Drive-through mean calorie trend",
                                 "Mean spending trend", "# of transactions trend", "Mean calorie trend",
-                                "% drive-thru transactions", "% lunch/dinner transactions",
-                                "% male", "Total population","% white", "% Black", "% Asian",
+                                "% drive-through transactions", "% lunch/dinner transactions",
+                                "Total population","% male", "% white", "% Black", "% Asian",
                                 "% Hispanic", "Household median income", "Income per capita",
                                 "% without HS degree", "% has college degree and up","% under 18","% above 65"))
 result$method <- factor(result$method, levels = c("pre","ps_weight","ps_weight_trim"))
@@ -512,3 +512,29 @@ ggplot(data = result,
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("tables/analytic-model/matching/ps-matching/match-drive-thru/covariate-balance-after-trim.jpeg", dpi="retina")
 
+#for paper
+ggplot(data = result%>%filter(method!="ps_weight"),
+       mapping = aes(x = fct_rev(label), y = score, group= method, color=method)) +
+  geom_point() +
+  geom_hline(yintercept = 0.25, color = "red", size = 0.5, linetype="dashed") +
+  geom_hline(yintercept = -0.25, color = "red", size = 0.5, linetype="dashed") +
+  geom_hline(yintercept = 0, color = "black", size = 0.1) +
+  coord_flip() +
+  scale_y_continuous(limits = c(-1,3),breaks=c(-1,-0.25,0,0.25,1,2,3)) + 
+  labs(y="Standardized mean differences", x="") +
+  scale_color_manual(name="Sample", labels=c("Unmatched","Matched"), values =c("orange", "aquamarine3")) +
+  theme_bw() + theme(legend.key = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption=element_text(hjust=0, face="italic"))
+#ggsave("manuscript/figures/covariate-balance.jpeg", dpi="retina")
+
+
+
+
+#testing ----
+subset <- subset(restaurant, treat==1&policy=="mont")
+tmp <- subset %>% group_by(address,tract_num,ownership,concept) %>% mutate(relative = monthno - entry) %>%
+  filter(relative<0&relative>=-8) %>% mutate(n=n()) %>% mutate(open8 = ifelse(n==8, 1,0)) %>%
+  dplyr::select(address,open8) %>% distinct()
+subset <- merge(subset,tmp,by=c("address","tract_num","ownership","concept"))
+subset <- subset(subset, open8==1&monthno==253) 

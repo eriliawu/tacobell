@@ -1,5 +1,4 @@
 ### assess human raters
-#install.packages("irr")
 
 getwd()
 setwd("C:/Users/wue04/OneDrive - NYU Langone Health/tacobell")
@@ -9,6 +8,7 @@ options(warn = -1)
 #options(warn = current_warning)
 
 ### load libraries ----
+#install.packages("irr")
 library(irr)
 
 ### compare turk inter-rater reliability ----
@@ -109,9 +109,9 @@ turk2 <- reshape(turk2, direction="wide",
                  timevar = "worker")
 turk2$case <- NULL
 names(turk2)
-write.csv(turk2[turk2$answer.1==turk2$answer.2&turk2$answer.1==turk2$answer.3, ],
-          "data/menu-matching/manual-match/mturk/pilot/full-agreement_pilot2.csv",
-          row.names = FALSE)
+#write.csv(turk2[turk2$answer.1==turk2$answer.2&turk2$answer.1==turk2$answer.3, ],
+#          "data/menu-matching/manual-match/mturk/pilot/full-agreement_pilot2.csv",
+#          row.names = FALSE)
 
 # compare cohen's kappa, weighted
 kappa2(turk2[, 2:3], "squared")#0.619
@@ -153,21 +153,6 @@ length(turk2$task[(turk2$answer.1==1&turk2$answer.2==1&turk2$answer.3!=1)|
 length(turk2$task[(turk2$answer.1==5&turk2$answer.2==5&turk2$answer.3!=5)|
                         (turk2$answer.1==5&turk2$answer.3==5&turk2$answer.2!=5)|
                         (turk2$answer.3==5&turk2$answer.2==5&turk2$answer.1!=5)]) #25
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### RA reliability, full data launch, 2 rounds ----
 ra <- read.csv("data/menu-matching/manual-match/RA/manual-matching-best-match-2rounds.csv",
