@@ -82,10 +82,9 @@ product$category <- ifelse(product$group=="SALADS","salad",
                            ifelse(grepl("BURRITO|ENCHIRITOS",product$group)|grepl("BURRITO|ENCHIRITO",product$full),"burrito",
                            ifelse(grepl("CINNABON PRODUCTS|DESSERTS",product$group)|grepl("CINNABON|CINNABITES|APPLE EMPANADA",product$full),"dessert",
                            ifelse(grepl("DRINKS|SMOOTHIE",product$group)|grepl("PEPSI|DIET|SMOOTHIE|SHAKE",product$full),"beverage",
-                           ifelse(grepl("NACHOS",product$group)|grepl("NACHO",product$full),"nacho",
+                           ifelse(grepl("NACHOS|BURGERS|TORTAS",product$group)|grepl("NACHO|BURGER|TORTA|PIZZA|CHICKEN|BEEF|STEAK|QUESADILLA|MEXIMELT|CRUNCHWRAP",product$full),"other_entree",
                            ifelse(grepl("EXTRA/MINU",product$group)|grepl("SUB ",product$full),"substitution",
-                           ifelse(grepl("BURGERS|TORTAS",product$group)|grepl("BURGER|TORTA|PIZZA|CHICKEN|BEEF|STEAK|QUESADILLA|MEXIMELT|CRUNCHWRAP",product$full),"other_entry",
-                           ifelse(grepl("SIDES|FRIES",product$group)|grepl("FRIES|FRY",product$full),"side","other")))))))))
+                           ifelse(grepl("SIDES|FRIES",product$group)|grepl("FRIES|FRY",product$full),"side","other"))))))))
 table(product$category)
 product <- product[,c(2,6)]
 
@@ -102,14 +101,15 @@ rm(product2,group)
 
 # give numeric id to each category
 product$dw_category <- ifelse(product$category=="beverage",1,ifelse(product$category=="burrito",2,
-                              ifelse(product$category=="dessert",3,ifelse(product$category=="nacho",4,
-                              ifelse(product$category=="other_entry",5,ifelse(product$category=="salad",6,
-                              ifelse(product$category=="side",7,ifelse(product$category=="substitution",8,
-                              ifelse(product$category=="taco",9,10)))))))))
+                              ifelse(product$category=="dessert",3,ifelse(product$category=="other_entree",4,
+                              ifelse(product$category=="salad",5,ifelse(product$category=="side",6,
+                              ifelse(product$category=="substitution",7,
+                              ifelse(product$category=="taco",8,9))))))))
 table(product$dw_category)
 names(product) <- toupper(names(product))
 product <- product[,-5]
 #write.csv(product,"data/upload-to-bigpurple/product-category.csv",row.names = FALSE)
+
 ### clean order-type data ----
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
                        stringsAsFactors = FALSE,
