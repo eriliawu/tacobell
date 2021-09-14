@@ -622,13 +622,14 @@ for (i in c("fat","carb","protein","sat_fat","sugar","fiber","sodium")) {
   tmp1$nutrient <- i
   trend <- rbind(trend,tmp1)
 }
+trend$nutrient <- factor(trend$nutrient,levels = c("fat","carb","protein","sat_fat","sugar","fiber","sodium"))
 
 summary(trend$mean) #[-82,56]
 ggplot() + 
   geom_line(data=trend, aes(x=month, y=mean, color=nutrient)) + 
   geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color=nutrient),size=1) +
-  ggplot2::annotate(geom="label", x=6, y=-10, label="   p<0.05", size=3) + 
-  geom_point(aes(x=5.35,y=-10),color="black",size=1) +
+  ggplot2::annotate(geom="label", x=6, y=-15, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=-15),color="black",size=1) +
   coord_cartesian(expand = FALSE, clip = "off") + 
   scale_y_continuous(limits=c(-90,60),breaks=seq(-90,60,10)) +
   scale_x_continuous(breaks=seq(3,30,1)) +
@@ -643,6 +644,7 @@ ggplot() +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
         panel.grid.minor = element_blank())
 #ggsave("manuscript/figures/appendix-fig3-diff-in-diff-nutrients.jpeg", dpi="retina")
+rm(tmp,tmp1,tmp2,mod.factor,tidy_mod.factor,i,j,presum,trend,restaurant,calorie)
 
 ### appendix table 1, number of restaurants, by open time ----
 app_table1 <- data.frame(matrix(data=NA,ncol = 7,nrow = 14))
@@ -698,17 +700,534 @@ app_table1 <- app_table1 %>% mutate(open12=paste0(open12," (",sprintf('%.2f',ope
   mutate_all(~replace(., is.na(.), ""))
 #write.csv(app_table1,"manuscript/tables/app_table1.csv")  
 
+### appendix table 3, compare top selling items, items sold in every month of the study period ----
+app_tabl3 <- data.frame(matrix(data=NA,ncol = 3,nrow = 6)) %>% setNames(c("baseline","followup","p")) %>%
+  add_column(sample=c("treat, each period","comp, each period","treat, all period","comp, all period","treat, new items","comp, new items"),.before = 1)
+# compare top 100 items for treated and comparison group
+# aggregate items every sold in treated restaurants, find the items that were sold in every month
+# do the same for comparison restaurants
+sample07q1 <- read.csv("data/from-bigpurple/top-selling-items/top-selling_restid_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("monthno","restid","product","calorie","full","qty"))
+sample07q1$qty <- sample07q1$qty/2
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/top-selling-items/top-selling_restid_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("monthno","restid","product","calorie","full","qty"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+
+restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",
+                       colClasses=c("integer","character",rep("NULL",7),"character",rep("NULL",3),"character",rep("NULL",15),"character")) %>%
+  mutate(concept=ifelse(concept=="TBC",1,0),ownership=ifelse(ownership=="COMPANY",1,0)) %>%
+  mutate(tract_num=substr(tract_num,2,12))
+calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(-restid,-product) %>%
+  group_by(address,concept,ownership,monthno,tract_num,calorie,full) %>% summarise(qty=sum(qty))
+match_use <- matched %>% dplyr::select(id:concept,monthno:month,relative2)
+calorie <- merge(calorie,match_use,by=c("address","concept","ownership","tract_num","monthno"))
+rm(restaurant,matched_use)
+
+# panel 1
+# figure out which items sold in every month during baseline and follow-up period, -8 to -3 and 3 to 12
+# get top 100 selling items for both groups, in pre- and post-periods
+tmp <- calorie %>% filter(relative2>=-8 & relative2<=11) %>% 
+  dplyr::select(treat,relative2,full,calorie,qty) %>% group_by(treat,relative2,full,calorie) %>% summarise(qty=sum(qty)) %>%
+  arrange(treat,full,relative2) %>% group_by(treat,full) %>% mutate(rank=row_number()) %>%
+  mutate(rank=sum(rank)) %>% filter(rank==210) %>% mutate(post=ifelse(relative2<0,0,1)) %>%
+  group_by(treat,post,full,calorie) %>% summarise(qty=sum(qty)) %>% arrange(treat,post,desc(qty)) %>%
+  group_by(treat,post) %>% mutate(rank=row_number()) %>% filter(rank<=100)
+
+for (i in c(0,1)) {
+  app_tabl3[1,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==1&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==1&tmp$post==i])),")")
+  app_tabl3[2,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==0&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==0&tmp$post==i])),")")
+}
+app_tabl3[1,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==1&tmp$post==0],tmp$calorie[tmp$treat==1&tmp$post==1])$p.value)
+app_tabl3[2,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==0&tmp$post==0],tmp$calorie[tmp$treat==0&tmp$post==1])$p.value)
+
+# panel 2
+# figure out which items sold in every month during the entire study period
+# get top 100 selling items for both groups, in pre- and post-periods
+tmp <- calorie %>% 
+  dplyr::select(treat,monthno,full,calorie,qty,relative2) %>% group_by(treat,monthno,full,calorie) %>%
+  summarise(qty=sum(qty)) %>% arrange(treat,full,monthno) %>% group_by(treat,full) %>%
+  mutate(rank=row_number()) %>% mutate(rank=max(rank)) %>% filter(rank==106)
+
+  
+%>% filter(rank==210) %>% mutate(post=ifelse(relative2<0,0,1)) %>%
+  group_by(treat,post,full,calorie) %>% summarise(qty=sum(qty)) %>% arrange(treat,post,desc(qty)) %>%
+  group_by(treat,post) %>% mutate(rank=row_number()) %>% filter(rank<=100)
+
+### appendix table X, baseline characteristics ----
+appen_tablex <- data.frame(matrix(data=NA, ncol=14, nrow = 32)) %>% 
+  setNames(c("all","all_comp","ca","ca_comp","ma","ma_comp","or","or_comp","mont","mont_comp","suffolk","suffolk_comp","king","king_comp")) %>%
+  add_column(character=c("n","ownership","concept","open12","open18","open24","num_transaction","num_transaction_trend",
+                         "drive_transaction","drive_transaction_trend","calorie","calorie_trend","drive_calorie","drive_calorie_trend",
+                         "spending","spending_trend","drive_spedning","drive_spending_trend","drive%","lunch_dinner%",
+                         "pop","under18","over65","male","asian","black","hisp","white","median_income","income_capita","no_hs","collegeup"),.before=1)
+index <- data.frame(1:6,c("ca","ma","or","mont","suffolk","king")) %>% setNames(c("index","col"))
+#run restaurants-matching-drive-thru.R, the entire script
+length(unique(paste0(matched$address,matched$tract_num,matched$concept,matched$ownership,matched$match_place)))
+#all treated and comparison restaruants
+appen_tablex[1:6,2] <- c(sum(matched$treat==1),sum(matched$treat==1&matched$ownership==1),sum(matched$treat==1&matched$concept==1),
+                         sum(matched$treat==1&matched$open12==1),sum(matched$treat==1&matched$open18==1),sum(matched$treat==1&matched$open24==1))
+appen_tablex[1:6,3] <- c(sum(matched$treat==0),sum(matched$treat==0&matched$ownership==1),sum(matched$treat==0&matched$concept==1),
+                         sum(matched$treat==0&matched$open12==1),sum(matched$treat==0&matched$open18==1),sum(matched$treat==0&matched$open24==1))
+appen_tablex[c(19:20,22:28,31:32),2] <- c(mean(matched$drive[matched$treat==1])*100,mean(matched$meal[matched$treat==1])*100,mean(matched$under18[matched$treat==1])*100,
+                                          mean(matched$above65[matched$treat==1])*100,mean(matched$male[matched$treat==1])*100,mean(matched$asian[matched$treat==1])*100,
+                                          mean(matched$black[matched$treat==1])*100,mean(matched$hisp[matched$treat==1])*100,mean(matched$white[matched$treat==1])*100,
+                                          mean(matched$hsbelow[matched$treat==1])*100,mean(matched$collegeup[matched$treat==1])*100)
+appen_tablex[c(19:20,22:28,31:32),3] <- c(mean(matched$drive[matched$treat==0])*100,mean(matched$meal[matched$treat==0])*100,mean(matched$under18[matched$treat==0])*100,
+                                          mean(matched$above65[matched$treat==0])*100,mean(matched$male[matched$treat==0])*100,mean(matched$asian[matched$treat==0])*100,
+                                          mean(matched$black[matched$treat==0])*100,mean(matched$hisp[matched$treat==0])*100,mean(matched$white[matched$treat==0])*100,
+                                          mean(matched$hsbelow[matched$treat==0])*100,mean(matched$collegeup[matched$treat==0])*100)
+# by location
+for (i in 1:6) {
+    appen_tablex[1:6,2*i+2] <- c(sum(matched$treat==1&matched$match_place==index[i,2]),sum(matched$treat==1&matched$ownership==1&matched$match_place==index[i,2]),sum(matched$treat==1&matched$concept==1&matched$match_place==index[i,2]),
+                            sum(matched$treat==1&matched$open12==1&matched$match_place==index[i,2]),sum(matched$treat==1&matched$open18==1&matched$match_place==index[i,2]),sum(matched$treat==1&matched$open24==1&matched$match_place==index[i,2]))
+    appen_tablex[1:6,2*i+3] <- c(sum(matched$treat==0&matched$match_place==index[i,2]),sum(matched$treat==0&matched$ownership==1&matched$match_place==index[i,2]),sum(matched$treat==0&matched$concept==1&matched$match_place==index[i,2]),
+                                 sum(matched$treat==0&matched$open12==1&matched$match_place==index[i,2]),sum(matched$treat==0&matched$open18==1&matched$match_place==index[i,2]),sum(matched$treat==0&matched$open24==1&matched$match_place==index[i,2]))
+    appen_tablex[c(19:20,22:28,31:32),2*i+2] <- c(mean(matched$drive[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$meal[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$under18[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$above65[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$male[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$asian[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$black[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$hisp[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$white[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$hsbelow[matched$treat==1&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$collegeup[matched$treat==1&matched$match_place==index[i,2]])*100)
+    appen_tablex[c(19:20,22:28,31:32),2*i+3] <- c(mean(matched$drive[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$meal[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$under18[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$above65[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$male[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$asian[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$black[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$hisp[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$white[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$hsbelow[matched$treat==0&matched$match_place==index[i,2]])*100,
+                                                  mean(matched$collegeup[matched$treat==0&matched$match_place==index[i,2]])*100)
+}
+#convert to %
+appen_tablex[3,2:15] <- (appen_tablex[1,2:15] - appen_tablex[3,2:15])/appen_tablex[1,2:15]*100
+for (i in c(2,4:6)) {
+  appen_tablex[i,2:15] <- appen_tablex[i,2:15]/appen_tablex[1,2:15]*100
+}
+#fix decimal points
+appen_tablex[1,2:15] <- sprintf('%.0f',appen_tablex[1,2:15])
+for (i in c(2:6,19:20,22:28,31:32)) {
+  appen_tablex[i,2:15] <- sprintf('%.2f',appen_tablex[i,2:15])
+}
+#transaction related stats
+appen_tablex[c(7:18,21,29:30),2] <- c(paste0(ifelse(abs(mean(matched$count_all3[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$count_all3[matched$treat==1])),sprintf('%.2f',mean(matched$count_all3[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$count_all3[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$count_all3[matched$treat==1])),sprintf('%.2f',sd(matched$count_all3[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$slope_count_all[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$slope_count_all[matched$treat==1])),sprintf('%.2f',mean(matched$slope_count_all[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$slope_count_all[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$slope_count_all[matched$treat==1])),sprintf('%.2f',sd(matched$slope_count_all[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$count3[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$count3[matched$treat==1])),sprintf('%.2f',mean(matched$count3[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$count3[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$count3[matched$treat==1])),sprintf('%.2f',sd(matched$count3[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$slope_count[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$slope_count[matched$treat==1])),sprintf('%.2f',mean(matched$slope_count[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$slope_count[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$slope_count[matched$treat==1])),sprintf('%.2f',sd(matched$slope_count[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$calorie_all3[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$calorie_all3[matched$treat==1])),sprintf('%.2f',mean(matched$calorie_all3[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$calorie_all3[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$calorie_all3[matched$treat==1])),sprintf('%.2f',sd(matched$calorie_all3[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$slope_calorie_all[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$slope_calorie_all[matched$treat==1])),sprintf('%.2f',mean(matched$slope_calorie_all[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$slope_calorie_all[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$slope_calorie_all[matched$treat==1])),sprintf('%.2f',sd(matched$slope_calorie_all[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$calorie3[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$calorie3[matched$treat==1])),sprintf('%.2f',mean(matched$calorie3[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$calorie3[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$calorie3[matched$treat==1])),sprintf('%.2f',sd(matched$calorie3[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$slope_calorie[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$slope_calorie[matched$treat==1])),sprintf('%.2f',mean(matched$slope_calorie[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$slope_calorie[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$slope_calorie[matched$treat==1])),sprintf('%.2f',sd(matched$slope_calorie[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$dollar_all3[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$dollar_all3[matched$treat==1])),sprintf('%.2f',mean(matched$dollar_all3)))," (",
+                                          ifelse(abs(sd(matched$dollar_all3[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$dollar_all3[matched$treat==1])),sprintf('%.2f',sd(matched$dollar_all3[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$slope_dollar_all[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$slope_dollar_all[matched$treat==1])),sprintf('%.2f',mean(matched$slope_dollar_all[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$slope_dollar_all[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$slope_dollar_all[matched$treat==1])),sprintf('%.2f',sd(matched$slope_dollar_all[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$dollar3[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$dollar3[matched$treat==1])),sprintf('%.2f',mean(matched$dollar3[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$dollar3[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$dollar3[matched$treat==1])),sprintf('%.2f',sd(matched$dollar3[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$slope_dollar[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$slope_dollar[matched$treat==1])),sprintf('%.2f',mean(matched$slope_dollar[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$slope_dollar[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$slope_dollar[matched$treat==1])),sprintf('%.2f',sd(matched$slope_dollar[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$total[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$total[matched$treat==1])),sprintf('%.2f',mean(matched$total[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$total[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$total[matched$treat==1])),sprintf('%.2f',sd(matched$total[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$median_income[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$median_income[matched$treat==1])),sprintf('%.2f',mean(matched$median_income[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$median_income[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$median_income[matched$treat==1])),sprintf('%.2f',sd(matched$median_income[matched$treat==1]))),")"),
+                                   paste0(ifelse(abs(mean(matched$capital_income[matched$treat==1]))>=100,sprintf('%.0f',mean(matched$capital_income[matched$treat==1])),sprintf('%.2f',mean(matched$capital_income[matched$treat==1])))," (",
+                                          ifelse(abs(sd(matched$capital_income[matched$treat==1]))>=100,sprintf('%.0f',sd(matched$capital_income[matched$treat==1])),sprintf('%.2f',sd(matched$capital_income[matched$treat==1]))),")"))
+appen_tablex[c(7:18,21,29:30),3] <- c(paste0(ifelse(abs(mean(matched$count_all3[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$count_all3[matched$treat==0])),sprintf('%.2f',mean(matched$count_all3[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$count_all3[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$count_all3[matched$treat==0])),sprintf('%.2f',sd(matched$count_all3[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$slope_count_all[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$slope_count_all[matched$treat==0])),sprintf('%.2f',mean(matched$slope_count_all[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$slope_count_all[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$slope_count_all[matched$treat==0])),sprintf('%.2f',sd(matched$slope_count_all[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$count3[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$count3[matched$treat==0])),sprintf('%.2f',mean(matched$count3[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$count3[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$count3[matched$treat==0])),sprintf('%.2f',sd(matched$count3[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$slope_count[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$slope_count[matched$treat==0])),sprintf('%.2f',mean(matched$slope_count[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$slope_count[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$slope_count[matched$treat==0])),sprintf('%.2f',sd(matched$slope_count[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$calorie_all3[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$calorie_all3[matched$treat==0])),sprintf('%.2f',mean(matched$calorie_all3[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$calorie_all3[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$calorie_all3[matched$treat==0])),sprintf('%.2f',sd(matched$calorie_all3[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$slope_calorie_all[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$slope_calorie_all[matched$treat==0])),sprintf('%.2f',mean(matched$slope_calorie_all[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$slope_calorie_all[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$slope_calorie_all[matched$treat==0])),sprintf('%.2f',sd(matched$slope_calorie_all[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$calorie3[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$calorie3[matched$treat==0])),sprintf('%.2f',mean(matched$calorie3[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$calorie3[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$calorie3[matched$treat==0])),sprintf('%.2f',sd(matched$calorie3[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$slope_calorie[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$slope_calorie[matched$treat==0])),sprintf('%.2f',mean(matched$slope_calorie[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$slope_calorie[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$slope_calorie[matched$treat==0])),sprintf('%.2f',sd(matched$slope_calorie[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$dollar_all3[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$dollar_all3[matched$treat==0])),sprintf('%.2f',mean(matched$dollar_all3)))," (",
+                                             ifelse(abs(sd(matched$dollar_all3[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$dollar_all3[matched$treat==0])),sprintf('%.2f',sd(matched$dollar_all3[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$slope_dollar_all[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$slope_dollar_all[matched$treat==0])),sprintf('%.2f',mean(matched$slope_dollar_all[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$slope_dollar_all[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$slope_dollar_all[matched$treat==0])),sprintf('%.2f',sd(matched$slope_dollar_all[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$dollar3[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$dollar3[matched$treat==0])),sprintf('%.2f',mean(matched$dollar3[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$dollar3[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$dollar3[matched$treat==0])),sprintf('%.2f',sd(matched$dollar3[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$slope_dollar[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$slope_dollar[matched$treat==0])),sprintf('%.2f',mean(matched$slope_dollar[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$slope_dollar[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$slope_dollar[matched$treat==0])),sprintf('%.2f',sd(matched$slope_dollar[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$total[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$total[matched$treat==0])),sprintf('%.2f',mean(matched$total[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$total[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$total[matched$treat==0])),sprintf('%.2f',sd(matched$total[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$median_income[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$median_income[matched$treat==0])),sprintf('%.2f',mean(matched$median_income[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$median_income[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$median_income[matched$treat==0])),sprintf('%.2f',sd(matched$median_income[matched$treat==0]))),")"),
+                                      paste0(ifelse(abs(mean(matched$capital_income[matched$treat==0]))>=100,sprintf('%.0f',mean(matched$capital_income[matched$treat==0])),sprintf('%.2f',mean(matched$capital_income[matched$treat==0])))," (",
+                                             ifelse(abs(sd(matched$capital_income[matched$treat==0]))>=100,sprintf('%.0f',sd(matched$capital_income[matched$treat==0])),sprintf('%.2f',sd(matched$capital_income[matched$treat==0]))),")"))
+for (i in 1:6) {
+  appen_tablex[c(7:18,21,29:30),2*i+2] <- c(paste0(ifelse(abs(mean(matched$count_all3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$count_all3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$count_all3[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$count_all3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$count_all3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$count_all3[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_count_all[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_count_all[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_count_all[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_count_all[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_count_all[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_count_all[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$count3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$count3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$count3[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$count3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$count3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$count3[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_count[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_count[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_count[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_count[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_count[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_count[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$calorie_all3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$calorie_all3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$calorie_all3[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$calorie_all3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$calorie_all3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$calorie_all3[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_calorie_all[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_calorie_all[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_calorie_all[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_calorie_all[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_calorie_all[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_calorie_all[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$calorie3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$calorie3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$calorie3[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$calorie3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$calorie3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$calorie3[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_calorie[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_calorie[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_calorie[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_calorie[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_calorie[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_calorie[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$dollar_all3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$dollar_all3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$dollar_all3)))," (",
+                                                   ifelse(abs(sd(matched$dollar_all3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$dollar_all3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$dollar_all3[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_dollar_all[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_dollar_all[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_dollar_all[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_dollar_all[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_dollar_all[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_dollar_all[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$dollar3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$dollar3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$dollar3[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$dollar3[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$dollar3[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$dollar3[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_dollar[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_dollar[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_dollar[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_dollar[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_dollar[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_dollar[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$total[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$total[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$total[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$total[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$total[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$total[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$median_income[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$median_income[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$median_income[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$median_income[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$median_income[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$median_income[matched$treat==1&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$capital_income[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$capital_income[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$capital_income[matched$treat==1&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$capital_income[matched$treat==1&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$capital_income[matched$treat==1&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$capital_income[matched$treat==1&matched$match_place==index[i,2]]))),")"))
+  appen_tablex[c(7:18,21,29:30),2*i+3] <- c(paste0(ifelse(abs(mean(matched$count_all3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$count_all3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$count_all3[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$count_all3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$count_all3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$count_all3[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_count_all[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_count_all[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_count_all[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_count_all[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_count_all[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_count_all[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$count3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$count3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$count3[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$count3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$count3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$count3[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_count[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_count[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_count[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_count[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_count[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_count[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$calorie_all3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$calorie_all3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$calorie_all3[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$calorie_all3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$calorie_all3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$calorie_all3[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_calorie_all[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_calorie_all[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_calorie_all[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_calorie_all[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_calorie_all[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_calorie_all[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$calorie3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$calorie3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$calorie3[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$calorie3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$calorie3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$calorie3[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_calorie[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_calorie[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_calorie[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_calorie[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_calorie[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_calorie[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$dollar_all3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$dollar_all3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$dollar_all3)))," (",
+                                                   ifelse(abs(sd(matched$dollar_all3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$dollar_all3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$dollar_all3[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_dollar_all[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_dollar_all[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_dollar_all[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_dollar_all[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_dollar_all[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_dollar_all[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$dollar3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$dollar3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$dollar3[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$dollar3[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$dollar3[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$dollar3[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$slope_dollar[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$slope_dollar[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$slope_dollar[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$slope_dollar[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$slope_dollar[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$slope_dollar[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$total[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$total[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$total[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$total[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$total[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$total[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$median_income[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$median_income[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$median_income[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$median_income[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$median_income[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$median_income[matched$treat==0&matched$match_place==index[i,2]]))),")"),
+                                            paste0(ifelse(abs(mean(matched$capital_income[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',mean(matched$capital_income[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',mean(matched$capital_income[matched$treat==0&matched$match_place==index[i,2]])))," (",
+                                                   ifelse(abs(sd(matched$capital_income[matched$treat==0&matched$match_place==index[i,2]]))>=100,sprintf('%.0f',sd(matched$capital_income[matched$treat==0&matched$match_place==index[i,2]])),sprintf('%.2f',sd(matched$capital_income[matched$treat==0&matched$match_place==index[i,2]]))),")"))
+}
+appen_tablex <- appen_tablex %>%  
+  add_row(character=NA,.before=21) %>% add_row(character=NA,.before=21) %>%
+  add_column(space="",.before = 4) %>% add_column(space="",.before = 7) %>% add_column(space="",.before = 10) %>%
+  add_column(space="",.before = 13) %>% add_column(space="",.before = 16) %>% add_column(space="",.before =19) %>%
+  mutate_all(~replace(., is.na(.), "")) 
+#write.csv(appen_tablex,"manuscript/tables/app_tableX.csv",row.names = FALSE)
 
 
 
 
 
 
+### appendix table 2, diff-in-diff analysis in item category, time of day and nutrients ----
+app_table2 <- data.frame(matrix(data=NA, nrow=19,ncol=6)) %>%
+  setNames(c("diff_treat_3_12","diff_comp_3_12","did_3_12","diff_treat_13_24","diff_comp_13_24","did_13_24")) %>%
+  add_column(type=c("taco","burrito","salad","other","desserts","bev","latenight","breakfast","lunch","afternoon","dinner","evening",
+                    "fat","carb","protein","sat_fat","sugar","fiber","sodium"),.before = 1)
+#panel 1: food category
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("monthno","restid","category","occasion","calorie", "fat","carb",
+                                     "protein","sat_fat","sugar","fiber","sodium", "count"))
+sample07q1[, c(5:12)] <- sample07q1[, c(5:12)]/2
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("monthno","restid","category","occasion","calorie", "fat","carb",
+                                       "protein","sat_fat","sugar","fiber","sodium", "count"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+calorie <- calorie %>% filter(occasion==2&(category %in% c(8,2,5,4,3,1))) %>% dplyr::select(-occasion)
+restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",
+                       colClasses=c("integer","character",rep("NULL",7),"character",rep("NULL",3),"character",rep("NULL",15),"character")) %>%
+  mutate(concept=ifelse(concept=="TBC",1,0),ownership=ifelse(ownership=="COMPANY",1,0)) %>%
+  mutate(tract_num=substr(tract_num,2,12))
+calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(-restid) %>%
+  group_by(address,concept,ownership,monthno,tract_num,category) %>% summarise_all(sum)
+matched_use <- matched %>% dplyr::select(id:month,relative2,relative2.factor,id_match)
+calorie <- merge(calorie,matched_use,by=c("address","monthno","concept","ownership","tract_num"))  %>%
+  mutate(across(calorie:sodium, ~ ./count)) %>% dplyr::select(-count)
+index <- data.frame(c(8,2,5,4,3,1),c("taco","burrito","salad","other","dessert","bev")) %>%setNames(c("index","food"))
+for (i in 1:6) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = calorie%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&category==index[i,1]), 
+                    index = "id_match", weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor,conf.level = 0.95,conf.int = TRUE) %>%
+    dplyr::select(term,estimate,p.value,conf.low,conf.high) %>%
+    rename(month=term,coef.month=estimate,p=p.value,low=conf.low,high=conf.high) %>%
+    filter(!grepl("as.factor|calorie", month)) %>%
+    mutate(group=c(rep(0,55),rep(1,55))) %>%
+    add_row(month="-3",coef.month=0,group=0,low=0,high=0) %>%
+    add_row(month="-3",coef.month=0,group=1,low=0,high=0) %>%
+    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+    mutate(month=ifelse(month>0,month+1,month)) %>%
+    arrange(group,month) %>%
+    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+    mutate(calorie = ifelse(group==0,coef.month,coef.month+coef.month[1:56])) %>%
+    mutate(low = ifelse(group==0,low,low+low[1:56])) %>%
+    mutate(high = ifelse(group==0,high,high+high[1:56]))
+  # diff in labeled group, months 3-12
+  #columns 1-3
+  treat <- tidy_mod.factor %>% filter(group==1&month>=-8&month<=12) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i,2] <- paste0(sprintf('%.3f',treat$beta)," (",sprintf('%.3f',treat$low),", ",sprintf('%.3f',treat$high),")")
+  comp <- tidy_mod.factor %>% filter(group==0&month>=-8&month<=12) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i,3] <- paste0(sprintf('%.3f',comp$beta)," (",sprintf('%.3f',comp$low),", ",sprintf('%.3f',comp$high),")")
+  app_table2[i,4] <- paste0(sprintf('%.3f',treat$beta-comp$beta)," (",sprintf('%.3f',treat$low-comp$low),", ",sprintf('%.3f',treat$high-comp$high),")")
+  #columns 4-6
+  treat <- tidy_mod.factor %>% filter(group==1&((month>=-8&month<0)|(month>=13&month<=24))) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i,5] <- paste0(sprintf('%.3f',treat$beta)," (",sprintf('%.3f',treat$low),", ",sprintf('%.3f',treat$high),")")
+  comp <- tidy_mod.factor %>% filter(group==0&((month>=-8&month<0)|(month>=13&month<=24))) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i,6] <- paste0(sprintf('%.3f',comp$beta)," (",sprintf('%.3f',comp$low),", ",sprintf('%.3f',comp$high),")")
+  app_table2[i,7] <- paste0(sprintf('%.3f',treat$beta-comp$beta)," (",sprintf('%.3f',treat$low-comp$low),", ",sprintf('%.3f',treat$high-comp$high),")")
+}
 
+# panel 2: time of day
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart-occasion/mean-calorie_restid_daypart_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("restid","monthno","occasion","daypart","calorie", "fat","carb",
+                                     "protein","sat_fat","sugar","fiber","sodium", "count"))
+sample07q1[, c(5:12)] <- sample07q1[, c(5:12)]/2
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart-occasion/mean-calorie_restid_daypart_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("restid","monthno","occasion","daypart","calorie", "fat","carb",
+                                       "protein","sat_fat","sugar","fiber","sodium", "count"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+calorie <- calorie %>% filter(occasion==2) %>% dplyr::select(-occasion)
+restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",
+                       colClasses=c("integer","character",rep("NULL",7),"character",rep("NULL",3),"character",rep("NULL",15),"character")) %>%
+  mutate(concept=ifelse(concept=="TBC",1,0),ownership=ifelse(ownership=="COMPANY",1,0)) %>%
+  mutate(tract_num=substr(tract_num,2,12))
+calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(-restid) %>%
+  group_by(address,concept,ownership,monthno,tract_num,daypart) %>% summarise_all(sum)
+matched_use <- matched %>% dplyr::select(id:month,relative2,relative2.factor,id_match)
+calorie <- merge(calorie,matched_use,by=c("address","monthno","concept","ownership","tract_num"))  %>%
+  mutate(across(calorie:sodium, ~ ./count)) %>% dplyr::select(-count)
+for (i in 1:6) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = calorie%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&daypart==i), 
+                    index = "id_match", weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor,conf.level = 0.95,conf.int = TRUE) %>%
+    dplyr::select(term,estimate,p.value,conf.low,conf.high) %>%
+    rename(month=term,coef.month=estimate,p=p.value,low=conf.low,high=conf.high) %>%
+    filter(!grepl("as.factor|calorie", month)) %>%
+    mutate(group=c(rep(0,55),rep(1,55))) %>%
+    add_row(month="-3",coef.month=0,group=0,low=0,high=0) %>%
+    add_row(month="-3",coef.month=0,group=1,low=0,high=0) %>%
+    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+    mutate(month=ifelse(month>0,month+1,month)) %>%
+    arrange(group,month) %>%
+    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+    mutate(calorie = ifelse(group==0,coef.month,coef.month+coef.month[1:56])) %>%
+    mutate(low = ifelse(group==0,low,low+low[1:56])) %>%
+    mutate(high = ifelse(group==0,high,high+high[1:56]))
+  # diff in labeled group, months 3-12
+  #columns 1-3
+  treat <- tidy_mod.factor %>% filter(group==1&month>=-8&month<=12) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+6,2] <- paste0(sprintf('%.3f',treat$beta)," (",sprintf('%.3f',treat$low),", ",sprintf('%.3f',treat$high),")")
+  comp <- tidy_mod.factor %>% filter(group==0&month>=-8&month<=12) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+6,3] <- paste0(sprintf('%.3f',comp$beta)," (",sprintf('%.3f',comp$low),", ",sprintf('%.3f',comp$high),")")
+  app_table2[i+6,4] <- paste0(sprintf('%.3f',treat$beta-comp$beta)," (",sprintf('%.3f',treat$low-comp$low),", ",sprintf('%.3f',treat$high-comp$high),")")
+  #columns 4-6
+  treat <- tidy_mod.factor %>% filter(group==1&((month>=-8&month<0)|(month>=13&month<=24))) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+6,5] <- paste0(sprintf('%.3f',treat$beta)," (",sprintf('%.3f',treat$low),", ",sprintf('%.3f',treat$high),")")
+  comp <- tidy_mod.factor %>% filter(group==0&((month>=-8&month<0)|(month>=13&month<=24))) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+6,6] <- paste0(sprintf('%.3f',comp$beta)," (",sprintf('%.3f',comp$low),", ",sprintf('%.3f',comp$high),")")
+  app_table2[i+6,7] <- paste0(sprintf('%.3f',treat$beta-comp$beta)," (",sprintf('%.3f',treat$low-comp$low),", ",sprintf('%.3f',treat$high-comp$high),")")
+}
 
+#panel 3: nutrients
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("restid","monthno","occasion","calorie", "fat","carb",
+                                     "protein","sat_fat","sugar","fiber","sodium", "count"))
+sample07q1[, c(4:11)] <- sample07q1[, c(4:11)]/2
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("restid","monthno","occasion","calorie", "fat","carb",
+                                       "protein","sat_fat","sugar","fiber","sodium", "count"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+calorie <- calorie %>% filter(occasion==2) %>% dplyr::select(-occasion, -calorie) 
 
-
-
+restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",
+                       colClasses=c("integer","character",rep("NULL",7),"character",rep("NULL",3),"character",rep("NULL",15),"character")) %>%
+  mutate(concept=ifelse(concept=="TBC",1,0),ownership=ifelse(ownership=="COMPANY",1,0)) %>%
+  mutate(tract_num=substr(tract_num,2,12))
+calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(-restid) %>%
+  group_by(address,concept,ownership,monthno,tract_num) %>% summarise_all(sum)
+matched_use <- matched %>% dplyr::select(id:month,relative2,relative2.factor,id_match)
+calorie <- merge(calorie,matched_use,by=c("address","monthno","concept","ownership","tract_num"))  %>%
+  mutate(across(fat:sodium, ~ ./count)) %>% dplyr::select(-count) %>%
+gather(key="nutrient",value="value","fat","carb","protein","sat_fat","sugar","fiber","sodium") 
+index <- data.frame(c(1:7),c("fat","carb","protein","sat_fat","sugar","fiber","sodium")) %>%setNames(c("index","nutrient"))
+for (i in 1:7) {
+  mod.factor <- plm(formula = value~treat*relative2.factor+as.factor(month),
+                    data = calorie%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&nutrient==index[i,2]), 
+                    index = "id_match", weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor,conf.level = 0.95,conf.int = TRUE) %>%
+    dplyr::select(term,estimate,p.value,conf.low,conf.high) %>%
+    rename(month=term,coef.month=estimate,p=p.value,low=conf.low,high=conf.high) %>%
+    filter(!grepl("as.factor|calorie", month)) %>%
+    mutate(group=c(rep(0,55),rep(1,55))) %>%
+    add_row(month="-3",coef.month=0,group=0,low=0,high=0) %>%
+    add_row(month="-3",coef.month=0,group=1,low=0,high=0) %>%
+    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+    mutate(month=ifelse(month>0,month+1,month)) %>%
+    arrange(group,month) %>%
+    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+    mutate(calorie = ifelse(group==0,coef.month,coef.month+coef.month[1:56])) %>%
+    mutate(low = ifelse(group==0,low,low+low[1:56])) %>%
+    mutate(high = ifelse(group==0,high,high+high[1:56]))
+  # diff in labeled group, months 3-12
+  #columns 1-3
+  treat <- tidy_mod.factor %>% filter(group==1&month>=-8&month<=12) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+12,2] <- paste0(sprintf('%.3f',treat$beta)," (",sprintf('%.3f',treat$low),", ",sprintf('%.3f',treat$high),")")
+  comp <- tidy_mod.factor %>% filter(group==0&month>=-8&month<=12) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+12,3] <- paste0(sprintf('%.3f',comp$beta)," (",sprintf('%.3f',comp$low),", ",sprintf('%.3f',comp$high),")")
+  app_table2[i+12,4] <- paste0(sprintf('%.3f',treat$beta-comp$beta)," (",sprintf('%.3f',treat$low-comp$low),", ",sprintf('%.3f',treat$high-comp$high),")")
+  #columns 4-6
+  treat <- tidy_mod.factor %>% filter(group==1&((month>=-8&month<0)|(month>=13&month<=24))) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+12,5] <- paste0(sprintf('%.3f',treat$beta)," (",sprintf('%.3f',treat$low),", ",sprintf('%.3f',treat$high),")")
+  comp <- tidy_mod.factor %>% filter(group==0&((month>=-8&month<0)|(month>=13&month<=24))) %>%
+    mutate(post=ifelse(month<0,0,1)) %>% group_by(post) %>%
+    summarise(beta=mean(calorie),low=mean(low),high=mean(high)) %>% ungroup() %>%
+    mutate(beta=ifelse(post==1,beta-beta[1],beta),low=ifelse(post==1,low-low[1],low),high=ifelse(post==1,high-high[1],high)) %>%
+    filter(post==1)
+  app_table2[i+12,6] <- paste0(sprintf('%.3f',comp$beta)," (",sprintf('%.3f',comp$low),", ",sprintf('%.3f',comp$high),")")
+  app_table2[i+12,7] <- paste0(sprintf('%.3f',treat$beta-comp$beta)," (",sprintf('%.3f',treat$low-comp$low),", ",sprintf('%.3f',treat$high-comp$high),")")
+}
+app_table2 <- app_table2 %>%  add_row(diff_treat_3_12="",.before=7) %>% add_row(diff_treat_3_12="",.before=7) %>%
+  add_row(diff_treat_3_12="",.before=15) %>% add_row(diff_treat_3_12="",.before=15) %>%
+  add_column(col="",.before=5) %>%
+  mutate_all(~replace(., is.na(.), ""))
+#write.csv(app_table2,"manuscript/tables/app_table2.csv",row.names = FALSE)
+rm(app_table2,calorie,comp,index,matched_use,mod.factor,restaurant,treat,tidy_mod.factor,i)
 
 
 
