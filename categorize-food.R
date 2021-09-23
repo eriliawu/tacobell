@@ -113,7 +113,8 @@ product <- product[,-5]
 ### clean order-type data ----
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
                        stringsAsFactors = FALSE,
-                       col.names = c("yearno", "monthno","restid","category","occasion","calorie","count"))
+                       col.names = c("monthno","restid","category","occasion","calorie","fat","carb","protein",
+                                     "sat_fat","sugar","fiber","sodium","count"))
 sample07q1$calorie <- sample07q1$calorie/2 
 calorie <- NULL
 for (i in 2007:2015) {
@@ -124,7 +125,8 @@ for (i in 2007:2015) {
         sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_",
                                   i,"_Q",j,".csv"),
                            stringsAsFactors = FALSE,
-                           col.names=c("yearno", "monthno","restid","category","occasion","calorie","count"))
+                           col.names=c("monthno","restid","category","occasion","calorie","fat","carb","protein",
+                                       "sat_fat","sugar","fiber","sodium","count"))
         calorie <- rbind(calorie, sample)
       }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
     )
@@ -150,9 +152,8 @@ restaurant$calorie <-restaurant$calorie/restaurant$count
 restaurant$occasion <- NULL
 
 # read in matched restaurant info
-matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed.csv", stringsAsFactors = FALSE)
-matched <- matched[, -c(13:14,16:22)] #delete transaction data related to overall calorie info
-colnames(matched)[13] <- "calorie_overall"
+matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-drive-thru-correct.csv", stringsAsFactors = FALSE)
+matched <- matched[, -c(13:21)] #delete transaction data related to overall calorie info
 category <- merge(matched,restaurant,by=c("address","ownership","concept","monthno"))
 rm(calorie,restaurant,matched)
 
@@ -312,8 +313,6 @@ ggplot() +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/diff-in-diff-by-category.jpeg", dpi="retina")
 
-
-
 ### calorie trend by category ----
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
                        stringsAsFactors = FALSE,
@@ -430,6 +429,141 @@ ggplot(data=sales%>%filter(category<=5|category==9),
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/sales-by-category.jpeg", dpi="retina")
+
+
+
+
+
+
+
+### appendix figure 4B, diff in diff ----
+tidy_mod.factor_all <- NULL
+for (i in c(1:5,8)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = category%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&category==i), 
+                    index = "id_match", weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor)
+  tidy_mod.factor <- tidy_mod.factor %>%
+    dplyr::select(term,estimate,p.value) %>%
+    rename(month=term,coef.month=estimate,p=p.value) %>%
+    filter(!grepl("as.factor|calorie", month)) %>%
+    mutate(group=c(rep(0,55),rep(1,55))) %>%
+    add_row(month="-3",coef.month=0,group=0) %>%
+    add_row(month="-3",coef.month=0,group=1) %>%
+    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+    mutate(month=ifelse(month>0,month+1,month)) %>%
+    arrange(group,month) %>%
+    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+    mutate(calorie=ifelse(group==0,coef.month,coef.month+coef.month[1:56]))
+  tidy_mod.factor$category <- i
+  tidy_mod.factor_all <- rbind(tidy_mod.factor_all,tidy_mod.factor)
+  tidy_mod.factor_all <- tidy_mod.factor_all[!is.na(tidy_mod.factor_all$diff),]
+}
+
+tmp1 <- tidy_mod.factor_all %>% group_by(category) %>%
+  filter(month>=-30&month<0) %>% dplyr::select(month, diff,category) %>%
+  mutate(month = -month) %>% arrange(month) %>% mutate(pre_mean = sum(diff[1:6])/6)
+tmp2 <- tidy_mod.factor_all %>% 
+  filter(month>=1&month<=30) %>% dplyr::select(month, diff,category) %>%
+  arrange(month) %>% rename(post_mean = diff)
+trend <- merge(tmp1,tmp2,by=c("month","category")) %>% group_by(category,month) %>% arrange(category,month) %>%
+  mutate(mean = post_mean - pre_mean) %>% dplyr::select(-diff)
+rm(tmp1,tmp2)
+#hypothesis testing
+presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
+p <- NULL
+for (i in c(1:5,8)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = category%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&category==i), 
+                    index = "id_match", weights = weights, model = "within")
+  tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
+  for (j in 4:29) {
+    tmp$p[j-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",j))[2,4]
+  }
+  p <- rbind(p,tmp)
+}
+trend <- cbind(trend, p)
+rm(i,j,tmp,p,presum)
+
+ggplot() + 
+  geom_line(data=trend, aes(x=month, y=mean, color=factor(category))) + 
+  geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color=factor(category))) +
+  ggplot2::annotate(geom="label", x=6, y=-50, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=-50),color="black",size=1) +
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-100,25),breaks=seq(-100,25,25)) +
+  scale_x_continuous(breaks=seq(3,30,1)) +
+  labs(title="", x="Month", y="Calories") + 
+  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Dessert","Other entree","Salad","Taco"),
+                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("manuscript/figures/appendix-fig4B-diff-in-diff-by-category.jpeg", dpi="retina")
+
+### appendix figure 4A, sales trend, by category ----
+sample07q1 <- read.csv("data/from-bigpurple/sales-by-category/sales-by-category_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("yearno", "monthno","category","occasion","qty"))
+sample07q1$qty <- sample07q1$qty/2 
+sales <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/sales-by-category/sales-by-category_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("yearno", "monthno","category","occasion","qty"))
+        sales <- rbind(sales, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+sales <- rbind(sales, sample07q1)
+rm(i,j,sample,sample07q1)
+names(sales)
+sales <- sales %>% filter(occasion==2) %>%
+  dplyr::select(-c(yearno,occasion)) %>%
+  group_by(monthno,category) %>% summarise(qty = sum(qty)) %>%
+  mutate(total = sum(qty)) %>% mutate(pct = qty/total)
+
+time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
+time <- time %>% dplyr::select(7,17,38) %>% setNames(c("monthno", "year", "month")) %>%
+  mutate(year = as.integer(substr(year, 2, 5))) %>%
+  mutate(month = as.integer(substr(month, 6, 7))) %>%
+  filter(year>=2006) %>% distinct()
+sales <- merge(sales, time, by="monthno") %>% filter(complete.cases(.))
+rm(time)
+
+ggplot(data=sales%>%filter(category<=5|category==8),
+       aes(x=interaction(year,month,lex.order = TRUE), y=pct,color=factor(category),group=factor(category))) +
+  geom_line() + 
+  ggplot2::annotate(geom="text",x=1:106,y=-0.01,label=c(NA,rep(c(1,NA,3,NA,5,NA,7,NA,9,NA,11,NA),8),c(1,NA,3,NA,5,NA,7,NA,9)),size = 2) + 
+  ggplot2::annotate(geom="text",x=c(1,7+12*(0:8)),y=-0.03,label=unique(sales$year),size=3) +
+  geom_vline(xintercept = 50, color="grey",linetype="dashed") +
+  geom_vline(xintercept = 62, color="grey",linetype="dashed") +
+  coord_cartesian(ylim=c(0,0.5), expand = FALSE, clip = "off") + #important to have ylim set to what i actually want to display
+  scale_y_continuous(limits=c(-0.1,0.5),breaks=seq(-0.1,0.5,0.05),labels=scales::percent) + #important to set ylim here to include text labels
+  labs(title="",x="",y="Percent of sales") + 
+  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Dessert","Other entree","Salad","Taco"),
+                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) +  
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.y = element_text(size = 12),
+        axis.title.x = element_text(vjust = -15, size = 12),
+        axis.text.x = element_blank(), #turn off default x axis label
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/sales-by-category.jpeg", dpi="retina")
+
+
 
 
 

@@ -332,52 +332,6 @@ table3 <- table3 %>%
 #write.csv(table3, "manuscript/tables/table3.csv")
 rm(treat,comp,mod.factor,table3,p,presum,tidy_mod.factor)
 
-### analysis by restaurant open time after labeling ----
-#restaurants open for at least 12, 15, 18, 21, 24 months after labeling
-tidy_mod.factor_all <- NULL
-for (i in c(12,15,18,21,24,27,30)) {
-  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
-                    data = matched%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&open_after>=i), 
-                    index = "id_match", weights = weights, model = "within")
-  tidy_mod.factor <- tidy(mod.factor)
-  tidy_mod.factor <- tidy_mod.factor %>%
-    dplyr::select(term,estimate,p.value) %>%
-    rename(month=term,coef.month=estimate,p=p.value) %>%
-    filter(!grepl("as.factor|calorie", month)) %>%
-    mutate(group=c(rep(0,55),rep(1,55))) %>%
-    add_row(month="-3",coef.month=0,group=0) %>%
-    add_row(month="-3",coef.month=0,group=1) %>%
-    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
-    mutate(month=ifelse(month>0,month+1,month)) %>%
-    arrange(group,month) %>%
-    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
-    mutate(calorie=ifelse(group==0,coef.month,coef.month+coef.month[1:56]))
-  tidy_mod.factor$time <- i
-  tidy_mod.factor_all <- rbind(tidy_mod.factor_all,tidy_mod.factor)
-}
-tidy_mod.factor_all <- tidy_mod.factor_all[!is.na(tidy_mod.factor_all$diff),]
-
-summary(tidy_mod.factor_all$diff) #[-100,16]
-ggplot(data=tidy_mod.factor_all,aes(x=month, y=diff,color=as.character(time))) + #
-  geom_point(size=1) + geom_line() +
-  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
-  ggplot2::annotate("rect", xmin=-3, xmax=3, ymin=-100, ymax=25, fill = "grey") + #add shaded area
-  ggplot2::annotate(geom="label", x=0, y=-50, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
-  coord_cartesian(expand = FALSE, clip = "off") + 
-  scale_y_continuous(limits=c(-100,25),breaks=seq(-100,25,25)) +
-  scale_x_continuous(breaks=c(seq(-30,-3,3),seq(3,30,3))) + 
-  labs(title="Effect of menu labeling on calories purchased, by open time after ML", x="Month", y="Calories in difference", 
-       caption="calorie = treat + month(relative) + treat*month(relative) + ∑month_1-12 + ∑restaurant") + 
-  scale_color_manual(name="Open after labeling", labels=c("12 months","15 months","18 months","21 months","24 months","27 months","30 months"),
-                       values=c("hotpink","olivedrab3","red","orange","grey","purple","#13B0E4")) +
-  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
-        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
-        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
-        axis.title.y = element_text(size = 12),
-        legend.text=element_text(size=10),
-        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/cal=treat+month_monthFE_restaurantFE-by-open-time.jpeg", dpi="retina")
-
 ### table 2, calories and nutrients in follow-up period ----
 #read in by occasion data, for panels order type and geography
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_2007_Q1.csv",
@@ -624,6 +578,7 @@ for (i in c("fat","carb","protein","sat_fat","sugar","fiber","sodium")) {
 }
 trend$nutrient <- factor(trend$nutrient,levels = c("fat","carb","protein","sat_fat","sugar","fiber","sodium"))
 
+# figure with sodium
 summary(trend$mean) #[-82,56]
 ggplot() + 
   geom_line(data=trend, aes(x=month, y=mean, color=nutrient)) + 
@@ -644,6 +599,27 @@ ggplot() +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
         panel.grid.minor = element_blank())
 #ggsave("manuscript/figures/appendix-fig3-diff-in-diff-nutrients.jpeg", dpi="retina")
+
+# figure without sodium
+ggplot() + 
+  geom_line(data=trend%>%filter(nutrient!="sodium"), aes(x=month, y=mean, color=nutrient)) + 
+  geom_point(data=trend%>%filter(p<0.05&nutrient!="sodium"), aes(x=month, y=mean, color=nutrient),size=1) +
+  ggplot2::annotate(geom="label", x=6, y=2, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=2),color="black",size=1) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-10,10),breaks=seq(-10,10,2)) +
+  scale_x_continuous(breaks=seq(3,30,1)) +
+  labs(title="", x="Month", y="Difference-in-difference estimate", caption="") + 
+  scale_color_manual(name="Nutrient", labels=c("Total fat (g)","Carbohydrate (g)","Protein (g)","Saturated fat (g)","Sugar (g)","Fiber (g)"),
+                     values=c("hotpink","olivedrab3","#13B0E4","orange","red","grey")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        panel.grid.minor = element_blank())
+#ggsave("manuscript/figures/appendix-fig3-diff-in-diff-nutrients-wo-sodium.jpeg", dpi="retina")
 rm(tmp,tmp1,tmp2,mod.factor,tidy_mod.factor,i,j,presum,trend,restaurant,calorie)
 
 ### appendix table 1, number of restaurants, by open time ----
@@ -701,7 +677,7 @@ app_table1 <- app_table1 %>% mutate(open12=paste0(open12," (",sprintf('%.2f',ope
 #write.csv(app_table1,"manuscript/tables/app_table1.csv")  
 
 ### appendix table 3, compare top selling items, items sold in every month of the study period ----
-app_tabl3 <- data.frame(matrix(data=NA,ncol = 3,nrow = 6)) %>% setNames(c("baseline","followup","p")) %>%
+app_table3 <- data.frame(matrix(data=NA,ncol = 3,nrow = 6)) %>% setNames(c("baseline","followup","p")) %>%
   add_column(sample=c("treat, each period","comp, each period","treat, all period","comp, all period","treat, new items","comp, new items"),.before = 1)
 # compare top 100 items for treated and comparison group
 # aggregate items every sold in treated restaurants, find the items that were sold in every month
@@ -749,24 +725,56 @@ tmp <- calorie %>% filter(relative2>=-8 & relative2<=11) %>%
   group_by(treat,post) %>% mutate(rank=row_number()) %>% filter(rank<=100)
 
 for (i in c(0,1)) {
-  app_tabl3[1,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==1&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==1&tmp$post==i])),")")
-  app_tabl3[2,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==0&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==0&tmp$post==i])),")")
+  app_table3[1,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==1&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==1&tmp$post==i])),")")
+  app_table3[2,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==0&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==0&tmp$post==i])),")")
 }
-app_tabl3[1,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==1&tmp$post==0],tmp$calorie[tmp$treat==1&tmp$post==1])$p.value)
-app_tabl3[2,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==0&tmp$post==0],tmp$calorie[tmp$treat==0&tmp$post==1])$p.value)
+app_table3[1,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==1&tmp$post==0],tmp$calorie[tmp$treat==1&tmp$post==1])$p.value)
+app_table3[2,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==0&tmp$post==0],tmp$calorie[tmp$treat==0&tmp$post==1])$p.value)
 
 # panel 2
 # figure out which items sold in every month during the entire study period
 # get top 100 selling items for both groups, in pre- and post-periods
-tmp <- calorie %>% 
+tmp1 <- calorie %>% 
   dplyr::select(treat,monthno,full,calorie,qty,relative2) %>% group_by(treat,monthno,full,calorie) %>%
   summarise(qty=sum(qty)) %>% arrange(treat,full,monthno) %>% group_by(treat,full) %>%
-  mutate(rank=row_number()) %>% mutate(rank=max(rank)) %>% filter(rank==106)
+  mutate(rank=row_number()) %>% mutate(rank=max(rank)) %>% filter(rank==106) %>% dplyr::select(treat,full) %>% distinct()
+#merge the list of items back to data
+tmp <- calorie %>% dplyr::select(treat,full,calorie,qty,relative2) %>% right_join(y=tmp1,by=c("full","treat")) %>%
+  mutate(post=ifelse(relative2<0,0,1)) %>% group_by(treat,post,full,calorie) %>% summarise(qty=sum(qty)) %>%
+  arrange(treat,post,desc(qty)) %>% group_by(treat,post) %>% mutate(rank=row_number()) #num of items consistently sold during entire period is smaller than 100
+for (i in c(0,1)) {
+  app_table3[3,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==1&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==1&tmp$post==i])),")")
+  app_table3[4,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==0&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==0&tmp$post==i])),")")
+}
+app_table3[3,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==1&tmp$post==0],tmp$calorie[tmp$treat==1&tmp$post==1])$p.value)
+app_table3[4,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==0&tmp$post==0],tmp$calorie[tmp$treat==0&tmp$post==1])$p.value)
 
-  
-%>% filter(rank==210) %>% mutate(post=ifelse(relative2<0,0,1)) %>%
-  group_by(treat,post,full,calorie) %>% summarise(qty=sum(qty)) %>% arrange(treat,post,desc(qty)) %>%
-  group_by(treat,post) %>% mutate(rank=row_number()) %>% filter(rank<=100)
+# panel 3
+# newly introduced items in baseline and follow-up period
+# get list of items ever sold in relative2 < -8, get list of items sold between -8 and -3, anti join the two lists 
+# get list of items ever sold in relative2 <= -3, get list of items sold between 3 and 12, anti join the two lists
+tmp <- calorie %>% dplyr::select(treat,relative2,full,calorie) %>% filter(relative2<=-3) %>% mutate(new=ifelse(relative2< -8,0,1)) %>%
+  distinct(treat,new,full,calorie) %>% arrange(full,treat,new) %>% group_by(treat,full) %>%
+  mutate(rank=row_number()) %>% mutate(total=max(rank)) %>% filter(new==1&rank==1&total==1) %>% dplyr::select(treat,full,calorie) %>%
+  mutate(post=0)
+tmp1 <- calorie %>% dplyr::select(treat,relative2,full,calorie) %>% filter(relative2<= -3 |(relative2>=2&relative2<=11)) %>% mutate(new=ifelse(relative2<= -3,0,1)) %>%
+  distinct(treat,new,full,calorie) %>% arrange(full,treat,new) %>% group_by(treat,full) %>%
+  mutate(rank=row_number()) %>% mutate(total=max(rank)) %>% filter(new==1&rank==1&total==1) %>% dplyr::select(treat,full,calorie) %>%
+  mutate(post=1)
+tmp <- rbind(tmp,tmp1) %>% ungroup()
+for (i in c(0,1)) {
+  app_table3[5,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==1&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==1&tmp$post==i])),")")
+  app_table3[6,i+2] <- paste0(sprintf('%.0f',mean(tmp$calorie[tmp$treat==0&tmp$post==i]))," (",sprintf('%.0f',sd(tmp$calorie[tmp$treat==0&tmp$post==i])),")")
+}
+app_table3[5,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==1&tmp$post==0],tmp$calorie[tmp$treat==1&tmp$post==1])$p.value)
+app_table3[6,4] <- sprintf('%.3f',t.test(tmp$calorie[tmp$treat==0&tmp$post==0],tmp$calorie[tmp$treat==0&tmp$post==1])$p.value)
+#get sales % of these new items
+all <- calorie %>% dplyr::select(full,qty) %>% group_by(full) %>% summarise(qty=sum(qty)) %>% arrange(desc(qty)) %>% mutate(pct=qty/sum(qty))
+tmp <- tmp %>% dplyr::select(full) %>% distinct() %>% left_join(y=all,by="full") %>% summarise(pct=sum(pct))
+app_table3<- app_table3 %>% add_row(sample="",.before=3) %>% add_row(sample="",.before=6) %>% add_row(sample="For panel3, new items introduced in both baseline and follow-up period represent approximately 5.45% of sales.") %>%
+  mutate_all(~replace(., is.na(.), "")) 
+write.csv(app_table3,"manuscript/tables/app_table3.csv",row.names = FALSE)
+rm(app_table3,tmp,tmp1,i,match_use,calorie,all)
 
 ### appendix table X, baseline characteristics ----
 appen_tablex <- data.frame(matrix(data=NA, ncol=14, nrow = 32)) %>% 
@@ -1226,12 +1234,222 @@ app_table2 <- app_table2 %>%  add_row(diff_treat_3_12="",.before=7) %>% add_row(
   add_row(diff_treat_3_12="",.before=15) %>% add_row(diff_treat_3_12="",.before=15) %>%
   add_column(col="",.before=5) %>%
   mutate_all(~replace(., is.na(.), ""))
-#write.csv(app_table2,"manuscript/tables/app_table2.csv",row.names = FALSE)
+write.csv(app_table2,"manuscript/tables/app_table2.csv",row.names = FALSE)
 rm(app_table2,calorie,comp,index,matched_use,mod.factor,restaurant,treat,tidy_mod.factor,i)
 
 
 
 
+
+
+
+
+### contextual information ----
+#number of comparison restaurants located in TX
+length(unique(paste0(matched$state[matched$treat==0],matched$county[matched$treat==0]))) #328
+length(unique(matched$state[matched$treat==0])) #34
+length(unique(matched$id_match[matched$state=="TX"]))/length(unique(matched$id_match[matched$treat==0])) #0.1588
+
+### appendix figure 4AB, diff in diff by food category ----
+#use the categorize-food.R script
+### appendix figure 6, diff in diff by open time ----
+tidy_mod.factor_all <- NULL
+for (i in c(12,15,18,21,24,27,30)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = matched%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&open_after>=i), 
+                    index = "id_match", weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor)
+  tidy_mod.factor <- tidy_mod.factor %>%
+    dplyr::select(term,estimate,p.value) %>%
+    rename(month=term,coef.month=estimate,p=p.value) %>%
+    filter(!grepl("as.factor|calorie", month)) %>%
+    mutate(group=c(rep(0,55),rep(1,55))) %>%
+    add_row(month="-3",coef.month=0,group=0) %>%
+    add_row(month="-3",coef.month=0,group=1) %>%
+    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+    mutate(month=ifelse(month>0,month+1,month)) %>%
+    arrange(group,month) %>%
+    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+    mutate(calorie=ifelse(group==0,coef.month,coef.month+coef.month[1:56]))
+  tidy_mod.factor$time <- i
+  tidy_mod.factor_all <- rbind(tidy_mod.factor_all,tidy_mod.factor)
+}
+tidy_mod.factor_all <- tidy_mod.factor_all[!is.na(tidy_mod.factor_all$diff),]
+tmp1 <- tidy_mod.factor_all %>% group_by(time) %>%
+  filter(month>=-30&month<0) %>% dplyr::select(month,diff,time) %>%
+  mutate(month = -month) %>% arrange(month) %>% mutate(pre_mean = sum(diff[1:6])/6)
+tmp2 <- tidy_mod.factor_all %>% 
+  filter(month>=1&month<=30) %>% dplyr::select(month, diff,time) %>%
+  arrange(month) %>% rename(post_mean = diff)
+trend <- merge(tmp1,tmp2,by=c("month","time")) %>% group_by(time,month) %>% arrange(time,month) %>%
+  mutate(mean = post_mean - pre_mean) %>% dplyr::select(-diff) 
+rm(tmp1,tmp2)
+#hypothesis testing
+presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
+p <- NULL
+for (i in c(12,15,18,21,24,27,30)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = matched%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&open_after>=i), 
+                    index = "id_match", weights = weights, model = "within")
+  tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
+  for (j in 4:29) {
+    tmp$p[j-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",j))[2,4]
+  }
+  p <- rbind(p,tmp)
+}
+trend <- cbind(trend, p)
+rm(i,j,tmp,p,presum)
+
+ggplot() + #
+  geom_point(data=trend%>%filter(p<0.05),aes(x=month, y=mean,color=as.character(time)),size=1) +
+  geom_line(data=trend,aes(x=month, y=mean,color=as.character(time))) +
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-100,25),breaks=seq(-100,25,25)) +
+  scale_x_continuous(breaks=c(3:30)) + 
+    labs(title="", x="Month", y="Calories") + 
+  scale_color_manual(name="Open after labeling", labels=c("12 months","15 months","18 months","21 months","24 months","27 months","30 months"),
+                     values=c("hotpink","olivedrab3","red","orange","grey","purple","#13B0E4")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("manuscript/figures/appendix-fig6-diff-in-diff-open-time.jpeg", dpi="retina")
+rm(mod.factor,tidy_mod.factor,tidy_mod.factor_all,trend)
+
+### appenfix figure 5B, diff in diff, by meal time ----
+### clean meal-time data ----
+sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_2007_Q1.csv",
+                       stringsAsFactors = FALSE,
+                       col.names = c("restid", "yearno", "monthno","meal", "calorie", "fat",
+                                     "sat_fat", "carb", "protein", "sodium", "count", "dollar"))
+sample07q1[, c(5:10,12)] <- sample07q1[, c(5:10,12)]/2 
+calorie <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_",
+                                  i,"_Q",j,".csv"),
+                           stringsAsFactors = FALSE,
+                           col.names=c("restid", "yearno", "monthno","meal", "calorie", "fat", "sat_fat",
+                                       "carb", "protein", "sodium", "count", "dollar"))
+        calorie <- rbind(calorie, sample)
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
+    )
+  }
+}
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+
+#read in restaurant information
+restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",stringsAsFactors = FALSE)
+restaurant <- restaurant[,c(1:2,10,14)]
+restaurant <- merge(restaurant,calorie,by="restid")
+
+# aggregate on address, instead of restid
+restaurant$restid <- NULL
+restaurant$yearno <- NULL
+restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY",1,0)
+restaurant$concept <- ifelse(restaurant$concept=="TBC",1,0)
+restaurant <- aggregate(data=restaurant, .~address+concept+ownership+monthno+meal, sum)
+restaurant <- restaurant[!duplicated(restaurant), ]
+restaurant[,c(6:11,13)] <- restaurant[,c(6:11,13)]/restaurant$count
+
+# read in matched restaurant info
+matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-drive-thru-correct.csv", stringsAsFactors = FALSE)
+matched <- matched[, -c(13:21)] #delete transaction data related to overall calorie info
+meal <- merge(matched,restaurant,by=c("address","ownership","concept","monthno"))
+### preparing data, meal-time
+meal$tract_num <- substr(meal$tract_num, 2, 12)
+meal <- meal %>% filter(complete.cases(meal)) %>%
+  mutate(id = group_indices(., address, tract_num, ownership, concept)) %>%
+  dplyr::select(id, address:dollar) %>% 
+  arrange(id, meal, monthno) %>% group_by(id, treat, match_place, meal) %>%
+  mutate(rank=row_number(id)) %>% mutate(open_month=max(rank))
+summary(meal$rank) #sanity check, the max should be 106
+meal$relative2 <- meal$monthno - meal$entry #month 0 is first month of ML
+meal$relative2.factor <- factor(meal$relative2)
+meal <- within(meal, relative2.factor<-relevel(relative2.factor, ref="0"))
+meal$id_match <- paste0(meal$id, meal$match_place)
+
+tidy_mod.factor_all <- NULL
+for (i in c(1:6)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = meal%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&meal==i), 
+                    index = "id_match", weights = weights, model = "within")
+  tidy_mod.factor <- tidy(mod.factor)
+  tidy_mod.factor <- tidy_mod.factor %>%
+    dplyr::select(term,estimate,p.value) %>%
+    rename(month=term,coef.month=estimate,p=p.value) %>%
+    filter(!grepl("as.factor|calorie", month)) %>%
+    mutate(group=c(rep(0,55),rep(1,55))) %>%
+    add_row(month="-3",coef.month=0,group=0) %>%
+    add_row(month="-3",coef.month=0,group=1) %>%
+    mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+    mutate(month=ifelse(month>0,month+1,month)) %>%
+    arrange(group,month) %>%
+    mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+    mutate(calorie=ifelse(group==0,coef.month,coef.month+coef.month[1:56]))
+  tidy_mod.factor$meal <- i
+  tidy_mod.factor_all <- rbind(tidy_mod.factor_all,tidy_mod.factor)
+  tidy_mod.factor_all <- tidy_mod.factor_all[!is.na(tidy_mod.factor_all$diff),]
+}
+tmp1 <- tidy_mod.factor_all %>% group_by(meal) %>%
+  filter(month>=-30&month<0) %>% dplyr::select(month, diff, meal) %>%
+  mutate(month = -month) %>% arrange(meal,month) %>%
+  mutate(pre_mean = sum(diff[1:6])/6)
+tmp2 <- tidy_mod.factor_all %>% group_by(meal) %>%
+  filter(month>=1&month<=30) %>% dplyr::select(month, diff, meal) %>%
+  arrange(meal,month) %>%
+  rename(post_mean = diff)
+trend <- merge(tmp1,tmp2,by=c("month","meal")) %>%
+  group_by(meal,month) %>%
+  arrange(meal,month) %>%
+  mutate(mean = post_mean - pre_mean) %>% select(-diff)
+rm(tmp1,tmp2)
+#hypothesis testing
+presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
+p <- NULL
+for (i in c(1:6)) {
+  mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                    data = meal%>%filter(((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29))&meal==i), 
+                    index = "id_match", weights = weights, model = "within")
+  tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
+  for (j in 4:29) {
+    tmp$p[j-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",j))[2,4]
+  }
+  p <- rbind(p,tmp)
+}
+trend <- cbind(trend, p)
+rm(i,j,tmp,p,presum)
+
+ggplot() + 
+  geom_line(data=trend, aes(x=month, y=mean, color=factor(meal))) + 
+  geom_point(data=trend%>%filter(p<0.05), aes(x=month, y=mean, color=factor(meal))) +
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=6, y=-100, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=-100),color="black",size=1) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-220,40),breaks=seq(-220,40,20)) +
+  scale_x_continuous(breaks=seq(3,30,1)) +
+  labs(title="", x="Month", y="Calories") + 
+  scale_color_manual(name="Ordery type",values = c("hotpink","olivedrab3","#13B0E4","purple","orange","grey"),
+                     labels=c("Late night (00:00-03:59)","Breakfast (04:00-10:59)","Lunch (11:00-13:59)",
+                              "Afternoon (14:00-16:59)","Dinner (17:00-20:59)","Evening (21:00-23:59)")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("manuscript/figures/appendix-fig5B-diff-in-diff-mealtime.jpeg", dpi="retina")
+rm(calorie,meal,mod.factor,tidy_mod.factor,tidy_mod.factor_all,trend,restaurant)
 
 
 
