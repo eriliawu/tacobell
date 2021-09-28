@@ -94,7 +94,7 @@ rm(tmp)
 matched <- within(matched, relative2.factor<-relevel(relative2.factor, ref="-3"))
 matched$id_match <- paste0(matched$id, matched$match_place)
 
-### fig 1, cal=group*month(factor), diff-in-diff line underneath ----
+### fig 1, diff in diff ----
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = matched%>%filter((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29)), 
                   index = "id_match", weights = weights, model = "within")
@@ -131,11 +131,12 @@ for (i in 4:29) {
 }
 trend <- cbind(trend, tmp) %>% dplyr::select(month,mean,p) %>% mutate(group=1)
 trend <- merge(trend,tidy_mod.factor,by=c("group","month"), all=TRUE)
+trend <- trend %>% add_row(group=2) #manually add group=2 as the diff in diff line for the orange color
 
 # add year and month factor as covariate
 summary(trend$calorie) #[-95,132]
 summary(trend$mean) #[-89,10]
-ggplot(data=trend,aes(x=month, y=calorie,color=as.character(group))) + 
+ggplot(data=tmp,aes(x=month, y=calorie,color=as.character(group))) + 
   geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
   geom_hline(yintercept = -250, color="grey", linetype="dashed", size=0.5) +
   geom_point() + geom_line() +
@@ -150,7 +151,7 @@ ggplot(data=trend,aes(x=month, y=calorie,color=as.character(group))) +
                      sec.axis = sec_axis(~(.+200)/1, name="Difference-in-different estimate")) +
   scale_x_continuous(breaks=c(seq(-30,-3,3),seq(3,30,3))) + #select which months to display
   labs(title="", x="Month", y="Calorie difference estimate", caption="") + 
-  scale_color_discrete(name="Menu labeling", labels=c("No", "Yes")) +
+  scale_color_manual(name="Menu labeling",labels=c("No","Yes","Difference"),values=c("#F8766D","#00BFC4","orange")) +
   theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
         panel.grid.minor = element_blank(),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
@@ -159,8 +160,8 @@ ggplot(data=trend,aes(x=month, y=calorie,color=as.character(group))) +
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("manuscript/figures/fig1-diff-in-diff.jpeg", dpi="retina")
-
-### fig3, diff in diff, by location ----
+rm(mod.factor,tidy_mod.factor,trend,i,presum)
+### fig 2, diff in diff, by location ----
 trend <- NULL
 presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
 for (p in c("ca","ma","or","suffolk")) {
@@ -220,7 +221,29 @@ ggplot() +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
         panel.grid.minor = element_blank())
 #ggsave("manuscript/figures/fig2-diff-in-diff-by-loc.jpeg", dpi="retina")
-rm(tmp1,tmp2,tmp,mod.factor,i,p,tidy_mod.factor,trend)
+
+#remove suffolk county
+ggplot() + 
+  geom_line(data=trend%>%filter(loc!="suffolk"), aes(x=month, y=mean, color=loc)) + 
+  geom_point(data=trend%>%filter(p<0.05&loc!="suffolk"), aes(x=month, y=mean, color=loc)) +
+  ggplot2::annotate(geom="label", x=6, y=13, label="   p<0.05", size=3) + 
+  geom_point(aes(x=5.35,y=13),color="black",size=1) +
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-125,50),breaks=seq(-125,50,25)) +
+  scale_x_continuous(breaks=seq(3,30,1)) +
+  labs(title="", x="Month", y="Difference-in-difference estimate", caption="") + 
+  scale_color_manual(name="Location", labels=c("California","Massachusetts","Oregon"),
+                     values=c("hotpink","olivedrab3","#13B0E4")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        panel.grid.minor = element_blank())
+#ggsave("manuscript/figures/fig2-diff-in-diff-by-loc-wo-suffolk.jpeg", dpi="retina")
+rm(tmp1,tmp2,tmp,mod.factor,i,p,tidy_mod.factor,trend,presum)
 
 ### table 3, diff in diff, overall and by location ----
 #set up table shell
@@ -332,7 +355,7 @@ table3 <- table3 %>%
 #write.csv(table3, "manuscript/tables/table3.csv")
 rm(treat,comp,mod.factor,table3,p,presum,tidy_mod.factor)
 
-### table 2, calories and nutrients in follow-up period ----
+### table 2, calories and nutrients in follow-up periodm treat=1 only ----
 #read in by occasion data, for panels order type and geography
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_2007_Q1.csv",
                        stringsAsFactors = FALSE,
@@ -366,12 +389,16 @@ calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(
   group_by(address,concept,ownership,monthno,tract_num,occasion) %>% summarise_all(sum)
 matched_use <- matched %>% filter(treat==1&relative2>=2&relative2<=11) %>% dplyr::select(address,tract_num,concept,ownership,monthno,match_place)
 calorie <- merge(calorie,matched_use,by=c("address","monthno","concept","ownership","tract_num"))  %>%
-  mutate(across(calorie:sodium, ~ ./count)) %>% dplyr::select(-count)
+  mutate(across(calorie:sodium, ~ ./count))
+
+table2 <- data.frame(matrix(data=NA,nrow = 21,ncol = 9)) %>%
+  setNames(c("cal","fat","carb","protein","sat_fat","sugar","fiber","sodium","pct_sales"))
+rownames(table2) <- c("drive-thru","eat-in","takeout",
+                      "ca","ma","or","mont","suffolk","king",
+                      "taco","burrito","salad","other","dessert","bev",
+                      "latenight","breakfast","lunch","afternoon","dinner","evening")
 
 #aggregate panel 1, by order type
-table2 <- data.frame(matrix(data=NA,nrow = 21,ncol = 8)) %>% setNames(c("cal","fat","carb","protein","sat_fat","sugar","fiber","sodium"))
-rownames(table2) <- c("drive-thru","eat-in","takeout","ca","ma","or","mont","suffolk","king",
-                      "taco","burrito","salad","other","dessert","bev","latenight","breakfast","lunch","afternoon","dinner","evening")
 tmp <- calorie %>% dplyr::select(occasion:sodium) %>% group_by(occasion) %>% summarise_all(list(mean=mean,sd=sd)) %>%
   mutate(cal=paste0(sprintf('%.0f',calorie_mean)," (",sprintf('%.0f',calorie_sd),")")) %>%
   mutate(fat=paste0(sprintf('%.2f',fat_mean)," (",sprintf('%.2f',fat_sd),")")) %>%
@@ -383,7 +410,12 @@ tmp <- calorie %>% dplyr::select(occasion:sodium) %>% group_by(occasion) %>% sum
   mutate(sodium=paste0(sprintf('%.0f',sodium_mean)," (",sprintf('%.0f',sodium_sd),")")) %>%
   dplyr::select(-c(2:17))
 tmp <- tmp[c(2,1,3),]
-table2[1:3,] <- tmp[,2:9]
+table2[1:3,1:8] <- tmp[,2:9]
+tmp <- calorie %>% group_by(occasion) %>% summarise(count=sum(count)) %>% ungroup() %>%
+  mutate(pct=sprintf('%.2f',count/sum(count)*100))
+tmp <- tmp[c(2,1,3),]
+table2[1:3,9] <- tmp[,3]
+
 #panel 2, by location
 tmp <- calorie %>% filter(occasion==2) %>% dplyr::select(calorie:match_place) %>% group_by(match_place) %>%
   summarise_all(list(mean=mean,sd=sd)) %>%
@@ -395,9 +427,14 @@ tmp <- calorie %>% filter(occasion==2) %>% dplyr::select(calorie:match_place) %>
   mutate(sugar=paste0(sprintf('%.2f',sugar_mean)," (",sprintf('%.2f',sugar_sd),")")) %>%
   mutate(fiber=paste0(sprintf('%.2f',fiber_mean)," (",sprintf('%.2f',fiber_sd),")")) %>%
   mutate(sodium=paste0(sprintf('%.0f',sodium_mean)," (",sprintf('%.0f',sodium_sd),")")) %>%
-  dplyr::select(-c(2:17))
+  dplyr::select(-c(2:19))
 tmp <- tmp[c(1,3,5,4,6,2),]
-table2[4:9,] <- tmp[,2:9]
+table2[4:9,1:8] <- tmp[,2:9]
+tmp <- calorie %>% filter(occasion==2) %>% group_by(match_place) %>% 
+  summarise(count=sum(count)) %>% ungroup() %>%
+  mutate(pct=sprintf('%.2f',count/sum(count)*100))
+tmp <- tmp[c(1,3,5,4,6,2),]
+table2[4:9,9] <- tmp[,3]
 
 #panel 3, read by-category data
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-category-occasion/mean-calorie-by-group-occasion_2007_Q1.csv",
@@ -426,7 +463,7 @@ rm(sample, sample07q1, i, j)
 calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(-restid) %>%
   group_by(address,concept,ownership,monthno,tract_num,category) %>% summarise_all(sum)
 calorie <- merge(calorie,matched_use,by=c("address","monthno","concept","ownership","tract_num"))  %>%
-  mutate(across(calorie:sodium, ~ ./count)) %>% dplyr::select(-count)
+  mutate(across(calorie:sodium, ~ ./count)) 
 tmp <- calorie %>% dplyr::select(category:sodium) %>% group_by(category) %>% summarise_all(list(mean=mean,sd=sd)) %>%
   mutate(cal=paste0(ifelse(calorie_mean>=100,sprintf('%.0f',calorie_mean),sprintf('%.2f',calorie_mean)),
                     " (",ifelse(calorie_sd>=100,sprintf('%.0f',calorie_sd),sprintf('%.2f',calorie_sd)),")")) %>%
@@ -446,7 +483,11 @@ tmp <- calorie %>% dplyr::select(category:sodium) %>% group_by(category) %>% sum
                     " (",ifelse(sodium_sd>=100,sprintf('%.0f',sodium_sd),sprintf('%.2f',sodium_sd)),")")) %>%
   dplyr::select(-c(2:17))
 tmp <- tmp[c(6,2,5,4,3,1),]
-table2[10:15,] <- tmp[,2:9]
+table2[10:15,1:8] <- tmp[,2:9]
+tmp <- calorie %>%  group_by(category) %>% summarise(count=sum(count)) %>% ungroup() %>%
+  mutate(pct=sprintf('%.2f',count/sum(count)*100))
+tmp <- tmp[c(6,2,5,4,3,1),]
+table2[10:15,9] <- tmp[,3]
 
 # panel 4, read by daypart data
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart-occasion/mean-calorie_restid_daypart_2007_Q1.csv",
@@ -475,7 +516,7 @@ rm(sample, sample07q1, i, j)
 calorie <- merge(calorie,restaurant,by="restid",all.x = TRUE) %>% dplyr::select(-restid) %>%
   group_by(address,concept,ownership,monthno,tract_num,daypart) %>% summarise_all(sum)
 calorie <- merge(calorie,matched_use,by=c("address","monthno","concept","ownership","tract_num"))  %>%
-  mutate(across(calorie:sodium, ~ ./count)) %>% dplyr::select(-count)
+  mutate(across(calorie:sodium, ~ ./count))
 tmp <- calorie %>% dplyr::select(daypart:sodium) %>% group_by(daypart) %>% summarise_all(list(mean=mean,sd=sd)) %>%
   mutate(cal=paste0(ifelse(calorie_mean>=100,sprintf('%.0f',calorie_mean),sprintf('%.2f',calorie_mean)),
                     " (",ifelse(calorie_sd>=100,sprintf('%.0f',calorie_sd),sprintf('%.2f',calorie_sd)),")")) %>%
@@ -494,8 +535,12 @@ tmp <- calorie %>% dplyr::select(daypart:sodium) %>% group_by(daypart) %>% summa
   mutate(sodium=paste0(ifelse(sodium_mean>=100,sprintf('%.0f',sodium_mean),sprintf('%.2f',sodium_mean)),
                        " (",ifelse(sodium_sd>=100,sprintf('%.0f',sodium_sd),sprintf('%.2f',sodium_sd)),")")) %>%
   dplyr::select(-c(2:17))
-table2[16:21,] <- tmp[,2:9]
+table2[16:21,1:8] <- tmp[,2:9]
 table2$fiber <- gsub("-","",table2$fiber)
+tmp <- calorie %>%  group_by(daypart) %>% summarise(count=sum(count)) %>% ungroup() %>%
+  mutate(pct=sprintf('%.2f',count/sum(count)*100))
+table2[16:21,9] <- tmp[,3]
+
 table2 <- table2 %>%
   add_row(cal="",.before=1) %>% add_row(cal="",.before=5) %>% add_row(cal="",.before=5) %>%
   add_row(cal="",.before=13) %>% add_row(cal="",.before=13) %>%
@@ -1320,8 +1365,7 @@ ggplot() + #
 #ggsave("manuscript/figures/appendix-fig6-diff-in-diff-open-time.jpeg", dpi="retina")
 rm(mod.factor,tidy_mod.factor,tidy_mod.factor_all,trend)
 
-### appenfix figure 5B, diff in diff, by meal time ----
-### clean meal-time data ----
+### appenfix figure 5AB, diff in diff, by meal time ----
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_2007_Q1.csv",
                        stringsAsFactors = FALSE,
                        col.names = c("restid", "yearno", "monthno","meal", "calorie", "fat",
@@ -1360,9 +1404,11 @@ restaurant <- aggregate(data=restaurant, .~address+concept+ownership+monthno+mea
 restaurant <- restaurant[!duplicated(restaurant), ]
 restaurant[,c(6:11,13)] <- restaurant[,c(6:11,13)]/restaurant$count
 
+tmp<-matched[is.na(matched$year),]
+
 # read in matched restaurant info
 matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-drive-thru-correct.csv", stringsAsFactors = FALSE)
-matched <- matched[, -c(13:21)] #delete transaction data related to overall calorie info
+matched <- matched[!is.na(matched$year), -c(13:21)] #delete transaction data related to overall calorie info
 meal <- merge(matched,restaurant,by=c("address","ownership","concept","monthno"))
 ### preparing data, meal-time
 meal$tract_num <- substr(meal$tract_num, 2, 12)
@@ -1376,7 +1422,7 @@ meal$relative2 <- meal$monthno - meal$entry #month 0 is first month of ML
 meal$relative2.factor <- factor(meal$relative2)
 meal <- within(meal, relative2.factor<-relevel(relative2.factor, ref="0"))
 meal$id_match <- paste0(meal$id, meal$match_place)
-
+#figure 5B
 tidy_mod.factor_all <- NULL
 for (i in c(1:6)) {
   mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
@@ -1438,7 +1484,7 @@ ggplot() +
   scale_y_continuous(limits=c(-220,40),breaks=seq(-220,40,20)) +
   scale_x_continuous(breaks=seq(3,30,1)) +
   labs(title="", x="Month", y="Calories") + 
-  scale_color_manual(name="Ordery type",values = c("hotpink","olivedrab3","#13B0E4","purple","orange","grey"),
+  scale_color_manual(name="Meal time",values = c("hotpink","olivedrab3","#13B0E4","purple","orange","grey"),
                      labels=c("Late night (00:00-03:59)","Breakfast (04:00-10:59)","Lunch (11:00-13:59)",
                               "Afternoon (14:00-16:59)","Dinner (17:00-20:59)","Evening (21:00-23:59)")) +
   theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
@@ -1449,7 +1495,33 @@ ggplot() +
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("manuscript/figures/appendix-fig5B-diff-in-diff-mealtime.jpeg", dpi="retina")
+
+#figure 5A
+meal <- meal %>% dplyr::select(year,month,count,meal) %>% group_by(year,month,meal) %>%
+  summarise(count=sum(count)) %>% group_by(year,month) %>% mutate(total=sum(count)) %>%
+  mutate(pct=count/total)
+
+ggplot(data=meal,aes(x=interaction(year,month,lex.order=TRUE),y=pct,color=factor(meal),group=factor(meal))) +
+  geom_line() + 
+  ggplot2::annotate(geom="text",x=1:106,y=-0.01,label=c(NA,rep(c(1,NA,3,NA,5,NA,7,NA,9,NA,11,NA),8),c(1,NA,3,NA,5,NA,7,NA,9)),size = 2) + 
+  ggplot2::annotate(geom="text",x=c(1,7+12*(0:8)),y=-0.03,label=unique(meal$year),size=3) +
+  coord_cartesian(ylim=c(0,0.35), expand = FALSE, clip = "off") + #important to have ylim set to what i actually want to display
+  scale_y_continuous(limits=c(-0.1,0.35),breaks=seq(-0.1,0.5,0.05),labels=scales::percent) + #important to set ylim here to include text labels
+  labs(title="",x="Time",y="Percent of sales") + 
+  scale_color_manual(name="Meal time",values = c("hotpink","olivedrab3","#13B0E4","purple","orange","grey"),
+                     labels=c("Late night (00:00-03:59)","Breakfast (04:00-10:59)","Lunch (11:00-13:59)",
+                              "Afternoon (14:00-16:59)","Dinner (17:00-20:59)","Evening (21:00-23:59)")) +
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.y = element_text(size = 12),
+        axis.title.x = element_text(vjust = -15, size = 12),
+        axis.text.x = element_blank(), #turn off default x axis label
+        legend.text=element_text(size=10), 
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("manuscript/figures/appendix-fig5A-sales-by-mealtime.jpeg", dpi="retina")
 rm(calorie,meal,mod.factor,tidy_mod.factor,tidy_mod.factor_all,trend,restaurant)
 
-
-
+### appendix figure 1, unmatched data ----
+# refer to aim1-diff-in-diff-unmatched.R
+### appendix figure 2, unmatched data, diff in diff ----
+#refer to aim1-diff-in-diff-unmatched.R script
