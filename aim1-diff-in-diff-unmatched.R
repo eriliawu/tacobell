@@ -111,6 +111,9 @@ unmatched$open18 <- ifelse(unmatched$before18==1&unmatched$after18==1,1,0)
 unmatched$open24 <- ifelse(unmatched$before24==1&unmatched$after24==1,1,0)
 rm(tmp)
 
+unmatched <- within(unmatched, relative2.factor<-relevel(relative2.factor, ref="-3"))
+unmatched$id_match <- paste0(unmatched$id, unmatched$match_place)
+
 ### cal=group*month(factor), month as factor ----
 # get num of restaurants in each month
 #ignore results 2 months before and after ML
@@ -279,3 +282,70 @@ ggplot(data=trend.collapse, aes(x=time, y=mean, group=loc, color=loc)) +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-reunununmatched/mean-diff-6mon.jpeg", dpi="retina")
 
+
+### appendix figure 2, main effect and diff in diff, unmatched data ----
+mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
+                  data = unmatched%>%filter((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29)), 
+                  index = "id_match", model = "within")
+tidy_mod.factor <- tidy(mod.factor,conf.level = 0.95,conf.int = TRUE) %>%
+  dplyr::select(term,estimate,p.value,conf.low,conf.high) %>%
+  rename(month=term,coef.month=estimate,p=p.value,low=conf.low,high=conf.high) %>%
+  filter(!grepl("as.factor|calorie", month)) %>%
+  mutate(group=c(rep(0,55),rep(1,55))) %>%
+  add_row(month="-3",coef.month=0,group=0,low=0,high=0) %>%
+  add_row(month="-3",coef.month=0,group=1,low=0,high=0) %>%
+  mutate(month=as.integer(gsub("treat:relative2.factor|relative2.factor","",month))) %>%
+  mutate(month=ifelse(month>0,month+1,month)) %>%
+  arrange(group,month) %>%
+  mutate(diff = ifelse(group==1,coef.month,NA)) %>%
+  mutate(calorie=ifelse(group==0,coef.month,coef.month+coef.month[1:56])) 
+tmp1 <- tidy_mod.factor %>% 
+  filter(month>=-30&month<0&!is.na(diff)) %>% dplyr::select(month,diff,low,high) %>%
+  mutate(month = -month) %>% arrange(month) %>%
+  mutate(pre_mean = sum(diff[1:6])/6, pre_low=sum(low[1:6])/6, pre_high = sum(high[1:6])/6)
+tmp2 <- tidy_mod.factor %>% 
+  filter(month>=1&month<=30&!is.na(diff)) %>% dplyr::select(month,diff,low,high) %>%
+  arrange(month) %>% rename(post_mean = diff, post_low=low, post_high=high)
+trend <- merge(tmp1,tmp2,by="month") %>% group_by(month) %>% arrange(month) %>%
+  mutate(mean = post_mean - pre_mean, low=post_low-pre_low, high=post_high-pre_high) %>%
+  dplyr::select(month,mean,low,high)
+rm(tmp1,tmp2)
+tidy_mod.factor <- tidy_mod.factor[,c(1,6,8)]
+
+# hypothesis testing
+presum <- "treat:relative2.factor-4 + treat:relative2.factor-5 + treat:relative2.factor-6 + treat:relative2.factor-7 + treat:relative2.factor-8"
+tmp <- data.frame(matrix(data=0,nrow=28,ncol=1)) %>% setNames("p")
+for (i in 4:29) {
+  tmp$p[i-1] <- linearHypothesis(mod.factor, paste0(presum," = 6*treat:relative2.factor",i))[2,4]
+}
+trend <- cbind(trend, tmp) %>% dplyr::select(month,mean,p) %>% mutate(group=1)
+trend <- merge(trend,tidy_mod.factor,by=c("group","month"), all=TRUE)
+trend <- trend %>% add_row(group=2) #manually add group=2 as the diff in diff line for the orange color
+
+# add year and month factor as covariate
+summary(trend$calorie) #[-100,38]
+summary(trend$mean) #[-73,30]
+ggplot(data=trend,aes(x=month, y=calorie,color=as.character(group))) + 
+  geom_hline(yintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  geom_hline(yintercept = -200, color="grey", linetype="dashed", size=0.5) +
+  geom_point() + geom_line() +
+  geom_line(data=trend%>%filter(!is.na(mean)),aes(x=month, y=mean*1-200), color="orange") + #add diff between 2 groups
+  geom_point(data=trend%>%filter(!is.na(mean)&p<0.05),aes(x=month, y=mean*1-200), color="orange") + #highlight significant months with dots
+  ggplot2::annotate("rect", xmin = -3, xmax = 3, ymin = -400, ymax = 200, fill = "grey") + #add shaded area
+  ggplot2::annotate(geom="label", x=0, y=-100, label="Menu labeling \n implementation \n and adjustment period", size=3) + #add label for ML
+  ggplot2::annotate(geom="label", x=16.5, y=-200, label="   P<0.05", size=3) + 
+  geom_point(aes(x=15,y=-200),color="orange",size=1) +
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(-400,200),breaks=seq(-400,200,50),
+                     sec.axis = sec_axis(~(.+200)/1, name="Difference-in-different estimate")) +
+  scale_x_continuous(breaks=c(seq(-30,-3,3),seq(3,30,3))) + #select which months to display
+  labs(title="", x="Month", y="Calorie difference estimate", caption="") + 
+  scale_color_manual(name="Menu labeling",labels=c("No","Yes","Difference"),values=c("#F8766D","#00BFC4","orange")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
+#ggsave("manuscript/figures/appendix-fig2-diff-in-diff-unmatched.jpeg", dpi="retina")
