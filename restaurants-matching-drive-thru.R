@@ -530,11 +530,3 @@ ggplot(data = result%>%filter(method!="ps_weight"),
 
 
 
-
-#testing ----
-subset <- subset(restaurant, treat==1&policy=="mont")
-tmp <- subset %>% group_by(address,tract_num,ownership,concept) %>% mutate(relative = monthno - entry) %>%
-  filter(relative<0&relative>=-8) %>% mutate(n=n()) %>% mutate(open8 = ifelse(n==8, 1,0)) %>%
-  dplyr::select(address,open8) %>% distinct()
-subset <- merge(subset,tmp,by=c("address","tract_num","ownership","concept"))
-subset <- subset(subset, open8==1&monthno==253) 
