@@ -375,7 +375,7 @@ ggplot(data=calorie%>%filter(!grepl("3|7|8|10",category)),
 ### sales trend, by category ----
 sample07q1 <- read.csv("data/from-bigpurple/sales-by-category/sales-by-category_2007_Q1.csv",
                        stringsAsFactors = FALSE,
-                       col.names = c("yearno", "monthno","category","occasion","qty"))
+                       col.names = c("monthno","category","occasion","qty"))
 sample07q1$qty <- sample07q1$qty/2 
 sales <- NULL
 for (i in 2007:2015) {
@@ -386,7 +386,7 @@ for (i in 2007:2015) {
         sample <- read.csv(paste0("data/from-bigpurple/sales-by-category/sales-by-category_",
                                   i,"_Q",j,".csv"),
                            stringsAsFactors = FALSE,
-                           col.names=c("yearno", "monthno","category","occasion","qty"))
+                           col.names=c("monthno","category","occasion","qty"))
         sales <- rbind(sales, sample)
       }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
     )
@@ -396,7 +396,7 @@ sales <- rbind(sales, sample07q1)
 rm(i,j,sample,sample07q1)
 names(sales)
 sales <- sales %>% filter(occasion==2) %>%
-  dplyr::select(-c(yearno,occasion)) %>%
+  dplyr::select(-occasion) %>%
   group_by(monthno,category) %>% summarise(qty = sum(qty)) %>%
   mutate(total = sum(qty)) %>% mutate(pct = qty/total)
 
@@ -408,7 +408,7 @@ time <- time %>% dplyr::select(7,17,38) %>% setNames(c("monthno", "year", "month
 sales <- merge(sales, time, by="monthno") %>% filter(complete.cases(.))
 rm(time)
 
-ggplot(data=sales%>%filter(category<=5|category==9),
+ggplot(data=sales%>%filter(category<=5|category==8),
        aes(x=interaction(year,month,lex.order = TRUE), y=pct,color=factor(category),group=factor(category))) +
   geom_line() + 
   ggplot2::annotate(geom="text",x=1:106,y=-0.01,label=c(NA,rep(c(1,NA,3,NA,5,NA,7,NA,9,NA,11,NA),8),c(1,NA,3,NA,5,NA,7,NA,9)),size = 2) + 
@@ -417,10 +417,10 @@ ggplot(data=sales%>%filter(category<=5|category==9),
   geom_vline(xintercept = 62, color="grey",linetype="dashed") +
   coord_cartesian(ylim=c(0,0.5), expand = FALSE, clip = "off") + #important to have ylim set to what i actually want to display
   scale_y_continuous(limits=c(-0.1,0.5),breaks=seq(-0.1,0.5,0.05),labels=scales::percent) + #important to set ylim here to include text labels
-  labs(title="Sales by food category, drive-thru only",x="",y="Percent of sales",
-       caption="Categories not included: condiments, substitutions and foods that do not fall into any category. \nSales is measured by the number of items sold.") + 
-  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Dessert","Nacho","Other entree","Taco"),
-                     values=c("hotpink","olivedrab3","#13B0E4","orange","purple","red")) + 
+  labs(title="Sales by food category, drive-thru only",x="Time",y="Percent of sales",
+       caption = "Categories not included: condiments, substitutions and foods that do not fall into any category.") + 
+  scale_color_manual(name="Category",labels=c("Beverage","Burrito","Dessert","Other entree","Salad","Taco"),
+                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
   theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
         axis.title.y = element_text(size = 12),
@@ -429,12 +429,6 @@ ggplot(data=sales%>%filter(category<=5|category==9),
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/sales-by-category.jpeg", dpi="retina")
-
-
-
-
-
-
 
 ### appendix figure 4B, diff in diff ----
 tidy_mod.factor_all <- NULL
@@ -507,66 +501,27 @@ ggplot() +
 #ggsave("manuscript/figures/appendix-fig4B-diff-in-diff-by-category.jpeg", dpi="retina")
 
 ### appendix figure 4A, sales trend, by category ----
-sample07q1 <- read.csv("data/from-bigpurple/sales-by-category/sales-by-category_2007_Q1.csv",
-                       stringsAsFactors = FALSE,
-                       col.names = c("yearno", "monthno","category","occasion","qty"))
-sample07q1$qty <- sample07q1$qty/2 
-sales <- NULL
-for (i in 2007:2015) {
-  for (j in 1:4) {
-    tryCatch(
-      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
-      {
-        sample <- read.csv(paste0("data/from-bigpurple/sales-by-category/sales-by-category_",
-                                  i,"_Q",j,".csv"),
-                           stringsAsFactors = FALSE,
-                           col.names=c("yearno", "monthno","category","occasion","qty"))
-        sales <- rbind(sales, sample)
-      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
-    )
-  }
-}
-sales <- rbind(sales, sample07q1)
-rm(i,j,sample,sample07q1)
-names(sales)
-sales <- sales %>% filter(occasion==2) %>%
-  dplyr::select(-c(yearno,occasion)) %>%
-  group_by(monthno,category) %>% summarise(qty = sum(qty)) %>%
-  mutate(total = sum(qty)) %>% mutate(pct = qty/total)
+tmp <- category %>% filter(category<=6|category==8) %>%
+  group_by(year,month,category) %>% summarise(count = sum(count)) %>%
+  group_by(year,month) %>%
+  mutate(total = sum(count)) %>% mutate(pct = count/total) %>% filter(!is.na(year))
 
-time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
-time <- time %>% dplyr::select(7,17,38) %>% setNames(c("monthno", "year", "month")) %>%
-  mutate(year = as.integer(substr(year, 2, 5))) %>%
-  mutate(month = as.integer(substr(month, 6, 7))) %>%
-  filter(year>=2006) %>% distinct()
-sales <- merge(sales, time, by="monthno") %>% filter(complete.cases(.))
-rm(time)
-
-ggplot(data=sales%>%filter(category<=5|category==8),
+ggplot(data=tmp%>%filter(category<=5|category==8),
        aes(x=interaction(year,month,lex.order = TRUE), y=pct,color=factor(category),group=factor(category))) +
   geom_line() + 
   ggplot2::annotate(geom="text",x=1:106,y=-0.01,label=c(NA,rep(c(1,NA,3,NA,5,NA,7,NA,9,NA,11,NA),8),c(1,NA,3,NA,5,NA,7,NA,9)),size = 2) + 
-  ggplot2::annotate(geom="text",x=c(1,7+12*(0:8)),y=-0.03,label=unique(sales$year),size=3) +
-  geom_vline(xintercept = 50, color="grey",linetype="dashed") +
-  geom_vline(xintercept = 62, color="grey",linetype="dashed") +
+  ggplot2::annotate(geom="text",x=c(1,7+12*(0:8)),y=-0.03,label=unique(tmp$year),size=3) +
   coord_cartesian(ylim=c(0,0.5), expand = FALSE, clip = "off") + #important to have ylim set to what i actually want to display
   scale_y_continuous(limits=c(-0.1,0.5),breaks=seq(-0.1,0.5,0.05),labels=scales::percent) + #important to set ylim here to include text labels
-  labs(title="",x="",y="Percent of sales") + 
+  labs(title="",x="Time",y="Percent of sales") + 
   scale_color_manual(name="Category",labels=c("Beverage","Burrito","Dessert","Other entree","Salad","Taco"),
-                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) +  
-  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+                     values=c("hotpink","olivedrab3","#13B0E4","grey","orange","purple")) + 
+  theme(plot.margin = unit(c(1, 1, 4, 1), "lines"),
         plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
         axis.title.y = element_text(size = 12),
         axis.title.x = element_text(vjust = -15, size = 12),
         axis.text.x = element_blank(), #turn off default x axis label
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/sales-by-category.jpeg", dpi="retina")
-
-
-
-
-
-
-
+#ggsave("manuscript/figures/appendix-fig4A-sales-by-category.jpeg", dpi="retina")
 
