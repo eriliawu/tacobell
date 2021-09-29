@@ -2,6 +2,9 @@
 Looking at the effect of local menu labeling mandates on calories purchased at Taco Bell restaurants. 
 Of the scripts listed in this repository, this is a summary of what each script does.
 
+To understand the use of each .csv file in the data/from-bigpurple folder, refer to each script,
+as they are read in from the data/from-bigpurple folder before any analysis was performed.
+
 ## Clean restaurant data from ALIGN_DIM table
 [clean-restaurant-data.R](https://github.com/eriliawu/tacobell/blob/master/clean-restaurant-data.R)
 This script cleans data from ALIGN_DIM table in the database.
@@ -83,6 +86,7 @@ In the end, it appears a combination of propensity score matching with second-st
 Each treated location was matched and weighted locally, and then combined to trim off extremely large weighted comparison restaurants,
 every large weighted comparison restaurant was removed from the pool of potential comparisons, and the whole matching and weighting process was re-run,
 until no comparison restaurant was weighted more than 5% of the total number of comparison restaurants. This process was done in a while loop.
+For the matching and weighting methods I eventually did not use,
 
 [restaurants-matching-drive-thru.R](https://github.com/eriliawu/tacobell/blob/master/restaurants-matching-drive-thru.R)
 This script is very similar to the one above, with the only difference being the covariate with regards to the transaction data.
