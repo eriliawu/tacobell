@@ -53,7 +53,7 @@ Later users can refer to this chart for future menu matching work.
 [calorie-predicting.R](https://github.com/eriliawu/tacobell/blob/master/calorie-predicting.R) and 
 [bag-of-words.R](https://github.com/eriliawu/tacobell/blob/master/bag-of-words.R)
 These two scripts are experimental scripts where I tried to improve data cleaning for Taco Bell menu items, and predict item calories based on the text.
-They are very useful. Users should feel free to disregard entirely.
+They are not very useful. Users should feel free to disregard entirely.
 
 ## Statistical analysis
 
@@ -111,7 +111,7 @@ This script resembles aim1-diff-in-diff.R, but further looks at the results by 1
 Note that this script still uses all transaction data (i.e. not just drive-through data), and as the results from the by order type analysis showes,
 the team decided to use drive-through data only for further analysis.
 
-[aim1-diff-in-diff-unmatched.R] (https://github.com/eriliawu/tacobell/blob/master/aim1-diff-in-diff-unmatched.R)
+[aim1-diff-in-diff-unmatched.R](https://github.com/eriliawu/tacobell/blob/master/aim1-diff-in-diff-unmatched.R)
 This script mimics the analysis in aim1-diff-in-diff.R, but uses all comparison restaurants.
 
 ### Additional analyses
