@@ -722,6 +722,7 @@ app_table1 <- app_table1 %>% mutate(open12=paste0(open12," (",sprintf('%.2f',ope
 #write.csv(app_table1,"manuscript/tables/app_table1.csv")  
 
 ### appendix table 3, compare top selling items, items sold in every month of the study period ----
+# the query itself already restricted items to drive-thru orders only
 app_table3 <- data.frame(matrix(data=NA,ncol = 3,nrow = 6)) %>% setNames(c("baseline","followup","p")) %>%
   add_column(sample=c("treat, each period","comp, each period","treat, all period","comp, all period","treat, new items","comp, new items"),.before = 1)
 # compare top 100 items for treated and comparison group
@@ -1279,15 +1280,8 @@ app_table2 <- app_table2 %>%  add_row(diff_treat_3_12="",.before=7) %>% add_row(
   add_row(diff_treat_3_12="",.before=15) %>% add_row(diff_treat_3_12="",.before=15) %>%
   add_column(col="",.before=5) %>%
   mutate_all(~replace(., is.na(.), ""))
-write.csv(app_table2,"manuscript/tables/app_table2.csv",row.names = FALSE)
+#write.csv(app_table2,"manuscript/tables/app_table2.csv",row.names = FALSE)
 rm(app_table2,calorie,comp,index,matched_use,mod.factor,restaurant,treat,tidy_mod.factor,i)
-
-
-
-
-
-
-
 
 ### contextual information ----
 #number of comparison restaurants located in TX
@@ -1521,7 +1515,7 @@ ggplot(data=meal,aes(x=interaction(year,month,lex.order=TRUE),y=pct,color=factor
 #ggsave("manuscript/figures/appendix-fig5A-sales-by-mealtime.jpeg", dpi="retina")
 rm(calorie,meal,mod.factor,tidy_mod.factor,tidy_mod.factor_all,trend,restaurant)
 
-### appendix figure 1, unmatched data ----
+### appendix figure 2, unmatched data ----
 # refer to aim1-diff-in-diff-unmatched.R
-### appendix figure 2, unmatched data, diff in diff ----
-#refer to aim1-diff-in-diff-unmatched.R script
+### appendix fig 1, covariate balance ----
+#refer to restaurants-matching-drive-thru.R script3
