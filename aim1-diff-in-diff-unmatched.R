@@ -283,6 +283,88 @@ ggplot(data=trend.collapse, aes(x=time, y=mean, group=loc, color=loc)) +
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-reunununmatched/mean-diff-6mon.jpeg", dpi="retina")
 
 
+### manuscript, appendix figure 2, unmatched data, use drive-thru only----
+unmatched <- read.csv("data/calorie-aims/unmatched-restaurants-drive-thru.csv", stringsAsFactors = FALSE,
+                      colClasses = c(rep(NA,7),rep("NULL",4),rep(NA,8),rep("NULL",13),rep(NA,2),rep("NULL",12),NA))
+unmatched$tract_num <- substr(unmatched$tract_num, 2, 12)
+table(unmatched$policy[(unmatched$treat==1&unmatched$monthno==unmatched$entry)])
+unmatched <- unmatched %>%
+  filter((policy!="nyc"&policy!="ulster"&policy!="westchester")&!is.na(calorie))
+
+time <- unmatched %>% select(entry,policy) %>% filter(!duplicated(policy)) %>% filter(!is.na(entry))
+comp <- unmatched[unmatched$treat==0, ]
+master <- NULL
+for (i in 1:10) {
+  treat <- unmatched[unmatched$policy==time[i,2], ]
+  treat <- rbind(treat,comp)
+  treat$match_to <- time[i,2]
+  treat$entry <- time[i,1]
+  master <- rbind(master, treat)
+}
+
+unmatched <- master
+rm(master,treat,comp,i,time)
+table(unmatched$entry)
+table(unmatched$match_to)
+unmatched <- unmatched %>%
+  filter(!is.na(calorie)) %>%
+  mutate(id = group_indices(., address, tract_num, ownership, concept, match_to)) %>%
+  arrange(id, monthno) %>% #find out for how many months a restaurant was open
+  group_by(id, treat) %>%
+  mutate(rank=row_number(id)) %>%
+  mutate(open_month=max(rank))
+summary(unmatched$rank) #sanity check, the max should be 106
+
+# set up post ML indicator
+unmatched$relative <- unmatched$monthno - unmatched$entry +1
+unmatched$relative2 <- unmatched$monthno - unmatched$entry #month 0 is first month of ML
+unmatched$post <- ifelse(unmatched$relative2<0,0,1)
+
+# month as relative and factor
+# set month 1 as ref group
+unmatched$relative.factor <- factor(unmatched$relative)
+unmatched <- within(unmatched, relative.factor<-relevel(relative.factor, ref="1"))
+
+unmatched$relative2.factor <- factor(unmatched$relative2)
+unmatched <- within(unmatched, relative2.factor<-relevel(relative2.factor, ref="3"))
+
+# calculate open_month both before and after ML
+unmatched <- unmatched %>%
+  group_by(id, treat, match_to, post) %>%
+  mutate(rank=row_number(id)) %>%
+  mutate(open_before=max(rank)) %>%
+  mutate(open_after=max(rank))
+unmatched$open_before <- ifelse(unmatched$post==0, unmatched$open_before, unmatched$open_month-unmatched$open_before)
+unmatched$open_after <- ifelse(unmatched$post==1, unmatched$open_after, unmatched$open_month-unmatched$open_after)
+
+#create indicators for restaurants that were open for at least 6, 12, 18 and 24 months before and after ML
+tmp <- unmatched %>%
+  group_by(id, treat, match_to) %>%
+  filter(relative2<=23&relative2>=0) %>% mutate(n=n()) %>% mutate(after24 = ifelse(n==24, 1,0)) %>%
+  filter(relative2<=17&relative2>=0) %>% mutate(n=n()) %>% mutate(after18 = ifelse(n==18, 1,0)) %>%
+  filter(relative2<=11&relative2>=0) %>% mutate(n=n()) %>% mutate(after12 = ifelse(n==12, 1,0)) %>%
+  filter(relative2<=5&relative2>=0) %>% mutate(n=n()) %>% mutate(after6 = ifelse(n==6, 1,0)) %>%
+  dplyr::select(id, treat, match_to, after6,after12,after18,after24) %>%
+  distinct()
+unmatched <- merge(unmatched, tmp, by=c("id", "treat", "match_to"), all = TRUE)
+tmp <- unmatched %>%
+  group_by(id, treat, match_to) %>%
+  filter(relative2<0&relative2>= -24) %>% mutate(n=n()) %>% mutate(before24 = ifelse(n==24, 1,0)) %>%
+  filter(relative2<0&relative2>= -18) %>% mutate(n=n()) %>% mutate(before18 = ifelse(n==18, 1,0)) %>%
+  filter(relative2<0&relative2>= -12) %>% mutate(n=n()) %>% mutate(before12 = ifelse(n==12, 1,0)) %>%
+  filter(relative2<0&relative2>= -6) %>% mutate(n=n()) %>% mutate(before6 = ifelse(n==6, 1,0)) %>%
+  dplyr::select(id, treat, match_to, before6,before12,before18,before24) %>%
+  distinct()
+unmatched <- merge(unmatched, tmp, by=c("id", "treat", "match_to"), all = TRUE)
+unmatched$open6 <- ifelse(unmatched$before6==1&unmatched$after6==1,1,0)
+unmatched$open12 <- ifelse(unmatched$before12==1&unmatched$after12==1,1,0)
+unmatched$open18 <- ifelse(unmatched$before18==1&unmatched$after18==1,1,0)
+unmatched$open24 <- ifelse(unmatched$before24==1&unmatched$after24==1,1,0)
+rm(tmp)
+
+unmatched <- within(unmatched, relative2.factor<-relevel(relative2.factor, ref="-3"))
+unmatched$id_match <- paste0(unmatched$id, unmatched$match_place)
+
 ### appendix figure 2, main effect and diff in diff, unmatched data ----
 mod.factor <- plm(formula = calorie~treat*relative2.factor+as.factor(month),
                   data = unmatched%>%filter((relative2>=-30&relative2<=-3)|(relative2>=2&relative2<=29)), 
@@ -349,3 +431,5 @@ ggplot(data=trend,aes(x=month, y=calorie,color=as.character(group))) +
         legend.text=element_text(size=10),
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("manuscript/figures/appendix-fig2-diff-in-diff-unmatched.jpeg", dpi="retina")
+
+
