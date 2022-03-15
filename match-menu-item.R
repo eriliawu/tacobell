@@ -261,13 +261,13 @@ join_jaccard <- stringdist_join(product, menu,
       group_by(full) %>%
       top_n(1, -dist.jc)
 end_time <- Sys.time()
-end_time - start_time # approx. 55 secs
+end_time - start_time 
 rm(start_time, end_time)
 
 names(join_jaccard)
-join_jaccard <- join_jaccard[, c(2, 5, 7, 3, 1, 6, 4)]
+join_jaccard <- join_jaccard[, c(2, 5, 8,7, 3, 1, 6, 4)]
 join_jaccard <- join_jaccard[order(join_jaccard$dist.jc, join_jaccard$full), ]
-write.csv(join_jaccard, "data/menu-matching/matching-jaccard1_id.csv", row.names = FALSE)
+#write.csv(join_jaccard, "data/menu-matching/matching-jaccard1_id.csv", row.names = FALSE)
 
 # number of exact matches
 length(unique(join_jaccard$full[join_jaccard$dist.jc==0])) #240

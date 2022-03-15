@@ -1,7 +1,24 @@
 /* -- access tacobell database
 srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash 
 module load mariadb/10.4.6
+mysql -p -h db -P 33061 -u wue04 tacobell --plugin-dir=/gpfs/share/apps/mariadb/10.4.6/lib/plugin
+
+srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash
+module load mariadb/5.5.64
 mysql -p -h db -P 33061 -u wue04 tacobell
+
+
+-- for new database tacobell15
+srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash 
+module load mariadb/10.4.6
+mysql -p -h db -P 33062 -u wue04 -S /gpfs/data/tb_project/tacobell15/mysql.sock
+SET PASSWORD FOR 'wue04'@'172.16.0.%' = PASSWORD('newpass');
+
+-- access tacobell2 on the existing tacobell socket
+srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash 
+module load mariadb/5.5.64
+mysql -p -h db -P 33061 -u wue04 
+use tacobell2;
 
 --- run jobs on hpc
 sbatch tacobell/ssb-sales-2015-q1.sh
@@ -1008,7 +1025,7 @@ order by OPENEDDT;
 
 --- create new table for calorie info
 --- make sure every cell value is enclosed by "", incl numeric values
-create table calorietest (
+create table nutrition (
 	DW_PRODUCT int not null,
 	DW_PRODUCTGROUP int not null,
 	PRODUCTDESC varchar(255) not null,
@@ -1027,8 +1044,8 @@ create table calorietest (
 	primary key (DW_PRODUCT)
 );
 
-load data infile '/gpfs/home/wue04/tb-data/menu-matching-to-bigpurple/PRODUCT_CALORIE_DIM.csv'
-into table calorietest
+load data infile '/gpfs/home/wue04/tb-data/menu-matching-to-bigpurple/PRODUCT_CALORIE_DIM-drinks-fixed.csv'
+into table nutrition
 FIELDS TERMINATED BY ',' 
 ENCLOSED BY '"'
 LINES TERMINATED BY '\r\n'
@@ -1104,6 +1121,7 @@ select t.DW_GC_HEADER, l.LINEITEMDESC, l.ITEMMOD,
 
 create table restaurant_in_use_match_drive_thru (
 	address varchar(255) not null,
+	treat int not null,
 	DW_RESTID int not null,
 	primary key (DW_RESTID)
 );
@@ -1173,21 +1191,57 @@ create table test_occasion (
 	occasiondesc varchar(30),
 	primary key (dw_occasion)
 );
-load data infile '/gpfs/data/elbellab/tb-bi-prod-user-data/OCCASION_DIM.csv'
+load data local infile '/gpfs/data/elbellab/tb-bi-prod-user-data/OCCASION_DIM.csv'
 into table test_occasion
 FIELDS TERMINATED BY '|' 
-ENCLOSED BY '"'
-LINES TERMINATED BY '\r\n'
+LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
+-- 1 line solution
+cat GC_HEADER_DIM_2016_Q1_*.gz | gunzip -c > GC_HEADER_DIM_2016_Q1.csv
+-- 2 line solution
+gunzip GC_HEADER_DIM_2015_Q4_*
+cat GC_HEADER_DIM_2015_Q4_1.csv GC_HEADER_DIM_2015_Q4_2.csv GC_HEADER_DIM_2015_Q4_3.csv > GC_HEADER_DIM_2015_Q4.csv
 
-
-
-
-
-
-
-
+create table GC_HEADER_DIM_2015_Q4 (
+	dw_gc_header bigint(20) not null,
+	dw_day int(11) NOT NULL,
+	dw_minute smallint(6) NOT NULL,
+	dw_restid int(11) NOT NULL,
+	dw_occasion smallint(6) NOT NULL,
+	dw_tendertype smallint(6) NOT NULL,
+	ticketno int(11) NOT NULL,
+	firstitemtime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	storedordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	recalledordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	amounttendertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	servedordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	ordertotaledtime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	parkedordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	registerno smallint(6) NOT NULL,
+	registerseqno smallint(6) DEFAULT NULL,
+	totpromosales decimal(6,2) NOT NULL,
+	totgrosssales decimal(6,2) NOT NULL,
+	totnetsales decimal(6,2) NOT NULL,
+	totdiscountsales decimal(6,2) NOT NULL,
+	totdiscpct decimal(3,2) NOT NULL,
+	tottax decimal(6,2) NOT NULL,
+	refundflag char(1) NOT NULL,
+	cashierid int(11) DEFAULT NULL,
+	dw_channel smallint(6) NOT NULL,
+	ordercheckintime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+	dw_consumer_identifier bigint(20) DEFAULT NULL,
+	dw_check_in_location_identifier smallint(6) NOT NULL,
+	order_source int default null,
+	xenial_order_id int default null,
+	dw_tax_flag int default null,
+	primary key (dw_gc_header)
+);
+load data local infile '/gpfs/data/elbellab/tb-bi-prod-user-data/GC_HEADER_DIM_2015_Q4.csv'
+into table GC_HEADER_DIM_2015_Q4
+FIELDS TERMINATED BY '|' 
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
 
 
 
@@ -1239,13 +1293,58 @@ select count(distinct DW_GC_HEADER)
 	where DW_MONTH=272;
 
 
-
-
-
-select sum(t.ACTQTYSOLD) as total_qty 
+select y.DW_MONTH, r.DW_RESTID, t.DW_PRODUCTDETAIL, n1.CALORIES, n1.FULLDESC,
+    sum(t.ACTQTYSOLD) as qty
     from TLD_FACT_2007_Q02 t
 	inner join restaurant_in_use_match_drive_thru r on r.DW_RESTID=t.DW_RESTID
-	left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
-	where n1.CALORIES is not NULL and n1.TOTAL_FAT is not null;
+	left join TIME_DAY_DIM y using(DW_DAY)
+    left join nutrition n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+	where DW_OCCASION=2 and CALORIES is not NULL
+    group by DW_MONTH, DW_RESTID, DW_PRODUCTDETAIL;
 
+
+claim_uhc = dense_rank() over (partition by PERSON_ID,ServiceStartDateYear,ServiceStartMonth order by (case when BillingTaxId='135563408' then ClaimNr else '0' end)) + 
+					dense_rank() over (partition by PERSON_ID,ServiceStartDateYear,ServiceStartMonth order by (case when BillingTaxId='135563408' then ClaimNr else '0' end) desc) -
+					case when count(*) over(partition by PERSON_ID,ServiceStartDateYear,ServiceStartMonth)=sum(case when BillingTaxId='135563408' then 1 else 0 end) over(partition by PERSON_ID,ServiceStartDateYear,ServiceStartMonth)
+					then 1 else 2 end,
+
+create table GC_HEADER_DIM_2015_Q4 (
+dw_gc_header bigint(20) not null,
+dw_day int(11) NOT NULL,
+dw_minute smallint(6) NOT NULL,
+dw_restid int(11) NOT NULL,
+dw_occasion smallint(6) NOT NULL,
+dw_tendertype smallint(6) NOT NULL,
+ticketno int(11) NOT NULL,
+firstitemtime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+storedordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+recalledordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+amounttendertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+servedordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+ordertotaledtime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+parkedordertime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+registerno smallint(6) NOT NULL,
+registerseqno smallint(6) DEFAULT NULL,
+totpromosales decimal(6,2) NOT NULL,
+totgrosssales decimal(6,2) NOT NULL,
+totnetsales decimal(6,2) NOT NULL,
+totdiscountsales decimal(6,2) NOT NULL,
+totdiscpct decimal(3,2) NOT NULL,
+tottax decimal(6,2) NOT NULL,
+refundflag char(1) NOT NULL,
+cashierid int(11) DEFAULT NULL,
+dw_channel smallint(6) NOT NULL,
+ordercheckintime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+dw_consumer_identifier bigint(20) DEFAULT NULL,
+dw_check_in_location_identifier smallint(6) NOT NULL,
+order_source int default null,
+xenial_order_id int default null,
+dw_tax_flag int default null,
+primary key (dw_gc_header)
+);
+load data local infile '/gpfs/data/elbellab/tb-bi-prod-user-data/GC_HEADER_DIM_2015_Q4.csv'
+into table GC_HEADER_DIM_2015_Q4
+FIELDS TERMINATED BY '|' 
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
 
