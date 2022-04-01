@@ -93,40 +93,14 @@ sapply(restaurant, class)
 restaurant <- cbind(restaurant[c(1:4, 9:27)], lapply(restaurant[c(5:8)], function(x) as.Date(x, "%m/%d/%Y")))
 
 ### clean restaurant level transaction records ----
-sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_2007_Q1.csv",
-                       stringsAsFactors = FALSE,
-                       col.names = c("restid", "year", "month", "calorie", "fat",
-                                     "sat_fat", "carb", "protein", "sodium", "count", "dollar"))
-sapply(sample07q1, class)
-sample07q1[, c(4:9, 11)] <- sample07q1[, c(4:9, 11)]/2
-
-calorie <- NULL
-for (i in 2007:2015) {
-  for (j in 1:4) {
-    tryCatch(
-      if((i==2007 & j==1)|(i==2015 & j==4)) {stop("file doesn't exist")} else
-      {
-        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-overall/mean-calorie_restid_",
-                                  i,"_Q",j,".csv"),
-                           stringsAsFactors = FALSE,
-                           col.names=c("restid", "year", "month", "calorie", "fat", "sat_fat",
-                                       "carb", "protein", "sodium", "count", "dollar"))
-        calorie <- rbind(calorie, sample)
-      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
-    )
-  }
-}
-calorie <- rbind(calorie, sample07q1)
-rm(sample, sample07q1, i, j)
-calorie <- calorie[,c(1:4,10:11)]
-colnames(calorie)[4:6] <- c("calorie_all","count_all","dollar_all")
-
 sample07q1 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_occasion_2007_Q1.csv",
                        stringsAsFactors = FALSE,
-                       col.names = c("restid", "year", "month","occasion", "calorie", "fat",
-                                     "sat_fat", "carb", "protein", "sodium", "count", "dollar"))
+                       col.names = c("restid","year","month","occasion", "calorie", "fat","sat_fat",
+                                     "carb", "protein","sodium", "count", "dollar"))
+sapply(sample07q1, class)
 sample07q1[, c(5:10,12)] <- sample07q1[, c(5:10,12)]/2
-drive <- NULL
+
+calorie <- NULL
 for (i in 2007:2015) {
   for (j in 1:4) {
     tryCatch(
@@ -135,40 +109,46 @@ for (i in 2007:2015) {
         sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_occasion_",
                                   i,"_Q",j,".csv"),
                            stringsAsFactors = FALSE,
-                           col.names=c("restid", "year", "month","occasion", "calorie", "fat", "sat_fat",
-                                       "carb", "protein", "sodium", "count", "dollar"))
-        drive <- rbind(drive, sample)
+                           col.names=c("restid","year","month","occasion","calorie","fat","sat_fat",
+                                       "carb","protein","sodium","count","dollar"))
+        calorie <- rbind(calorie, sample)
       }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}
     )
   }
 }
-drive <- rbind(drive, sample07q1)
-drive <- drive %>% filter(occasion==2) %>% dplyr::select(restid:month,calorie,count,dollar)
-calorie <- merge(calorie,drive,by=c("restid","year","month"))
+calorie <- rbind(calorie, sample07q1)
+rm(sample, sample07q1, i, j)
+
+drive <- calorie #for merging later
+calorie <- calorie %>% dplyr::select(restid,month,calorie,count,dollar)
+calorie <- aggregate(data=calorie,.~restid+month,sum)
+colnames(calorie)[3:5] <- c("calorie_all","count_all","dollar_all")
+
+drive <- drive %>% filter(occasion==2) %>% dplyr::select(-year,-occasion)
+drive <- aggregate(data=drive,.~restid+month,sum)
+calorie <- merge(calorie,drive,by=c("restid","month"))
 rm(drive,sample07q1,sample,i,j)
 
 ### add time information: month, year; keep yearno and monthno ----
 time <- read.csv("data/from-bigpurple/time_day_dim.csv", stringsAsFactors = FALSE)
 names(time)
-time <- time[, c(4, 7, 17, 38)]
-colnames(time) <- c("year", "month", "yearno", "monthno")
+time <- time[, c(7, 17, 38)]
+colnames(time) <- c("month", "yearno", "monthno")
 sapply(time, class)
 time$yearno <- as.integer(substr(time$yearno, 2, 5))
 time$monthno <- as.integer(substr(time$monthno, 6, 7))
 time <- time[!duplicated(time) & time$yearno>=2006, ]
 
-calorie <- merge(calorie, time, by=c("year", "month"))
-colnames(calorie)[c(1:2,10:11)] <- c("yearno", "monthno", "year", "month")
-calorie <- aggregate(data=calorie, .~year+month+restid+yearno+monthno, sum) 
+calorie <- merge(calorie, time, by="month")
+colnames(calorie)[c(1,14:15)] <- c("monthno", "year", "month")
+#calorie <- aggregate(data=calorie, .~year+month+restid+monthno, sum) 
 calorie <- calorie[order(calorie$year, calorie$month), ]
 
 ### adding drive-thru and meal time breakdown ----
 drive07 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_occasion_2007_Q1.csv",
                   stringsAsFactors=FALSE)
-drive07$count <- drive07$count/2
 meal07 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_2007_Q1.csv",
                  stringsAsFactors=FALSE)
-meal07$count <- meal07$count/2
 
 drive <- NULL
 meal <- NULL
@@ -212,14 +192,14 @@ restaurant$ownership <- ifelse(restaurant$ownership=="COMPANY",1,0)
 restaurant$concept <- ifelse(restaurant$concept=="TBC",1,0)
 
 # aggregate on address, instead of restid
-tmp1 <- restaurant[, c(3:5, 8:22)]
+tmp1 <- restaurant[, c(3:22)]
 tmp1 <- tmp1[!duplicated(tmp1), ]
 length(unique(paste0(restaurant$address, restaurant$tract_num)))
 tmp1 <- tmp1[order(tmp1$state, tmp1$address), ]
 
-tmp2 <- restaurant[, c(2:4,6:7,23:33)]
-tmp2 <- aggregate(data=tmp2,.~tract_num+address+concept+ownership+year+month+yearno+monthno,sum)
-restaurant <- merge(tmp2, tmp1, by=c("address", "tract_num"))
+tmp2 <- restaurant[, c(2:4,6:7,23:37)]
+tmp2 <- aggregate(data=tmp2,.~tract_num+address+concept+ownership+year+month+monthno,sum)
+restaurant <- merge(tmp2, tmp1, by=c("address","tract_num","concept","ownership"))
 rm(tmp1, tmp2, drive)
 restaurant <- restaurant[!duplicated(restaurant), ]
 restaurant <- restaurant[order(restaurant$state, restaurant$address, restaurant$ownership, restaurant$monthno), ]
@@ -527,6 +507,8 @@ ggplot(data = result%>%filter(method!="ps_weight"),
         plot.title = element_text(hjust = 0.5),
         plot.caption=element_text(hjust=0, face="italic"))
 #ggsave("manuscript/figures/covariate-balance.jpeg", dpi="retina")
+
+
 
 
 
