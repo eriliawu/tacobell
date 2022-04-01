@@ -17,8 +17,8 @@ SET PASSWORD FOR 'wue04'@'172.16.0.%' = PASSWORD('newpass');
 -- access tacobell2 on the existing tacobell socket
 srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash 
 module load mariadb/5.5.64
-mysql -p -h db -P 33061 -u wue04 
-use tacobell2;
+mysql -p -h db -P 33061 -u wue04 tacobell2
+--use tacobell2;
 
 --- run jobs on hpc
 sbatch tacobell/ssb-sales-2015-q1.sh
@@ -31,6 +31,25 @@ srun --partition=cpu_short --ntasks=2 --cpus-per-task=1 --mem-per-cpu=8G --time=
 module load mariadb/5.5.64 squirrel/4.0.0
 java -jar $SQUIRREL_ROOT/squirrel-sql.jar
 */
+
+select (ItemCount.sales / TotalCount.total *100) as ItemRatio
+from 
+  (select count(distinct DW_GC_HEADER) as sales from TLD_FACT_2014_Q01 where DW_PRODUCT=30839) as ItemCount,
+  (select count(distinct DW_GC_HEADER) as total from TLD_FACT_2014_Q01) as TotalCount;
+select (ItemCount.sales / TotalCount.total *100) as ItemRatio
+from 
+  (select count(distinct DW_GC_HEADER) as sales from TLD_FACT_2014_Q02 where DW_PRODUCT=30839) as ItemCount,
+  (select count(distinct DW_GC_HEADER) as total from TLD_FACT_2014_Q02) as TotalCount;
+select (ItemCount.sales / TotalCount.total *100) as ItemRatio
+from 
+  (select count(distinct DW_GC_HEADER) as sales from TLD_FACT_2014_Q03 where DW_PRODUCT=30839) as ItemCount,
+  (select count(distinct DW_GC_HEADER) as total from TLD_FACT_2014_Q03) as TotalCount;
+select (ItemCount.sales / TotalCount.total *100) as ItemRatio
+from 
+  (select count(distinct DW_GC_HEADER) as sales from TLD_FACT_2014_Q04 where DW_PRODUCT=30839) as ItemCount,
+  (select count(distinct DW_GC_HEADER) as total from TLD_FACT_2014_Q04) as TotalCount;
+
+
 
 /*
 +--------------+--------+-----------+------------+-------------+------------+--------------+---------------+-------------+--------+-------------------------+-------------------------+
@@ -912,7 +931,7 @@ select y.DW_YEAR, y.DW_MONTH,
     left join nutrition n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
     group by DW_YEAR, DW_MONTH
 
-insert into LINEITEM_DIM(DW_LINEITEM, ITEMMOD) values (-1,0),(1,1),(2,1),(3,1),(4,1),(5,1),(6,1),(7,1),(8,-1),(9,0.5),(10,1),(11,-1),(12,0.5),(13,1),(14,0),(15,1),(16,1)
+insert into LINEITEM_DIM(DW_LINEITEM, ITEMMOD) values (-1,0),(1,1),(2,1),(3,1),(4,1),(5,-1),(6,1),(7,1),(8,-1),(9,0.5),(10,1),(11,-1),(12,0.5),(13,1),(14,0),(15,1),(16,1)
 on duplicate key update DW_LINEITEM=VALUES(DW_LINEITEM), ITEMMOD=VALUES(ITEMMOD);
 select * from LINEITEM_DIM order by DW_LINEITEM;
 
@@ -1348,3 +1367,13 @@ FIELDS TERMINATED BY '|'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
+select t.DW_RESTID, y.DW_MONTH, t.DW_OCCASION, count(distinct DW_GC_HEADER),
+sum(coalesce(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal
+from TLD_FACT_2007_Q01 t
+left join LINEITEM_DIM l using(DW_LINEITEM)
+left join TIME_DAY_DIM y using(DW_DAY)
+left join nutrition_view n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join nutrition_view n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+left join PRODUCT_DETAIL_DIM_V1 g on g.DW_PRODUCTDETAIL=t.DW_PRODUCTDETAIL
+where g.DW_PRODUCTGROUP between 15 and 17
+group by DW_RESTID, DW_MONTH, DW_OCCASION

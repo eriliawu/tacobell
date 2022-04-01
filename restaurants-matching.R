@@ -1020,7 +1020,7 @@ ggplot(data = result,
 
 
 
-###  ps matching + iptw weighting, trim extrem weights, split california ----
+### ps matching + iptw weighting, trim extrem weights, split california ----
 names(restaurant)
 formula <- treat~concept+ownership+calorie3+slope_calorie+
   count3+slope_count+dollar3+slope_dollar+drive+meal+
