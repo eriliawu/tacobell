@@ -147,8 +147,10 @@ calorie <- calorie[order(calorie$year, calorie$month), ]
 ### adding drive-thru and meal time breakdown ----
 drive07 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_occasion_2007_Q1.csv",
                   stringsAsFactors=FALSE)
+drive07[,c(5:10,12)] <- drive07[,c(5:10,12)]/2
 meal07 <- read.csv("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-daypart/mean-calorie_restid_daypart_2007_Q1.csv",
-                 stringsAsFactors=FALSE)
+                 stringsAsFactors=FALSE) 
+meal07[,c(5:10,12)] <- meal07[,c(5:10,12)]/2
 
 drive <- NULL
 meal <- NULL
@@ -228,8 +230,8 @@ restaurant$treat <- ifelse(!is.na(restaurant$entry),1,0)
 ### prepare data for matching ----
 # mean spending per order, mean calorie, % drive-thru, % lunch/dinner
 names(restaurant)
-restaurant[, c(9,11,15:16)] <- restaurant[, c(9,11,15:16)]/restaurant$count_all
-restaurant[,c(12,14)] <- restaurant[,c(12,14)]/restaurant$count
+restaurant[, c(8,10)] <- restaurant[, c(8,10)]/restaurant$count_all
+restaurant[,c(11:16,18)] <- restaurant[,c(11:16,18)]/restaurant$count
 
 # create log vars
 # replace 0 values with a small value
@@ -333,11 +335,14 @@ for (i in c(1:10)) {
     #matching
     subset <- subset[complete.cases(subset), ]
     subset.match <- matchit(data=subset,formula = formula,distance="logit",method="nearest",replace=FALSE,ratio=3)
-    match <- match.data(subset.match, distance="distance", weights = "s.weights") 
+    match <- match.data(subset.match, distance="distance", weights = "s.weights")
+    print(paste0("matching is done for ", time[i,1]))
+    
     #add distance to unmatched data
     subset$distance <- subset.match$distance
     #add ps balance
     bal <- weightit(data=match, formula = formula, method = "ps",estimand = "ATT", s.weights = "s.weights")
+    print(paste0("matching is done for ", time[i,1]))
     match$weights <- bal$weights
     match$match_place <- time[i,1]
     # combine clusters of restaurants

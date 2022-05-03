@@ -34,6 +34,7 @@ library(maps)
 library(car) #testing joint significance
 #install.packages("zoo") #fill in NAs with the first non-NA value in a column
 library(zoo)
+ 
 
 ### matched data, preparing data ----
 matched <- read.csv("data/calorie-aims/matched-restaurants-trimmed-drive-thru.csv", stringsAsFactors = FALSE)
@@ -357,3 +358,141 @@ ggplot() +
 #ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/mean-diff-in-diff-by-location.jpeg", dpi="retina")
 
 
+
+### king county, beverage calorie, before and after ML ----
+king <- NULL
+for (i in 2007:2015) {
+  for (j in 1:4) {
+    tryCatch(
+      if(i==2015&j==4) {stop("file doesn't exist")} else
+      {
+        sample <- read.csv(paste0("data/from-bigpurple/mean-calorie-w-mod/by-restaurant-occasion/mean-calorie_restid_",i,"_Q",j,".csv"),
+                           col.names = c("restid","month","occasion","cal","total_fat","carb",
+                                         "protein","sat_fat","sugar","fiber","sodium","count"))
+        sample$year <- i
+        sample$quarter <- j
+        king <- rbind(sample,king)
+      }, error=function(e){cat(paste0("ERROR : ",i,"Q",j),conditionMessage(e), "\n")}
+    )
+  }
+}
+king <- king %>% mutate(cal = ifelse(year==2007&quarter==1,cal/2,cal)) %>% 
+  dplyr::select(-c(year,quarter))
+rm(sample,i,j)
+
+#merge with restaurant data, identify king county restaurants
+restaurant <- read.csv("data/restaurants/analytic_restaurants.csv",stringsAsFactors = FALSE,
+                       colClasses = c(rep(NA,3),rep("NULL",6),NA,rep("NULL",3),NA,rep("NULL",8),rep(NA,2),rep("NULL",5),NA))
+king <-merge(restaurant,king,by="restid")
+king <- king %>% filter(state=="WA"&(county=="King"|city=="Seattle")) %>%
+  dplyr::select(-restid) %>%
+  group_by(address, tract_num, ownership, concept, occasion, month) %>%
+  summarise_at(vars(cal:count),sum) %>% #aggregate at restaurant address level
+  mutate_at(vars(cal:sodium), ~./count) %>% #calculate mean per order
+  filter(month>=224 & month<=247) %>% #trim month to a year before and after ML in king
+  mutate(monthno = ifelse(month<=235,month-236,month-235))
+
+# visualize, calorie,carb,sugar,protein,total_fat
+cal <- ggplot(data=king %>% filter(address=="320 Rainier Avenue South, Renton, WA 98055"),aes(x=monthno, y=cal,color=as.factor(occasion))) + 
+  geom_point(size=1) + geom_line() +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  #geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=0, y=1600, label="Menu labeling \n implementation", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(800,1800),breaks=seq(800,1800,200)) +
+  scale_x_continuous(breaks=c(seq(-12,-1,1),seq(1,12,1))) + #select which months to display
+  labs(title="320 Rainier Avenue South, Renton, WA 98055", x="Month", y="") + 
+  scale_color_discrete(name="Order type", labels=c("Eat-in","Drive-through","Takeout")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        legend.position="top")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/cal=treat+month_monthFE_restaurantFE.jpeg", dpi="retina")
+
+#carbs
+carb <- ggplot(data=king %>% filter(address=="320 Rainier Avenue South, Renton, WA 98055"),aes(x=monthno, y=carb,color=as.factor(occasion))) + 
+  geom_point(size=1) + geom_line() +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  #geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=0, y=198, label="Menu labeling", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(100,220),breaks=seq(100,220,30)) +
+  scale_x_continuous(breaks=c(seq(-12,-1,1),seq(1,12,1))) + #select which months to display
+  labs(title="", x="", y="") + 
+  scale_color_discrete(name="Order type", labels=c("Eat-in","Drive-through","Takeout")) +
+  theme(plot.margin = unit(c(1, 1, 0, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        legend.position='none')
+
+sugar <- ggplot(data=king %>% filter(address=="320 Rainier Avenue South, Renton, WA 98055"),aes(x=monthno, y=sugar,color=as.factor(occasion))) + 
+  geom_point(size=1) + geom_line() +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  #geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=0, y=88, label="Menu labeling", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(20,100),breaks=seq(20,100,10)) +
+  scale_x_continuous(breaks=c(seq(-12,-1,1),seq(1,12,1))) + #select which months to display
+  labs(title="", x="", y="") + 
+  scale_color_discrete(name="Order type", labels=c("Eat-in","Drive-through","Takeout")) +
+  theme(plot.margin = unit(c(1, 1, 0, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        legend.position='none')
+
+total_fat <- ggplot(data=king %>% filter(address=="320 Rainier Avenue South, Renton, WA 98055"),aes(x=monthno, y=total_fat,color=as.factor(occasion))) + 
+  geom_point(size=1) + geom_line() +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  #geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=0, y=70, label="Menu labeling", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(30,80),breaks=seq(30,80,10)) +
+  scale_x_continuous(breaks=c(seq(-12,-1,1),seq(1,12,1))) + #select which months to display
+  labs(title="", x="", y="") + 
+  scale_color_discrete(name="Order type", labels=c("Eat-in","Drive-through","Takeout")) +
+  theme(plot.margin = unit(c(1, 1, 0, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        legend.position='none')
+
+protein <- ggplot(data=king %>% filter(address=="320 Rainier Avenue South, Renton, WA 98055"),aes(x=monthno, y=protein,color=as.factor(occasion))) + 
+  geom_point(size=1) + geom_line() +
+  geom_vline(xintercept = 0, color="grey", linetype="dashed", size=0.5) +
+  #geom_vline(xintercept = 1, color="grey", linetype="dashed", size=0.5) +
+  ggplot2::annotate(geom="label", x=0, y=60, label="Menu labeling", size=3) + #add label for ML
+  coord_cartesian(expand = FALSE, clip = "off") + 
+  scale_y_continuous(limits=c(30,70),breaks=seq(30,70,10)) +
+  scale_x_continuous(breaks=c(seq(-12,-1,1),seq(1,12,1))) + #select which months to display
+  labs(title="", x="", y="") + 
+  scale_color_discrete(name="Order type", labels=c("Eat-in","Drive-through","Takeout")) +
+  theme(plot.margin = unit(c(1, 1, 0, 1), "lines"),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16), #position/size of title
+        axis.title.x = element_text(vjust=-1, size = 12), #vjust to adjust position of x-axis
+        axis.title.y = element_text(size = 12),
+        legend.text=element_text(size=10),
+        plot.caption=element_text(hjust=0, vjust=-15, face="italic"),
+        legend.position='none')
+
+ggarrange(cal,
+          ggarrange(carb,sugar,total_fat,protein,ncol = 2,nrow = 2,labels=c("Carbohydrates","Sugar","Total fat","Protein")),
+          nrow = 2,
+          labels = "Calories") %>%
+  ggexport(filename = "tables/drive-thru-in-store-comparison/compare-king-county-restaurants/320-Rainier-Avenue-South.jpeg",
+           width = 1440,height = 960,res=150)
