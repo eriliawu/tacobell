@@ -9,5 +9,6 @@ tacobell.gdb/
 external-comms/
 lit-review/
 manuscript/
-transaction-id.sql
+*.sql
+*.xlsx
 
