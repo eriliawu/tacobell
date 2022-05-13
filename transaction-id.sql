@@ -7,6 +7,8 @@ srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash
 module load mariadb/5.5.64
 mysql -p -h db -P 33061 -u wue04 tacobell
 
+set unique_checks = 0;
+set foreign_key_checks = 0;
 
 -- for new database tacobell15
 srun  --time=1-00:01:00 --pty --mem-per-cpu=8G bash 
@@ -48,7 +50,6 @@ select (ItemCount.sales / TotalCount.total *100) as ItemRatio
 from 
   (select count(distinct DW_GC_HEADER) as sales from TLD_FACT_2014_Q04 where DW_PRODUCT=30839) as ItemCount,
   (select count(distinct DW_GC_HEADER) as total from TLD_FACT_2014_Q04) as TotalCount;
-
 
 
 /*
@@ -1063,7 +1064,7 @@ create table nutrition (
 	primary key (DW_PRODUCT)
 );
 
-load data infile '/gpfs/home/wue04/tb-data/menu-matching-to-bigpurple/PRODUCT_CALORIE_DIM-drinks-fixed.csv'
+load data infile '/gpfs/home/wue04/tb-data/menu-matching-to-bigpurple/PRODUCT_CALORIE_DIM.csv'
 into table nutrition
 FIELDS TERMINATED BY ',' 
 ENCLOSED BY '"'
