@@ -114,7 +114,8 @@ ggplot(data=sales,aes(x=month, y=category_pct,color=as.factor(cat))) +
   coord_cartesian(expand = FALSE, clip = "off", ylim = c(0,1)) + 
   scale_y_continuous(limits=c(-0.2,1),breaks=seq(-0.2,1,0.1),labels=scales::percent) +
   scale_x_continuous(breaks=c(1:35)) + #select which months to display
-  labs(title="In-store beverage sales over time in California", x="", y="", caption="") + 
+  labs(title="In-store beverage sales over time in California", x="", y="",
+       caption="Note: the analysis excludes additives such as coffee creamer and sugar packets for tea.") + 
   scale_color_manual(name="Beverage type",labels=c("Freeze","Low-calorie","SSB","Vague"),values=c("#228B22","skyblue","orange","hotpink")) +
   scale_linetype_manual(name="Menu label",labels=c("No","Yes"),values=c("dashed", "solid")) +
   theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
@@ -127,9 +128,23 @@ ggplot(data=sales,aes(x=month, y=category_pct,color=as.factor(cat))) +
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
 #ggsave("tables/beverage-undercount-ml-rollout/bev-sales-over-time-ca.jpeg", dpi="retina")
 
+### look at monthno=277 (2 yrs after ML rollout in CA in-store) ----
+# what's driving the sales of ssb and freeze up
+# what's driving the difference in sales between CA and its comp restaurants
+table(bev$category2)
 
+sales_after <- bev %>%  rename(month=DW_MONTH,product=dw_product) %>% 
+  dplyr::select(treat,category2,qty,month,product,fulldesc) %>% 
+  filter(!grepl("Additive",category2) & month==282) %>% 
+  mutate(cat=ifelse(grepl("Diet|Low",category2),"Low-calorie",ifelse(grepl("Vague",category2),"Vague",ifelse(grepl("Freeze",category2),"Freeze","SSB")))) %>% 
+  group_by(treat,fulldesc,month,cat) %>% summarise(qty_item=sum(qty)) %>%
+  group_by(treat,month) %>% mutate(qty_total=sum(qty_item)) %>% mutate(item_pct=qty_item/qty_total) %>% 
+  arrange(treat,month,desc(item_pct))
 
-
-
-
-
+sales_before <- bev %>%  rename(month=DW_MONTH,product=dw_product) %>% 
+  dplyr::select(treat,category2,qty,month,product,fulldesc) %>% 
+  filter(!grepl("Additive",category2) & month==277) %>% 
+  mutate(cat=ifelse(grepl("Diet|Low",category2),"Low-calorie",ifelse(grepl("Vague",category2),"Vague",ifelse(grepl("Freeze",category2),"Freeze","SSB")))) %>% 
+  group_by(treat,fulldesc,month,cat) %>% summarise(qty_item=sum(qty)) %>%
+  group_by(treat,month) %>% mutate(qty_total=sum(qty_item)) %>% mutate(item_pct=qty_item/qty_total) %>% 
+  arrange(treat,month,desc(item_pct))
