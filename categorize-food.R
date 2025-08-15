@@ -428,7 +428,7 @@ ggplot(data=sales%>%filter(category<=5|category==8),
         axis.text.x = element_blank(), #turn off default x axis label
         legend.text=element_text(size=10), 
         plot.caption=element_text(hjust=0, vjust=-15, face="italic"))
-#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/sales-by-category.jpeg", dpi="retina")
+#ggsave("tables/analytic-model/aim1-diff-in-diff/regression/month-as-factor-drive-thru/by-category/sales-by-category.jpeg", dpi="retina")
 
 ### appendix figure 4B, diff in diff ----
 tidy_mod.factor_all <- NULL

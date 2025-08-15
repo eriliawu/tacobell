@@ -1368,13 +1368,213 @@ FIELDS TERMINATED BY '|'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
-select t.DW_RESTID, y.DW_MONTH, t.DW_OCCASION, count(distinct DW_GC_HEADER),
+select l.LINEITEMDESC,l.ITEMMOD,
+t.DW_PRODUCTDETAIL,n1.FULLDESC as detail,n1.CALORIES as cal,ACTQTYSOLD,
+t.DW_PRODUCTMOD,n2.FULLDESC as modif,n2.CALORIES as mod_cal,ACTMODQTY
+from TLD_FACT_2016_Q1 t
+left join LINEITEM_DIM l using(DW_LINEITEM)
+left join nutrition_dim n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join nutrition_dim n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+where DW_GC_HEADER=7921067020
+order by DW_LINEITEM;
+
+
+
+
+
+
+select DW_GC_HEADER,
 sum(coalesce(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal
-from TLD_FACT_2007_Q01 t
+from TLD_FACT_2016_Q1 t
+left join LINEITEM_DIM l using(DW_LINEITEM)
+left join nutrition_dim n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join nutrition_dim n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+where DW_GC_HEADER=7921067020
+;
+
+
+
+drop table match_after_initial_round;
+create table match_after_initial_round (
+	DW_PRODUCT int not null,
+	match_indicator int not null,
+	primary key (DW_PRODUCT)
+);
+load data local infile '/gpfs/home/wue04/soda-tax/data/upload-to-bigpurple/matched-items-initial-round-check-sales-volume-in-hpc.csv'
+into table match_after_initial_round
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS;
+
+select match_indicator,count(*) from match_after_initial_round group by match_indicator;
+
+
+create table restaurant_in_use_match_drive_thru (
+	address varchar(255) not null,
+	treat int not null,
+	DW_RESTID int not null,
+	primary key (DW_RESTID)
+);
+load data infile '/gpfs/home/wue04/tb-data/upload-to-bigpurple/restaurants-in-use-matching-drive-thru.csv'
+into table restaurant_in_use_match_drive_thru
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS;
+
+
+
+
+
+
+
+create view beverage_dim_view as
+select * from nutrition_dim
+where CALORIES is not null and DW_PRODUCTGROUP between 15 and 17;
+
+
+
+
+drop table nutrition_dim;
+create table beverage_dim_vague_as_missing (
+	DW_PRODUCT int not null,
+	DW_PRODUCTGROUP int not null,
+	PRODUCTDESC varchar(255) not null,
+	FULLDESC varchar(255) null,
+	DB int not null,
+	CALORIES decimal(10, 2) null,
+	TOTAL_FAT decimal(10, 2) null,
+	SAT_FAT decimal(10, 2) null,
+	TRANS_FAT decimal(10, 2) null,	
+	CHOLESTEROL decimal(10, 2) null,
+	SODIUM decimal(10, 2) null,
+	CARB decimal(10, 2) null,
+	FIBER decimal(10, 2) null,
+	SUGAR decimal(10, 2) null,
+	PROTEIN decimal(10, 2) null,
+	primary key (DW_PRODUCT)
+);
+
+load data  infile '/gpfs/home/wue04/soda-tax/data/upload-to-bigpurple/menu-matching/matched_items_round_2_vague_as_missing_bevs_only.csv'
+into table beverage_dim_vague_as_missing
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS
+(DW_PRODUCT,DW_PRODUCTGROUP,PRODUCTDESC,@vFULLDESC,DB,@vCALORIES,@vTOTAL_FAT,@vSAT_FAT,@vTRANS_FAT,@vCHOLESTEROL,@vSODIUM,@vCARB,@vFIBER,@vSUGAR,@vPROTEIN) 
+set
+FULLDESC=NULLIF(@vFULLDESC, ''),
+CALORIES=NULLIF(@vCALORIES, ''),
+TOTAL_FAT=NULLIF(@vTOTAL_FAT, ''),
+SAT_FAT=NULLIF(@vSAT_FAT, ''),
+TRANS_FAT=NULLIF(@vTRANS_FAT, ''),
+CHOLESTEROL=NULLIF(@vCHOLESTEROL, ''),
+SODIUM=NULLIF(@vSODIUM, ''),
+CARB=NULLIF(@vCARB, ''),
+FIBER=NULLIF(@vFIBER, ''),
+SUGAR=NULLIF(@vSUGAR, ''),
+PROTEIN=NULLIF(@vPROTEIN, '')
+;
+
+
+select DW_GC_HEADER,
+sum(coalesce(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal,
+count(distinct DW_GC_HEADER) as num_orders,
+sum(ACTPRODPRICE) as total_revenue
+from TLD_FACT_2016_Q1 t
+left join LINEITEM_DIM l using(DW_LINEITEM)
+left join beverage_dim_vague_as_missing n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join beverage_dim_vague_as_missing n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+where DW_GC_HEADER=7921073379 and t.DW_PRODUCTDETAIL in (select DW_PRODUCT from beverage_dim_vague_as_missing)
+group by DW_GC_HEADER
+
+select t.DW_PRODUCT, p.PRODUCTDESC as product, t.DW_PRODUCTDETAIL, n1.FULLDESC as detail, n1.CALORIES as cal
+from TLD_FACT_2016_Q1 t
+left join beverage_dim_vague_as_missing n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join beverage_dim_vague_as_missing n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+left join PRODUCT_DIM p on p.DW_PRODUCT=t.DW_PRODUCT
+where DW_GC_HEADER=7922889577 
+and t.DW_PRODUCTDETAIL in (select DW_PRODUCT from beverage_dim_vague_as_missing)
+
+select t.DW_RESTID, y.DW_MONTH, t.DW_OCCASION,
+sum(coalesce(n1.CALORIES,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CALORIES,0)*t.ACTMODQTY*l.ITEMMOD) as cal,
+sum(coalesce(n1.TOTAL_FAT,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.TOTAL_FAT,0)*t.ACTMODQTY*l.ITEMMOD) as total_fat,
+sum(coalesce(n1.CARB,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.CARB,0)*t.ACTMODQTY*l.ITEMMOD) as carb,
+sum(coalesce(n1.PROTEIN,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.PROTEIN,0)*t.ACTMODQTY*l.ITEMMOD) as protein,
+sum(coalesce(n1.SAT_FAT,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.SAT_FAT,0)*t.ACTMODQTY*l.ITEMMOD) as sat_fat,
+sum(coalesce(n1.SUGAR,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.SUGAR,0)*t.ACTMODQTY*l.ITEMMOD) as sugar,
+sum(coalesce(n1.FIBER,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.FIBER,0)*t.ACTMODQTY*l.ITEMMOD) as fiber,
+sum(coalesce(n1.SODIUM,0)*t.ACTQTYSOLD*l.ITEMMOD + coalesce(n2.SODIUM,0)*t.ACTMODQTY*l.ITEMMOD) as sodium,
+count(distinct DW_GC_HEADER) as num_orders,
+sum(ACTPRODPRICE) as total_revenue
+from TLD_FACT_2016_Q1 t
 left join LINEITEM_DIM l using(DW_LINEITEM)
 left join TIME_DAY_DIM y using(DW_DAY)
-left join nutrition_view n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
-left join nutrition_view n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
-left join PRODUCT_DETAIL_DIM_V1 g on g.DW_PRODUCTDETAIL=t.DW_PRODUCTDETAIL
-where g.DW_PRODUCTGROUP between 15 and 17
-group by DW_RESTID, DW_MONTH, DW_OCCASION
+left join beverage_dim_vague_as_missing n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join beverage_dim_vague_as_missing n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+where t.DW_PRODUCTDETAIL in (select DW_PRODUCT from beverage_dim_vague_as_missing)
+group by DW_RESTID, DW_MONTH, DW_OCCASION;
+
+
+
+select DW_GC_HEADER 
+from TLD_FACT_2011_Q04 
+left join TIME_DAY_DIM d using(DW_DAY)  
+left join TIME_MINUTE_DIM m using(DW_MINUTE)
+where DW_RESTID =46003 and DW_MONTH=264 and DW_DAYPART=6;
+
+select DW_GC_HEADER,m.HOURNO,m.MINUTENO,DW_LINEITEM,l.LINEITEMDESC,t.DW_PRODUCT,p.PRODUCTDESC as product,t.DW_PRODUCTDETAIL,d.PRODUCTDESC as product_detail,ACTQTYSOLD,n1.CALORIES,n2.CALORIES
+from TLD_FACT_2015_Q4 t
+left join TIME_DAY_DIM time_day using(DW_DAY)   
+left join TIME_MINUTE_DIM m using(DW_MINUTE) 
+left join PRODUCT_DIM p on p.DW_PRODUCT=t.DW_PRODUCT
+left join PRODUCT_DIM d on d.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join LINEITEM_DIM l using(DW_LINEITEM)
+left join nutrition_dim_view n1 on n1.DW_PRODUCT=t.DW_PRODUCTDETAIL
+left join nutrition_dim_view n2 on n2.DW_PRODUCT=t.DW_PRODUCTMOD
+where DW_RESTID =31698 and DW_MONTH=311 and DW_DAYPART=3 and DW_OCCASION=1
+order by DW_GC_HEADER,DW_LINEITEM
+limit 10;
+
+
+
+
+
+select t.DW_GC_HEADER, t.DW_RESTID, t.DW_OCCASION, t.DW_PRODUCT, t.DW_PRODUCTDETAIL, t.ACTPRODPRICE, t.ACTQTYSOLD, t.DW_LINEITEM, t.DW_DAY,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1
+	then 1 else 0 end combo_item,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and t.DW_PRODUCTDETAIL in (select DW_PRODUCT from beverage_dim_view)
+	then 1 else 0 end combo_beverage_item,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and c.DW_PRODUCTGROUP <=14 and c.DW_PRODUCTGROUP>=18
+	then (TACO+BURRITO+OTHER_ENTREE+DESSERT)*ACTQTYSOLD else 0 end combo_food_item,
+	
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and FOUNTAIN=1
+	then 1*ACTQTYSOLD else 0 end combo_fountain,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and DIET=1
+	then 1*ACTQTYSOLD else 0 end combo_diet,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and (SSB=1 or FREEZE=1)
+	then (SSB+FREEZE)*ACTQTYSOLD else 0 end combo_ssb,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and LOW_CAL=1
+	then 1*ACTQTYSOLD else 0 end combo_low_cal,	
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and DIET_VOL!=0
+	then DIET_VOL*ACTQTYSOLD else 0 end combo_diet_vol,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and (SSB_VOL!=0 or FREEZE_VOL!=0)
+	then (SSB_VOL+FREEZE_VOL)*ACTQTYSOLD else 0 end combo_ssb_vol,
+	case when (DW_LINEITEM in (1,15) or DW_LINEITEM between 3 and 9) and t.DW_PRODUCT!=t.DW_PRODUCTDETAIL and t.DW_PRODUCTMOD=-1 and LOW_CAL_VOL!=0
+	then LOW_CAL_VOL*ACTQTYSOLD else 0 end combo_low_cal_vol
+	
+from TLD_FACT_2016_Q1 t
+left join category_dim_view c on c.DW_PRODUCT=t.DW_PRODUCTDETAIL
+
+
+limit 10;
+
+
+
+
+
+select location,DW_RESTID,rest_id,ADDRESS_LINE_1,OPENEDDT,CLOSEDDT,LEGAL_ENTITY_CD,FRAN_OWNER_NM,FRAN_OWNER_SHRT_NM
+from ALIGN_DIM inner join treatment_restaurants using (DW_RESTID) 
+order by location,LEGAL_ENTITY_CD
+into outfile '/gpfs/home/wue04/soda-tax/query-data/treatment_restaurants_ownership/treatment_restaurants_with_legal_code.csv' fields enclosed by '"' terminated by ';' escaped by '"' lines terminated by '\r\n';

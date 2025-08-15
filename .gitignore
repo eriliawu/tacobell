@@ -12,3 +12,4 @@ manuscript/
 *.sql
 *.xlsx
 transaction-id.sql
+.DS_Store
